@@ -25,8 +25,8 @@ def run():
     Run the crew.
     """
     inputs = {
-        'profile': 'Nicolas escallon',
-        'company': 'actis'
+        'profile': '',
+        'company': ''
     }
     InsightTrackerCrew().crew().kickoff(inputs=inputs)
 
@@ -36,7 +36,8 @@ def train():
     Train the crew for a given number of iterations.
     """
     inputs = {
-        "topic": "AI LLMs"
+        'profile': '',
+        'company': ''
     }
     try:
         InsightTrackerCrew().crew().train(n_iterations=int(sys.argv[1]), inputs=inputs)
