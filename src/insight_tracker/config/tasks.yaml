@@ -1,0 +1,69 @@
+research_task:
+  description: >
+    Research and gather all available links related to the specified person delimited by triple '. The links should include:
+      - LinkedIn Profile
+      - X Profile
+      - Professional profiles (company website, LinkedIn, professional associations, etc.)
+      - News articles and press releases
+      - Personal websites or blogs
+      - Any other relevant online resources 
+      - Always focus on the specific profile and name provided and do no create or make up any link
+
+      Use various online resources such as search engines, social media platforms, and professional networks to find these links.
+      Ensure the links are accurate and up-to-date.
+      Always Focus on the professional aspect of the profile
+
+      The purpose of this task is to compile a comprehensive list of all online links related to this person for further analysis.
+
+      '''{profile} from {company}'''
+  expected_output: >
+    A python list of relevant links.
+
+gather_info_task:
+  description: >
+    Given a list of relevant links, your task is to scrape and collect detailed information about the specified person. The information should include:
+      - Full name
+      - Job title
+      - Professional background
+      - Past Jobs
+      - Key achievements
+      - Email 
+
+    Use the provided scraping tools to gather this information. Do not fabricate any details; ensure all information is accurate and current.
+  expected_output: >
+      A comprehensive profile of the individual in a PDF document, organized into the following sections:
+      - Full Name: [Full Name]
+      - Job Title: [Job Title]
+      - Professional Background: [Professional Background]
+      - Past Jobs: [Past Jobs] 
+      - Key Achievements: [Key Achievements]
+      - Email: [Email] 
+
+write_invitation_email_task:
+  description: >
+    Using all the information from gather_info_task draft an email with no more than 120 words that invites this person to discuss a possible opportunnity. The email should be personalized, taking into account the individual's professional background, key achievements, and interests. Ensure the email tone is professional, respectful, and engaging.
+
+    The email should include:
+    - A personalized greeting
+    - A brief introduction of yourself and your company
+    - Acknowledgment of the individual's professional background and key achievements
+    - A clear and concise explanation of why you are reaching him out.
+    - An invitation to discuss in more detail the path foward as a client
+    - A polite closing and call to action
+
+    The purpose of this task is to create a compelling and well-structured email that increases the likelihood of a positive response from the individual.
+
+  expected_output: >
+    A well-structured and personalized email with no more than 120 words in the following format:
+
+    Subject: Invitation to Discuss [Product Name]
+
+    Dear [Full Name],
+
+    [Body]
+
+    Best regards,
+    [Your Name]
+    [Your Job Title]
+    [Your Company]
+    [Your Contact Information]
