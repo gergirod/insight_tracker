@@ -117,8 +117,8 @@ class InsightTrackerCrew():
 	def crew(self) -> Crew:
 		"""Creates the InsightTracker crew"""
 		return Crew(
-			agents=self.agents, # Automatically created by the @agent decorator
-			tasks=self.tasks, # Automatically created by the @task decorator
+			agents=[self.researcher(), self.info_gatherer(), self.email_writer()], # Automatically created by the @agent decorator
+			tasks=[self.research_task(),self.gather_info_task(),self.write_invitation_email_task()], # Automatically created by the @task decorator
 			process=Process.sequential,
 			verbose=2
 			# process=Process.hierarchical, # In case you wanna use that instead https://docs.crewai.com/how-to/Hierarchical/

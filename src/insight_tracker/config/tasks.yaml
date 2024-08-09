@@ -67,3 +67,48 @@ write_invitation_email_task:
     [Your Job Title]
     [Your Company]
     [Your Contact Information]
+
+#Company Insight
+
+company_linkedin_research_task:
+  description: >
+    Your task is to research and gather all relevant online links related to the specified company within the {industry} industry. For this task you should follow this steps:
+
+    1) Search The company's LinkedIn profile
+    2) Search all other sections inside the Linkedin profile for example about, posts, jobs, people and insights
+    No links should be fabricated or created.
+
+    The purpose of this task is to compile a comprehensive and verified list of all relevant online links related to {company} for further analysis.
+
+    Company to research: '''{company}''' from the '''{industry}''' industry.
+  expected_output: >
+    A Python list containing the linkedin websites .
+
+company_website_research_task:
+  description: >
+    With the list of links provided, your task is to scrape and gather detailed information about company. Focus on scraping data from LinkedIn.
+    THe main data you need to search in the company website that is mainly in the about section of the linkedin profile
+
+  expected_output: >
+    a string containing company main website.
+
+company_people_research_task:
+  description: >
+    with the string provided by the previous taks, your task is to scrape and gather detailed information about the specified company. format:
+
+    Use the link with the ScrapingCustomTool to scrape the url the website from the previous task.
+    Ensure all information is accurate, current, and reflects the latest data available. Avoid fabricating any details.
+
+    The purpose of this task is to compile a detailed and structured list of subpages on the website data
+  expected_output: >
+    A Python list pre filtered to a list that only contains info about the teams or the persons working there, exclude all links that might contain content related to a single person, after this the filtered list by professional range if its mentioned. where each entry is a dictionary containing subpages and a category wit the last string from the url . Just return the list nothing extra
+
+company_persons_scraping_task:
+  description: >
+    base on the url provided as an input {category} scrape and create  a list of people in the following format:
+    Full Name 
+    Role 
+
+    include also the url for the detail of that particular profile
+  expected_output: >
+    A Python list that contains elements with information about a person name and role also include the url for the particular profile
