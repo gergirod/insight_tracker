@@ -13,7 +13,7 @@ import streamlit as st
 from pydantic import BaseModel, Field
 from insight_tracker.tools.custom_tool import CrawlingCustomTool, ScrapingCustomTool
 from typing import List, Optional
-
+from langchain_openai import ChatOpenAI
 
 from dotenv import load_dotenv
 
@@ -58,11 +58,28 @@ class CompanyPersonInsightTrackerCrew():
 	agents_config = 'config/agents.yaml'
 	tasks_config = 'config/tasks.yaml'
 
+	# def llm(self):
+	# 	llm = ChatAnthropic(model_name="claude-3-sonnet-20240229", max_tokens=4096, temperature=0.0)
+	# 	# llm = ChatGroq(model="llama3-70b-8192")
+	# 	# llm = ChatGroq(model="mixtral-8x7b-32768")
+	# 	# llm = ChatGoogleGenerativeAI(google_api_key=os.getenv("GOOGLE_API_KEY"))
+	# 	return llm
+
 	@agent
 	def company_person_employee_insight_scraper(self) -> Agent:
 		return Agent(
 			config=self.agents_config['company_person_employee_insight_scraper'],
-			tools = [tavily_tool],
+			tools = [ScrapingCustomTool()],
+			#llm = self.llm(),
+			verbose=True
+		)
+	
+	@agent
+	def company_person_employee_detail_insight_scraper(self) -> Agent:
+		return Agent(
+			config=self.agents_config['company_person_employee_detail_insight_scraper'],
+			tools = [ScrapingCustomTool()],
+			#llm = self.llm(),
 			verbose=True
 		)
 	
@@ -74,14 +91,30 @@ class CompanyPersonInsightTrackerCrew():
 			agent=self.company_person_employee_insight_scraper()
 		)
 	
+	@task
+	def company_persons_detail_scraping_task(self) -> Task:
+		return Task(
+			config=self.tasks_config['company_persons_detail_scraping_task'],
+			agent=self.company_person_employee_insight_scraper()
+		)
+	
+	@task
+	def write_invitation_email_task(self) -> Task:
+		return Task(
+			config=self.tasks_config['write_invitation_email_task'],
+			agent = self.email_writer()
+		)
+	
 	
 	@crew
 	def company_person_crew(self) -> Crew:
 		"""Creates the CompanyInsightTracker crew"""
 		return Crew(
-			agents=[self.company_person_employee_insight_scraper()], # Automatically created by the @agent decorator
-			tasks=[self.company_persons_scraping_task()], # Automatically created by the @task decorator
+			agents=[self.company_person_employee_insight_scraper(), self.company_person_employee_detail_insight_scraper()], # Automatically created by the @agent decorator
+			tasks=[self.company_persons_scraping_task(), self.company_persons_detail_scraping_task()], # Automatically created by the @task decorator
 			process=Process.sequential,
-			verbose=2
+			verbose=True,
+			planning=True,
+			planning_llm=ChatOpenAI(model="gpt-4o")
 			# process=Process.hierarchical, # In case you wanna use that instead https://docs.crewai.com/how-to/Hierarchical/
 		)

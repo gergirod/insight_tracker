@@ -14,6 +14,8 @@ from pydantic import BaseModel, Field
 from insight_tracker.tools.custom_tool import CrawlingCustomTool, ScrapingCustomTool
 from typing import List, Optional
 from langchain_groq import ChatGroq
+from crewai_tools import SeleniumScrapingTool
+from langchain_openai import ChatOpenAI
 
 
 from dotenv import load_dotenv
@@ -29,28 +31,27 @@ load_dotenv()
 search = TavilySearchAPIWrapper()
 tavily_tool = TavilySearchResults(api_wrapper=search)
 
-class ProfessionalProfile(BaseModel):
-	first_name: Optional[str] = Field(
-		..., description="The first name of the profile"
+class Profile(BaseModel):
+	full_name: Optional[str] = Field(
+		..., description="The full name of the profile"
 	)
-	last_name: Optional[str] = Field(
-		None, description="The last name of the profile"
+	profile_image: Optional[str] =  Field(
+		None, description="the profile image"
 	)
-	company: Optional[str] =  Field(
-		None, description="the current company of the profile"
+	role: Optional[str] = Field(
+		None, description="the role the profile"
 	)
-	profesional_background: Optional[str] = Field(
-		None, description="the professional background of the profile"
+	contact: Optional[str] = Field(
+		None, description="the contact of the profile"
 	)
-	key_achievements: Optional[str] = Field(
-		None, description="key achievements of the profile"
+	background_experience: Optional[str] = Field(
+		None, description="The background experience of the profile"
 	)
-	email_address: Optional[str] = Field(
-		None, description="The email address of the profile"
-	)
-	linkedin_url: Optional[str] = Field(
-		None, description="The LinkedIn profile URL of the profile"
-	)
+
+class Profiles(BaseModel):
+	profile_list : Optional[List[Profile]]
+
+
 	   
 
 @CrewBase
@@ -59,11 +60,19 @@ class CompanyInsightTrackerCrew():
 	agents_config = 'config/agents.yaml'
 	tasks_config = 'config/tasks.yaml'
 
+	# def llm(self):
+	# 	llm = ChatAnthropic(model_name="claude-3-sonnet-20240229", max_tokens=4096, temperature=0.0)
+	# 	# llm = ChatGroq(model="llama3-70b-8192")
+	# 	# llm = ChatGroq(model="mixtral-8x7b-32768")
+	# 	# llm = ChatGoogleGenerativeAI(google_api_key=os.getenv("GOOGLE_API_KEY"))
+	# 	return llm
+
 	@agent
 	def company_researcher(self) -> Agent:
 		return Agent(
 			config=self.agents_config['company_linkedin_researcher'],
 			tools = [tavily_tool],
+			#llm = self.llm(),
 			verbose=True
 		)
 	
@@ -72,6 +81,16 @@ class CompanyInsightTrackerCrew():
 		return Agent(
 			config=self.agents_config['company_website_researcher'],
 			tools = [ScrapeWebsiteTool()],
+			#llm = self.llm(),
+			verbose=True,
+		)
+	
+	@agent
+	def company_data_scraper(self) -> Agent:
+		return Agent(
+			config=self.agents_config['company_data_scraper'],
+			tools = [ScrapeWebsiteTool()],
+			#llm = self.llm(),
 			verbose=True,
 		)
 	
@@ -80,6 +99,7 @@ class CompanyInsightTrackerCrew():
 		return Agent(
 			config=self.agents_config['company_employee_scraper'],
 			tools = [ScrapingCustomTool()],
+			#llm = self.llm(),
 			verbose=True,
 		)
 	
@@ -88,29 +108,88 @@ class CompanyInsightTrackerCrew():
 		return Agent(
 			config=self.agents_config['company_employee_insight_scraper'],
 			tools = [ScrapingCustomTool()],
+			#llm = self.llm(),
 			verbose=True,
+		)
+	
+	@agent
+	def python_developer(self) -> Agent:
+		return Agent(
+			config=self.agents_config['python_developer'],
+			#llm = self.llm(),
+			verbose=True,
+			allow_code_execution=True
+		)
+	
+	@agent
+	def email_writer(self) -> Agent:
+		return Agent(
+			config=self.agents_config['email_writer'],
+			allow_delegation=False,
+			verbose=True,
+		)
+	
+	@agent
+	def company_person_employee_detail_insight_scraper(self) -> Agent:
+		return Agent(
+			config=self.agents_config['company_person_employee_detail_insight_scraper'],
+			tools = [ScrapingCustomTool()],
+			#llm = self.llm(),
+			verbose=True
 		)
 	
 
 	@task
-	def company_research_task(self) -> Task:
+	def company_linkedin_research_task(self) -> Task:
 		return Task(
 			config=self.tasks_config['company_linkedin_research_task'],
 			agent=self.company_researcher()
 		)
 	
 	@task
+	def company_research_task(self) -> Task:
+		return Task(
+			config=self.tasks_config['company_research_task'],
+			agent=self.company_data_scraper()
+		)
+	
+	@task
 	def company_website_research_task(self) -> Task:
 		return Task(
 			config=self.tasks_config['company_website_research_task'],
-			agent=self.company_scraper()
+			agent=self.company_scraper(),
 		)
 	
 	@task
 	def company_people_research_task(self) -> Task:
 		return Task(
 			config=self.tasks_config['company_people_research_task'],
-			agent=self.company_employee_scraper()
+			agent=self.company_employee_scraper(),
+			context=[self.company_website_research_task()]
+			)
+	
+	def company_persons_detail_scraping_task(self) -> Task:
+		return Task(
+			config=self.tasks_config['company_persons_detail_scraping_task'],
+			agent=self.company_person_employee_detail_insight_scraper(),
+			context= [self.company_people_research_task()]
+		)
+	
+
+	@task
+	def python_developer_task(self) -> Task:
+		return Task(
+			config=self.tasks_config['python_developer_task'],
+			agent=self.python_developer(),
+			output_pydantic=Profiles
+		)
+	
+	@task
+	def write_invitation_email_task(self) -> Task:
+		return Task(
+			config=self.tasks_config['write_invitation_email_task_two'],
+			agent = self.email_writer(),
+			context = [self.company_research_task(), self.python_developer_task()]
 		)
 
 	
@@ -119,9 +198,9 @@ class CompanyInsightTrackerCrew():
 	def company_crew(self) -> Crew:
 		"""Creates the CompanyInsightTracker crew"""
 		return Crew(
-			agents=[self.company_researcher(), self.company_scraper(), self.company_employee_scraper()], # Automatically created by the @agent decorator
-			tasks=[self.company_research_task(), self.company_website_research_task(), self.company_people_research_task()], # Automatically created by the @task decorator
+			agents=[self.company_researcher(), self.company_scraper(),self.company_data_scraper(), self.company_employee_scraper(), self.company_person_employee_detail_insight_scraper(),self.python_developer(), self.email_writer()], # Automatically created by the @agent decorator
+			tasks=[self.company_linkedin_research_task(), self.company_website_research_task(), self.company_research_task(), self.company_people_research_task(),self.company_persons_detail_scraping_task(),self.python_developer_task(), self.write_invitation_email_task()], # Automatically created by the @task decorator
 			process=Process.sequential,
-			verbose=2
+			verbose=True
 			# process=Process.hierarchical, # In case you wanna use that instead https://docs.crewai.com/how-to/Hierarchical/
 		)

@@ -92,23 +92,129 @@ company_website_research_task:
   expected_output: >
     a string containing company main website.
 
-company_people_research_task:
+company_research_task:
   description: >
-    with the string provided by the previous taks, your task is to scrape and gather detailed information about the specified company. format:
+    with the string provided by company_website_research_task , your task is to scrape and gather detailed information about the specified company. format:
 
-    Use the link with the ScrapingCustomTool to scrape the url the website from the previous task.
+    Use the link with the ScrapingCustomTool to scrape the url the website from company_website_research_task.
     Ensure all information is accurate, current, and reflects the latest data available. Avoid fabricating any details.
 
-    The purpose of this task is to compile a detailed and structured list of subpages on the website data
+    Follow this steps :
+     1 - Sumarry: Search for 'who we are' or similar sections and scrap the content and do a small summary.
+     2 - Services: Search for areas like solutions or services and scrap the content to get all servicies or solutions the company provided
+     3 - Industries: Search for areas like Industries and scrap the content to get all industries the company provided services for.
+     4 - Awards/Recognitions: Search for areas where it mentions awards or recognitions and get all information of its.
   expected_output: >
-    A Python list pre filtered to a list that only contains info about the teams or the persons working there, exclude all links that might contain content related to a single person, after this the filtered list by professional range if its mentioned. where each entry is a dictionary containing subpages and a category wit the last string from the url . Just return the list nothing extra
+    Return a list in the following format:
+    Sumarry : [Summary]
+    Services : [Services]
+    Industies : [Industries]
+    Awards/Recognitions: [Awards/Recognitions]
+
+
+company_people_research_task:
+  description: >
+    with the url string provided by company_website_research_task or with the company website, your task is to scrape and gather detailed information about the specified company. format:
+
+    Use the link with the ScrapingCustomTool to scrape the url the website from company_website_research_task.
+    Ensure all information is accurate, current, and reflects the latest data available. Avoid fabricating any details.
+
+    follow this steps :
+    1. Scrape and Search any link or sublink that contains info about teams or the persons working there.
+    2. Exclude all links that might contain content related to a single person and exlude whatever is doenst have the meaning of poeple that works there. do not include work with us or similar sections.
+    3. Filtered list by professional range if its mentioned. where each entry is a dictionary containing subpages and a category with the last string from the url
+    4. Finally for the link you search. Scrape and Search for persons with the role Socio or Partner or Director or Directores orand create a list in the following format.
+    5. Create a list with each person 
+    
+    The purpose of this task is to compile a detailed and structured list of Socios or partners
+  expected_output: >
+    A Python list the following Format: 
+      - profile_link
+
+    return a python list
 
 company_persons_scraping_task:
   description: >
-    base on the url provided as an input {category} scrape and create  a list of people in the following format:
-    Full Name 
-    Role 
+    base on the url provided as an input {category} scrape and create a list of people in the following format:
+      - Full Name 
+      - Role 
+      - Url
 
     include also the url for the detail of that particular profile
   expected_output: >
-    A Python list that contains elements with information about a person name and role also include the url for the particular profile
+    A Python list filtered by role to be socio or partner that contains elements in the following format :
+      - Full Name:[Full Name]
+      - Role:[Role]
+      - Url:[Url]
+
+
+company_persons_detail_scraping_task:
+  description: >
+    base on the final output from company_people_research_task.
+    follow this steps:
+    1 .Iterate all the elements in the list.
+    2. Scrape the profile_link and gather the following information of the person in the following format 
+   
+      - Full Name
+      - Profile Image Url:
+      - Role:
+      - Contact:
+      - Background Experience:
+
+    Make sure you match the amount of size from the previous task list to the new list you will generate.
+
+  expected_output: >
+    A Python list that contains the same amount of elements from company_people_research_task in the following Format: 
+      - full_name:[Full Name]
+      - profile_image: [Profile Image Url]
+      - role: [Role]
+      - contact: [Contact]
+      - background_experience: [Background Experience]
+
+
+python_developer_task:
+  description: >
+   Base on the list provided by company_persons_detail_scraping_task Ensure to fill out the `Profiles` model with as much information as possible.
+
+    for each element of the list create an instance of 
+        class Profile(BaseModel):
+          full_name: Optional[str]
+          profile_image: Optional[str]
+          role: Optional[str]
+          contact: Optional[str]
+          background_experience: Optional[str]
+
+       and add it to the profile_list from the Profiles model   
+
+  expected_output: >
+    Fill out the `Profiles` model with as much information as possible and return it.
+
+write_invitation_email_task_two:
+  description: >
+    Using all the information from company_research_task and iterate all the python_developer_task final output, draft an email with no more than 160 words that invites each of person to discuss a possible opportunnity. The email should be personalized, taking into account the individual's professional background. Ensure the email tone is professional, respectful, and engaging.
+
+    for all the elements inside python_developer_task create the following email:
+    The email should include:
+    - A personalized greeting
+    - A brief introduction of yourself and your company
+    - Acknowledgment of the company insight from company_research_task and individual's professional background from python_developer_task
+    - A clear and concise explanation of why you are reaching him out.
+    - An invitation to discuss in more detail the path foward as a client
+    - A polite closing and call to action
+
+    The purpose of this task is to create a compelling and well-structured email that increases the likelihood of a positive response from the individual.
+
+  expected_output: >
+    A well-structured and personalized email for all the with elements provided from the python_developer_task no more than 120 words in the following format:
+
+    Subject: Invitation to Discuss [Product Name]
+
+    Dear [Full Name],
+
+    [Body]
+
+    Best regards,
+    [Your Name]
+    [Your Job Title]
+    [Your Company]
+    [Your Contact Information]

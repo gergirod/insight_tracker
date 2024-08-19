@@ -57,19 +57,19 @@ class InsightTrackerCrew():
 	agents_config = 'config/agents.yaml'
 	tasks_config = 'config/tasks.yaml'
 
-	def llm(self):
-		llm = ChatAnthropic(model_name="claude-3-sonnet-20240229", max_tokens=4096, temperature=0.0)
-		# llm = ChatGroq(model="llama3-70b-8192")
-		# llm = ChatGroq(model="mixtral-8x7b-32768")
-		# llm = ChatGoogleGenerativeAI(google_api_key=os.getenv("GOOGLE_API_KEY"))
-		return llm
+	# def llm(self):
+	# 	llm = ChatAnthropic(model_name="claude-3-sonnet-20240229", max_tokens=4096, temperature=0.0)
+	# 	# llm = ChatGroq(model="llama3-70b-8192")
+	# 	# llm = ChatGroq(model="mixtral-8x7b-32768")
+	# 	# llm = ChatGoogleGenerativeAI(google_api_key=os.getenv("GOOGLE_API_KEY"))
+	# 	return llm
 
 	@agent
 	def researcher(self) -> Agent:
 		return Agent(
 			config=self.agents_config['researcher'],
 			tools = [tavily_tool],
-			llm = self.llm(),
+			#llm = self.llm(),
 			verbose=True
 		)
 	
@@ -78,7 +78,7 @@ class InsightTrackerCrew():
 		return Agent(
 			config=self.agents_config['info_gatherer'],
 			tools = [ScrapeWebsiteTool()],
-			llm = self.llm(),
+			#llm = self.llm(),
 			verbose=True,
 		)
 	
@@ -86,7 +86,7 @@ class InsightTrackerCrew():
 	def email_writer(self) -> Agent:
 		return Agent(
 			config=self.agents_config['email_writer'],
-			llm = self.llm(),
+			#llm = self.llm(),
 			allow_delegation=False,
 			verbose=True,
 		)
@@ -120,6 +120,6 @@ class InsightTrackerCrew():
 			agents=[self.researcher(), self.info_gatherer(), self.email_writer()], # Automatically created by the @agent decorator
 			tasks=[self.research_task(),self.gather_info_task(),self.write_invitation_email_task()], # Automatically created by the @task decorator
 			process=Process.sequential,
-			verbose=2
+			verbose=True
 			# process=Process.hierarchical, # In case you wanna use that instead https://docs.crewai.com/how-to/Hierarchical/
 		)
