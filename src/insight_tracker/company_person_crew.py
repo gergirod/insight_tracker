@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from insight_tracker.tools.custom_tool import CrawlingCustomTool, ScrapingCustomTool
 from typing import List, Optional
 from langchain_openai import ChatOpenAI
+from crewai_tools import ScrapeWebsiteTool
 
 from dotenv import load_dotenv
 
@@ -25,32 +26,6 @@ load_dotenv()
 # Check our tools documentations for more information on how to use them
 # from crewai_tools import SerperDevTool
 
-search = TavilySearchAPIWrapper()
-tavily_tool = TavilySearchResults(api_wrapper=search)
-
-class ProfessionalProfile(BaseModel):
-	first_name: Optional[str] = Field(
-		..., description="The first name of the profile"
-	)
-	last_name: Optional[str] = Field(
-		None, description="The last name of the profile"
-	)
-	company: Optional[str] =  Field(
-		None, description="the current company of the profile"
-	)
-	profesional_background: Optional[str] = Field(
-		None, description="the professional background of the profile"
-	)
-	key_achievements: Optional[str] = Field(
-		None, description="key achievements of the profile"
-	)
-	email_address: Optional[str] = Field(
-		None, description="The email address of the profile"
-	)
-	linkedin_url: Optional[str] = Field(
-		None, description="The LinkedIn profile URL of the profile"
-	)
-	   
 
 @CrewBase
 class CompanyPersonInsightTrackerCrew():
@@ -66,43 +41,36 @@ class CompanyPersonInsightTrackerCrew():
 	# 	return llm
 
 	@agent
-	def company_person_employee_insight_scraper(self) -> Agent:
+	def company_person_detail_scraper(self) -> Agent:
 		return Agent(
-			config=self.agents_config['company_person_employee_insight_scraper'],
-			tools = [ScrapingCustomTool()],
+			config=self.agents_config['company_person_detail_scraper'],
+			tools = [ScrapeWebsiteTool()],
 			#llm = self.llm(),
 			verbose=True
 		)
 	
 	@agent
-	def company_person_employee_detail_insight_scraper(self) -> Agent:
+	def email_writer(self) -> Agent:
 		return Agent(
-			config=self.agents_config['company_person_employee_detail_insight_scraper'],
-			tools = [ScrapingCustomTool()],
-			#llm = self.llm(),
-			verbose=True
+			config=self.agents_config['email_writer'],
+			allow_delegation=False,
+			verbose=True,
 		)
-	
+
 
 	@task
-	def company_persons_scraping_task(self) -> Task:
+	def company_person_detail_scraping_task(self) -> Task:
 		return Task(
-			config=self.tasks_config['company_persons_scraping_task'],
-			agent=self.company_person_employee_insight_scraper()
-		)
-	
-	@task
-	def company_persons_detail_scraping_task(self) -> Task:
-		return Task(
-			config=self.tasks_config['company_persons_detail_scraping_task'],
-			agent=self.company_person_employee_insight_scraper()
+			config=self.tasks_config['company_person_detail_scraping_task'],
+			agent=self.company_person_detail_scraper()
 		)
 	
 	@task
 	def write_invitation_email_task(self) -> Task:
 		return Task(
-			config=self.tasks_config['write_invitation_email_task'],
-			agent = self.email_writer()
+			config=self.tasks_config['write_invitation_email_task_three'],
+			agent = self.email_writer(),
+			context = [self.company_person_detail_scraping_task()]
 		)
 	
 	
@@ -110,11 +78,9 @@ class CompanyPersonInsightTrackerCrew():
 	def company_person_crew(self) -> Crew:
 		"""Creates the CompanyInsightTracker crew"""
 		return Crew(
-			agents=[self.company_person_employee_insight_scraper(), self.company_person_employee_detail_insight_scraper()], # Automatically created by the @agent decorator
-			tasks=[self.company_persons_scraping_task(), self.company_persons_detail_scraping_task()], # Automatically created by the @task decorator
+			agents=[self.company_person_detail_scraper(), self.email_writer()], # Automatically created by the @agent decorator
+			tasks=[self.company_person_detail_scraping_task(), self.write_invitation_email_task()], # Automatically created by the @task decorator
 			process=Process.sequential,
-			verbose=True,
-			planning=True,
-			planning_llm=ChatOpenAI(model="gpt-4o")
+			verbose=True
 			# process=Process.hierarchical, # In case you wanna use that instead https://docs.crewai.com/how-to/Hierarchical/
 		)

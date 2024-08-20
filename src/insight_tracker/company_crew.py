@@ -52,6 +52,10 @@ class Profiles(BaseModel):
 	profile_list : Optional[List[Profile]]
 
 
+class Employess(BaseModel):
+	employee_list : Optional[List[str]]
+
+
 	   
 
 @CrewBase
@@ -139,6 +143,15 @@ class CompanyInsightTrackerCrew():
 		)
 	
 
+	@agent
+	def data_formater(self) -> Agent:
+		return Agent(
+			config=self.agents_config['data_formater'],
+			#llm = self.llm(),
+			verbose=True
+		)
+	
+
 	@task
 	def company_linkedin_research_task(self) -> Task:
 		return Task(
@@ -181,7 +194,19 @@ class CompanyInsightTrackerCrew():
 		return Task(
 			config=self.tasks_config['python_developer_task'],
 			agent=self.python_developer(),
+			context = [self.company_people_research_task()],
 			output_pydantic=Profiles
+
+		)
+	
+	@task
+	def data_format_task(self) -> Task:
+		return Task(
+			config=self.tasks_config['data_format_task'],
+			agent=self.data_formater(),
+			context = [self.company_people_research_task()],
+			output_pydantic=Employess
+
 		)
 	
 	@task
@@ -198,8 +223,8 @@ class CompanyInsightTrackerCrew():
 	def company_crew(self) -> Crew:
 		"""Creates the CompanyInsightTracker crew"""
 		return Crew(
-			agents=[self.company_researcher(), self.company_scraper(),self.company_data_scraper(), self.company_employee_scraper(), self.company_person_employee_detail_insight_scraper(),self.python_developer(), self.email_writer()], # Automatically created by the @agent decorator
-			tasks=[self.company_linkedin_research_task(), self.company_website_research_task(), self.company_research_task(), self.company_people_research_task(),self.company_persons_detail_scraping_task(),self.python_developer_task(), self.write_invitation_email_task()], # Automatically created by the @task decorator
+			agents=[self.company_researcher(), self.company_scraper(),self.company_data_scraper(), self.company_employee_scraper(), self.data_formater()], # Automatically created by the @agent decorator
+			tasks=[self.company_linkedin_research_task(), self.company_website_research_task(), self.company_research_task(), self.company_people_research_task(), self.data_format_task()], # Automatically created by the @task decorator
 			process=Process.sequential,
 			verbose=True
 			# process=Process.hierarchical, # In case you wanna use that instead https://docs.crewai.com/how-to/Hierarchical/
