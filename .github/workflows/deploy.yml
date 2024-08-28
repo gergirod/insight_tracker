@@ -36,7 +36,7 @@ jobs:
         USER: ${{ secrets.DO_USER }}
       run: |
         ssh -o StrictHostKeyChecking=no $USER@$HOST '
-        cd /path/to/your/app &&
+        cd /var/www/myapp &&
         git pull origin master &&
         poetry install --no-dev &&
         sudo systemctl restart your-app.service'
