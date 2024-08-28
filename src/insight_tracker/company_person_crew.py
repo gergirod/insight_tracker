@@ -66,7 +66,7 @@ class CompanyPersonInsightTrackerCrew():
 		)
 	
 	@task
-	def write_invitation_email_task(self) -> Task:
+	def write_invitation_email_task_three(self) -> Task:
 		return Task(
 			config=self.tasks_config['write_invitation_email_task_three'],
 			agent = self.email_writer(),
@@ -78,8 +78,8 @@ class CompanyPersonInsightTrackerCrew():
 	def company_person_crew(self) -> Crew:
 		"""Creates the CompanyInsightTracker crew"""
 		return Crew(
-			agents=[self.company_person_detail_scraper(), self.email_writer()], # Automatically created by the @agent decorator
-			tasks=[self.company_person_detail_scraping_task(), self.write_invitation_email_task()], # Automatically created by the @task decorator
+			agents=[self.company_person_detail_scraper()], # Automatically created by the @agent decorator
+			tasks=[self.company_person_detail_scraping_task()], # Automatically created by the @task decorator
 			process=Process.sequential,
 			verbose=True
 			# process=Process.hierarchical, # In case you wanna use that instead https://docs.crewai.com/how-to/Hierarchical/

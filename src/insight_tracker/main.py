@@ -35,7 +35,7 @@ if(selected == "Profile Insight"):
             }
         result = InsightTrackerCrew().crew().kickoff(inputs=inputs)
         st.markdown(result.tasks_output[1].raw)
-        st.text_area(label='Draft Email to Reach' + name, value=result, height=300)
+        st.text_area(label='Draft Email to Reach ' + name, value=result, height=300)
         
 elif(selected == "Company Insight"):
              
@@ -77,15 +77,11 @@ elif(selected == "Company Insight"):
         st.markdown('Company Insight')
         st.markdown(st.session_state.result_company.tasks_output[2].raw)
         st.markdown('People')
-        st.markdown(st.session_state.result_company.tasks_output[3].raw)
-        # st.markdown('People Detail')
-        # st.markdown(st.session_state.result_company.tasks_output[4].raw)
-        st.markdown('People Python List')
         list = st.session_state.result_company.tasks_output[4].pydantic
         st.markdown(list)
         result = convert_urls_to_dicts(list.employee_list)
-        st.markdown(type(result))
-        st.markdown(result)
+        #st.markdown(type(result))
+        #st.markdown(result)
 
         final_result = CompanyPersonInsightTrackerCrew().company_person_crew().kickoff_for_each(inputs=result)
 
