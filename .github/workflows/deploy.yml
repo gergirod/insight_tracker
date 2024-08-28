@@ -1,0 +1,44 @@
+name: Deploy to DigitalOcean
+
+on:
+  push:
+    branches:
+      - main  # Trigger deployment on push to the main branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'  # Specify your Python version
+
+    - name: Install Poetry
+      run: curl -sSL https://install.python-poetry.org | python3 -
+
+    - name: Install dependencies
+      run: poetry install
+
+    - name: Run tests
+      run: poetry run pytest  # Adjust this step to your testing framework
+
+    - name: Add SSH key
+      uses: webfactory/ssh-agent@v0.5.4
+      with:
+        ssh-private-key: ${{ secrets.DO_SSH_KEY }}
+
+    - name: Deploy to DigitalOcean
+      env:
+        HOST: ${{ secrets.DO_HOST }}
+        USER: ${{ secrets.DO_USER }}
+      run: |
+        ssh -o StrictHostKeyChecking=no $USER@$HOST '
+        cd /path/to/your/app &&
+        git pull origin master &&
+        poetry install --no-dev &&
+        sudo systemctl restart your-app.service'
