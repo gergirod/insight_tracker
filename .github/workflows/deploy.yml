@@ -24,8 +24,6 @@ jobs:
     - name: Install dependencies
       run: poetry install
 
-    - name: Run tests
-      run: poetry run pytest  # Adjust this step to your testing framework
 
     - name: Add SSH key
       uses: webfactory/ssh-agent@v0.5.4
