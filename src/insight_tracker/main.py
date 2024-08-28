@@ -3,14 +3,10 @@ import sys
 from dotenv import load_dotenv
 
 #load_dotenv()
-import agentops
-#agentops.init()
 from insight_tracker.profile_crew import InsightTrackerCrew
 from insight_tracker.company_crew import CompanyInsightTrackerCrew 
 from insight_tracker.company_person_crew import CompanyPersonInsightTrackerCrew
 import streamlit as st
-import ast
-import re
 from streamlit_option_menu import option_menu
 
 def convert_urls_to_dicts(urls, key="url"):
