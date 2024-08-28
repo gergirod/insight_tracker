@@ -39,6 +39,6 @@ jobs:
       run: |
         ssh -o StrictHostKeyChecking=no $USER@$HOST '
         cd /path/to/your/app &&
-        git pull origin develop &&
+        git pull origin master &&
         poetry install --no-dev &&
         sudo systemctl restart your-app.service'
