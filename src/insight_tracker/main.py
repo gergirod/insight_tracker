@@ -3,15 +3,14 @@ import sys
 from dotenv import load_dotenv
 
 #load_dotenv()
-import agentops
-#agentops.init()
 from insight_tracker.profile_crew import InsightTrackerCrew
 from insight_tracker.company_crew import CompanyInsightTrackerCrew 
 from insight_tracker.company_person_crew import CompanyPersonInsightTrackerCrew
 import streamlit as st
-import ast
-import re
 from streamlit_option_menu import option_menu
+
+def convert_urls_to_dicts(urls, key="url"):
+    return [{key: url} for url in urls]
 
 with st.sidebar:
         selected = option_menu(
@@ -32,7 +31,7 @@ if(selected == "Profile Insight"):
             }
         result = InsightTrackerCrew().crew().kickoff(inputs=inputs)
         st.markdown(result.tasks_output[1].raw)
-        st.text_area(label='Draft Email to Reach' + name, value=result, height=300)
+        st.text_area(label='Draft Email to Reach ' + name, value=result, height=300)
         
 elif(selected == "Company Insight"):
              
@@ -73,30 +72,41 @@ elif(selected == "Company Insight"):
         # st.markdown(st.sessyion_state.result_company.tasks_output[1].raw)
         st.markdown('Company Insight')
         st.markdown(st.session_state.result_company.tasks_output[2].raw)
-        #st.markdown(type(st.session_state.result_company.tasks_output[3].raw))
-        # st.markdown('People python')
-        # st.markdown(st.session_state.result_company.tasks_output[4].pydantic)
+        st.markdown('People')
+        list = st.session_state.result_company.tasks_output[4].pydantic
+        st.markdown(list)
+        result = convert_urls_to_dicts(list.employee_list)
+        #st.markdown(type(result))
+        #st.markdown(result)
 
-        result = st.session_state.result_company.tasks_output[5].pydantic
+        final_result = CompanyPersonInsightTrackerCrew().company_person_crew().kickoff_for_each(inputs=result)
 
-        for profile in result.profile_list:
-             # Create columns for the layout
-            col1, col2 = st.columns([4, 1])
+
+        #st.markdown(final_result)
+
+        for a in final_result:
+            st.markdown(a.tasks_output[0].raw)
+
+        # result = st.session_state.result_company.tasks_output[5].pydantic
+
+        # for profile in result.profile_list:
+        #      # Create columns for the layout
+        #     col1, col2 = st.columns([4, 1])
     
-            with col1:
-                #st.image(profile.profile_image, width=100)
-                st.write(f"**Name:** {profile.full_name}")
-                st.write(f"**Role:** {profile.role}")
-                st.write(f"**Background Experience:** {profile.background_experience}")
-                st.write(f"**Contact Info: ** {profile.contact}")
+        #     with col1:
+        #         #st.image(profile.profile_image, width=100)
+        #         st.write(f"**Name:** {profile.full_name}")
+        #         st.write(f"**Role:** {profile.role}")
+        #         st.write(f"**Background Experience:** {profile.background_experience}")
+        #         st.write(f"**Contact Info: ** {profile.contact}")
 
-        #     with col2:
-        #         # Create a radio button to select one person
-        #         if st.radio("", [profile.full_name] if st.session_state.selected_person != profile.full_name else 0) == profile.full_name:
-        #             st.session_state.selected_person = profile
+        # #     with col2:
+        # #         # Create a radio button to select one person
+        # #         if st.radio("", [profile.full_name] if st.session_state.selected_person != profile.full_name else 0) == profile.full_name:
+        # #             st.session_state.selected_person = profile
 
-        st.markdown('Outreach Emails')
-        st.markdown(st.session_state.result_company.tasks_output[6].raw)
+        # st.markdown('Outreach Emails')
+        # st.markdown(st.session_state.result_company.tasks_output[6].raw)
 
 
 
