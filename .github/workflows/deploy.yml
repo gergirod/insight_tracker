@@ -39,4 +39,5 @@ jobs:
         cd /var/www/myapp &&
         git pull origin master &&
         poetry install --no-dev &&
-        sudo systemctl restart your-app.service'
+        pkill -f "src/insight_tracker/ .streamlit run" || true &&
+        nohup src/insight_tracker/ streamlit run main.py --server.port 80 > streamlit.log 2>&1 &'  
