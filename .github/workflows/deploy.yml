@@ -32,10 +32,39 @@ jobs:
 
     - name: Deploy to DigitalOcean
       env:
-        HOST: ${{ secrets.DO_HOST }}
-        USER: ${{ secrets.DO_USER }}
+          HOST: ${{ secrets.DO_HOST }}
+          USER: ${{ secrets.DO_USER }}
+          SSH_KEY: ${{ secrets.DO_SSH_KEY }}  # SSH private key to access the droplet
       run: |
-        ssh -o StrictHostKeyChecking=no $USER@$HOST '
-        cd /var/www/myapp &&
-        git pull origin master 
-        nohup cd src/insight_tracker/ streamlit run main.py --server.port 80 > streamlit.log 2>&1 &'  
+          echo "$SSH_KEY" > private_key
+          chmod 600 private_key
+          ssh -i private_key -o StrictHostKeyChecking=no $USER@$HOST << 'EOF'
+            set -e  # Exit immediately if a command exits with a non-zero status
+  
+            # Define variables
+            APP_DIR=/var/www/myapp
+            LOG_FILE=streamlit.log
+            APP_FILE=main.py  # Update to your main Python file
+            APP_PORT=80
+  
+            echo "Navigating to the application directory..."
+            cd $APP_DIR
+  
+            echo "Fetching latest changes from the repository..."
+            git pull origin master
+  
+            echo "Installing dependencies with Poetry..."
+            poetry install --no-root
+  
+            echo "Stopping any running Streamlit instance..."
+            pkill -f "streamlit run" || true
+  
+            echo "Starting the Streamlit app..."
+            nohup poetry run streamlit run src/insight_tracker/$APP_FILE --server.port $APP_PORT > $LOG_FILE 2>&1 &
+  
+            echo "Deployment completed successfully."
+          EOF
+      shell: bash
+  
+    - name: Clean up SSH key
+      run: rm -f private_key
