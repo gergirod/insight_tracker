@@ -36,7 +36,6 @@ jobs:
         USER: ${{ secrets.DO_USER }}
       run: |
         ssh -o StrictHostKeyChecking=no $USER@$HOST '
-        cd app &&
+        cd insight_tracker &&
         git pull origin master &&
-        poetry install  &&
-        nohup cd src/insight_tracker/ streamlit run main.py --server.port 80 > streamlit.log 2>&1 &'  
+        nohup cd insight_tracker/src/insight_tracker streamlit run main.py --server.port 80 > streamlit.log 2>&1 &'  
