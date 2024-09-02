@@ -256,7 +256,7 @@ company_person_detail_scraping_task:
 
 write_invitation_email_task_three:
   description: >
-    Using the information from company_person_detail_scraping_task, draft an email with no more than 160 words that invites each of person to discuss a possible opportunnity. The email should be personalized, taking into account the individual's professional background. Ensure the email tone is professional, respectful, and engaging.
+    Using the information from company_person_detail_scraping_task, draft an email with no more than 160 words that invites each of person to discuss a possible opportunnity. The email should be personalized, taking into account the individual's information. Ensure the email tone is professional, respectful, and engaging.
 
     The email should include:
     - A personalized greeting
@@ -273,7 +273,7 @@ write_invitation_email_task_three:
 
     Subject: Invitation to Discuss [Product Name]
 
-    Dear [full_name],
+    Dear full_name,
 
     [Body]
 
