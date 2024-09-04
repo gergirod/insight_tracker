@@ -122,7 +122,11 @@ company_people_research_task:
     follow this steps :
     1. Search for any link related to people, persons or team and return a link
     2. with that link scrape and get the sublinks of each employee detail.
+    3. Do not create or make any link always check that the url link from the profile match the company name
     4. Finally for those links create a lisf with the profile_link to the detail.
+    
+    Notes :
+      If you could found any link return a empty list
     
     The purpose of this task is to compile a detailed and structured list of people working at the firm
   expected_output: >
@@ -237,31 +241,47 @@ company_person_detail_scraping_task:
     follow this steps:
     1. Iterate all the elements in the list.
     2. Scrape the url and gather the following information of the person in the following format 
+    
 
       - Full Name
       - Profile Image Url:
+      - Company Name:
       - Role:
       - Contact:
       - Background Experience:
 
+    3 . Ensure to fill out the `Profiles` model with as much information as possible 
+    4.  taking into account the full name and background experience fill the outreach email with a draft email with no more than 160 words that invites each of person to discuss a possible opportunnity. The email should be personalized, taking into account the individual's information. Ensure the email tone is professional, respectful, and engaging. 
+        The email should include:
+          - A personalized greeting
+          - A brief introduction of yourself and your company
+          - Acknowledgment of the individual's professional background from the Profile pydantic model
+          - A clear and concise explanation of why you are reaching him out.
+          - An invitation to discuss in more detail the path foward as a client
+          - A polite closing and call to action 
+
+        class Profile(BaseModel):
+          full_name: Optional[str]
+          profile_image: Optional[str]
+          company_name : Optional[str]
+          role: Optional[str]
+          contact: Optional[str]
+          background_experience: Optional[str]
+          outreach_email : Optional[str]
+
 
   expected_output: >
-    return the person detail scraped the following Format: 
-      - full_name:[Full Name]
-      - profile_image: [Profile Image Url]
-      - role: [Role]
-      - contact: [Contact]
-      - background_experience: [Background Experience]
+    return class Profile model
 
 
 write_invitation_email_task_three:
   description: >
-    Using the information from company_person_detail_scraping_task, draft an email with no more than 160 words that invites each of person to discuss a possible opportunnity. The email should be personalized, taking into account the individual's professional background. Ensure the email tone is professional, respectful, and engaging.
+    Using the information from the pydantic model Profile from the company_person_detail_scraping_task, draft an email with no more than 160 words that invites each of person to discuss a possible opportunnity. The email should be personalized, taking into account the individual's information. Ensure the email tone is professional, respectful, and engaging.
 
     The email should include:
     - A personalized greeting
     - A brief introduction of yourself and your company
-    - Acknowledgment of the individual's professional background from company_person_detail_scraping_task
+    - Acknowledgment of the individual's professional background from the Profile pydantic model
     - A clear and concise explanation of why you are reaching him out.
     - An invitation to discuss in more detail the path foward as a client
     - A polite closing and call to action
@@ -269,11 +289,11 @@ write_invitation_email_task_three:
     The purpose of this task is to create a compelling and well-structured email that increases the likelihood of a positive response from the individual.
 
   expected_output: >
-    A well-structured and personalized email from the company_person_detail_scraping_task datawith no more than 160 words in the following format:
+    A well-structured and personalized email from the Pydantic model provided by company_person_detail_scraping_task data with no more than 160 words in the following format:
 
     Subject: Invitation to Discuss [Product Name]
 
-    Dear [full_name],
+    Dear full_name,
 
     [Body]
 
