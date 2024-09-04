@@ -237,6 +237,7 @@ company_person_detail_scraping_task:
     follow this steps:
     1. Iterate all the elements in the list.
     2. Scrape the url and gather the following information of the person in the following format 
+    
 
       - Full Name
       - Profile Image Url:
@@ -244,14 +245,18 @@ company_person_detail_scraping_task:
       - Contact:
       - Background Experience:
 
+    3 . Ensure to fill out the `Profiles` model with as much information as possible
+        class Profile(BaseModel):
+          full_name: Optional[str]
+          profile_image: Optional[str]
+          role: Optional[str]
+          contact: Optional[str]
+          background_experience: Optional[str]
+
+
 
   expected_output: >
-    return the person detail scraped the following Format: 
-      - full_name:[Full Name]
-      - profile_image: [Profile Image Url]
-      - role: [Role]
-      - contact: [Contact]
-      - background_experience: [Background Experience]
+    return class Profile model
 
 
 write_invitation_email_task_three:

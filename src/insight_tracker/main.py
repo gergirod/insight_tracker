@@ -1,117 +1,191 @@
 #!/usr/bin/env python
+#!/usr/bin/env python
 import sys
-from dotenv import load_dotenv
-
-#load_dotenv()
-from insight_tracker.profile_crew import InsightTrackerCrew
-from insight_tracker.company_crew import CompanyInsightTrackerCrew 
-from insight_tracker.company_person_crew import CompanyPersonInsightTrackerCrew
-import streamlit as st
-from streamlit_option_menu import option_menu
 import asyncio
+import pandas as pd
+import streamlit as st
+from dotenv import load_dotenv
+from streamlit_option_menu import option_menu
 
+# Import your custom modules
+from insight_tracker.profile_crew import InsightTrackerCrew
+from insight_tracker.company_crew import CompanyInsightTrackerCrew
+from insight_tracker.company_person_crew import CompanyPersonInsightTrackerCrew
 
+# -------------------- Session State Initialization -------------------- #
+def initialize_session_state():
+    default_values = {
+        'person_name': '',
+        'person_company': '',
+        'company_name': '',
+        'industry': '',
+        'people_list': [],
+        'result_company': None,
+        'company_task_running': False,
+        'company_task_completed': False,
+        'pydantic_url_list': [],
+        'url_list_dict': [],
+        'current_view': 'List View',
+        'final_crew_result': [],
+        'company_insight_tracker_result': None,
+        'data_frame': None,
+        'company_inputs': {},
+        'person_inputs': {},
+        'nav_bar_option_selected': 'Profile Insight',
+        'profile_research_trigger': False,
+        'company_research_trigger': False,
+    }
+
+    for key, value in default_values.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
+initialize_session_state()
+
+# -------------------- Utility Functions -------------------- #
 def convert_urls_to_dicts(urls, key="url"):
     return [{key: url} for url in urls]
 
-async def runCrew(resultInput) :
-    result =  await CompanyPersonInsightTrackerCrew().company_person_crew().kickoff_for_each_async(inputs=resultInput)
+async def run_company_person_crew(url_list):
+    """
+    Run the CompanyPersonInsightTrackerCrew asynchronously and store results.
+    """
+    if not st.session_state.final_crew_result:
+        st.session_state.final_crew_result = await CompanyPersonInsightTrackerCrew().company_person_crew().kickoff_for_each_async(inputs=url_list)
+        for output in st.session_state.final_crew_result:
+            st.session_state.people_list.append(output.tasks_output[0].pydantic)
+        # Convert people_list to DataFrame
+        st.session_state.data_frame = pd.DataFrame([person.dict() for person in st.session_state.people_list])
 
-    for a in result:
-        st.markdown(a.tasks_output[0].raw)
-        st.markdown(a.token_usage)
-    
+def display_people_data():
+    """
+    Display people data in either List View or Table View based on user selection.
+    """
+    st.subheader(f"{st.session_state.current_view}")
+    if st.session_state.current_view == 'List View':
+        for profile in st.session_state.people_list:
+            st.markdown(f"**Name:** {profile.full_name}")
+            #st.image(profile.profile_image, width=100)
+            st.markdown(f"**Role:** {profile.role}")
+            st.markdown(f"**Contact:** {profile.contact}")
+            st.markdown(f"**Background Experience:** {profile.background_experience}")
+            st.markdown("---")
+    elif st.session_state.current_view == 'Table View':
+        if st.session_state.data_frame is not None:
+            st.dataframe(st.session_state.data_frame)
+        else:
+            st.warning("No data available to display.")
 
+# -------------------- Sidebar Navigation -------------------- #
 with st.sidebar:
-        selected = option_menu(
-            menu_title="Insight Tracker",
-            options=["Profile Insight", "Company Insight", "Logout"],
-            default_index=0
+    st.session_state.nav_bar_option_selected = option_menu(
+        menu_title="Insight Tracker",
+        options=["Profile Insight", "Company Insight"],
+        default_index=0,
+        key="navigation_menu"
+    )
+
+# -------------------- Profile Insight Section -------------------- #
+def profile_insight_section():
+    st.header("Profile Insight")
+    st.session_state.person_name = st.text_input("Name", value=st.session_state.person_name, key="person_name_input")
+    st.session_state.person_company = st.text_input("Company", value=st.session_state.person_company, key="person_company_input")
+
+    if st.button("Research", key="profile_research_button"):
+        if st.session_state.person_name and st.session_state.person_company:
+            st.session_state.person_inputs = {
+                'profile': st.session_state.person_name,
+                'company': st.session_state.person_company
+            }
+            with st.spinner('Researching profile...'):
+                try:
+                    result = InsightTrackerCrew().crew().kickoff(inputs=st.session_state.person_inputs)
+                    st.session_state.company_insight_tracker_result = result
+                    st.success("Profile research completed!")
+                except Exception as e:
+                    st.error(f"An error occurred: {e}")
+        else:
+            st.warning("Please provide both Name and Company.")
+
+    # Display results if available
+    if st.session_state.company_insight_tracker_result:
+        result = st.session_state.company_insight_tracker_result
+        st.markdown("### Research Result")
+        st.markdown(result.tasks_output[1].raw)
+        st.text_area(
+            label=f'Draft Email to Reach {st.session_state.person_name}',
+            value=result.tasks_output[2].raw if len(result.tasks_output) > 2 else "",
+            height=300,
+            key="draft_email_area"
         )
 
-if(selected == "Profile Insight"):
-            
-    st.header("Profile Insight")
-    name = st.text_input("Name")
-    company = st.text_input("Company")
-    if(st.button("Research")) :
-        inputs = {
-            'profile': name,
-            'company': company
-            }
-        result = InsightTrackerCrew().crew().kickoff(inputs=inputs)
-        st.markdown(result.tasks_output[1].raw)
-        st.text_area(label='Draft Email to Reach ' + name, value=result, height=300)
-        
-elif(selected == "Company Insight"):
-             
+# -------------------- Company Insight Section -------------------- #
+def company_insight_section():
     st.header("Company Insight")
-    # Initialize session state variables if they don't exist
-    if 'company_name' not in st.session_state:
-        st.session_state.company_name = ''
-    if 'industry' not in st.session_state:
-        st.session_state.industry = ''
-    if 'result_company' not in st.session_state:
-        st.session_state.result_company = None
-    if 'dict_obj' not in st.session_state:
-        st.session_state.dict_obj = None
-    if 'category_names' not in st.session_state:
-        st.session_state.category_names = []
-    if 'selected_category' not in st.session_state:
-        st.session_state.selected_category = ''
-    if 'selected_subpage' not in st.session_state:
-        st.session_state.selected_subpage = ''
+    st.session_state.company_name = st.text_input("Company Name", value=st.session_state.company_name, key="company_name_input")
+    st.session_state.industry = st.text_input("Industry", value=st.session_state.industry, key="industry_input")
 
-    if 'selected_person' not in st.session_state:
-        st.session_state.selected_person = ''
+    if st.button("Research Company", key="company_research_button"):
+        if st.session_state.company_name and st.session_state.industry:
+            st.session_state.company_inputs = {
+                'company': st.session_state.company_name,
+                'industry': st.session_state.industry
+            }
+            st.session_state.company_research_trigger = True
+        else:
+            st.warning("Please provide both Company Name and Industry.")
 
-    if 'company_task_running' not in st.session_state:
-        st.session_state.company_task_running = False  # To check if the task is running
-    if 'company_task_completed' not in st.session_state:
-        st.session_state.company_task_completed = False 
-
-    if 'person_company_task_running' not in st.session_state:
-        st.session_state.person_company_task_running = False  # To check if the task is running
-    if 'person_company_task_completed' not in st.session_state:
-        st.session_state.person_company_task_completed = False 
-
-    # Input fields
-    st.session_state.company_name = st.text_input("Company Name", st.session_state.company_name)
-    st.session_state.industry = st.text_input("Industry", st.session_state.industry)
-
-    # Button to research the company
-    if st.button("Research Company") and not st.session_state.company_task_running:
-
-        st.session_state.company_task_running = True
-        st.session_state.company_task_completed = False
-        company_inputs = {
-            'company': st.session_state.company_name,
-            'industry': st.session_state.industry
-        }
-
-        st.session_state.person_company_task_running = True
-        st.session_state.person_company_task_completed = False
-
+    # Run company research if triggered
+    if st.session_state.company_research_trigger and not st.session_state.company_task_completed:
         with st.spinner('Scraping Company Information... Please wait...'):
-            st.session_state.result_company = CompanyInsightTrackerCrew().company_crew().kickoff(inputs=company_inputs)
-                    
-        st.session_state.person_company_task_running = False
-        st.session_state.person_company_task_completed = True
-                   
-        st.markdown('Company Insight')
+            try:
+                st.session_state.result_company = CompanyInsightTrackerCrew().company_crew().kickoff(inputs=st.session_state.company_inputs)
+                st.success("Company information scraped successfully!")
+                st.session_state.company_task_completed = True
+            except Exception as e:
+                st.error(f"An error occurred during company research: {e}")
+                st.session_state.company_task_completed = False
+
+    # Fetch and display people data if company research is completed
+    if st.session_state.company_task_completed and not st.session_state.people_list:
+        try:
+            st.session_state.pydantic_url_list = st.session_state.result_company.tasks_output[4].pydantic
+            st.session_state.url_list_dict = convert_urls_to_dicts(st.session_state.pydantic_url_list.employee_list)
+            with st.spinner("Scraping People Information... Please wait..."):
+                asyncio.run(run_company_person_crew(st.session_state.url_list_dict))
+            st.success("People information scraped successfully!")
+        except Exception as e:
+            st.error(f"An error occurred while fetching people information: {e}")
+
+    # Display company and people information
+    if st.session_state.company_task_completed:
+        st.markdown("### Company Insight")
         st.markdown(st.session_state.result_company.tasks_output[2].raw)
-        st.markdown(st.session_state.result_company.token_usage)
-        st.markdown('People')
-        list = st.session_state.result_company.tasks_output[4].pydantic
-        result = convert_urls_to_dicts(list.employee_list)
-        with st.spinner("Scraping People Information ... Please wait ..."):
-            asyncio.run(runCrew(result))
 
+        # View Selection
+        st.markdown("### People Information")
+        view_option = st.radio(
+            "Select View",
+            options=["List View", "Table View"],
+            index=0 if st.session_state.current_view == 'List View' else 1,
+            key="view_selection_radio"
+        )
+        st.session_state.current_view = view_option
+        display_people_data()
 
-# This main file is intended to be a way for your to run your
-# crew locally, so refrain from adding necessary logic into this file.
-# Replace with inputs you want to test with, it will automatically
-# interpolate any tasks and agents information
+# -------------------- Main Application Flow -------------------- #
+def main():
+    if st.session_state.nav_bar_option_selected == "Profile Insight":
+        profile_insight_section()
+    elif st.session_state.nav_bar_option_selected == "Company Insight":
+        company_insight_section()
+    else:
+        st.title("Welcome to Insight Tracker")
+        st.write("Please select an option from the sidebar.")
+
+if __name__ == "__main__":
+    main()
+
 
 def run():
     """

@@ -26,6 +26,23 @@ load_dotenv()
 # Check our tools documentations for more information on how to use them
 # from crewai_tools import SerperDevTool
 
+class Profile(BaseModel):
+	full_name: Optional[str] = Field(
+		..., description="The full name of the profile"
+	)
+	profile_image: Optional[str] =  Field(
+		None, description="the profile image"
+	)
+	role: Optional[str] = Field(
+		None, description="the role the profile"
+	)
+	contact: Optional[str] = Field(
+		None, description="the contact of the profile"
+	)
+	background_experience: Optional[str] = Field(
+		None, description="The background experience of the profile"
+	)
+
 
 @CrewBase
 class CompanyPersonInsightTrackerCrew():
@@ -62,7 +79,8 @@ class CompanyPersonInsightTrackerCrew():
 	def company_person_detail_scraping_task(self) -> Task:
 		return Task(
 			config=self.tasks_config['company_person_detail_scraping_task'],
-			agent=self.company_person_detail_scraper()
+			agent=self.company_person_detail_scraper(),
+			output_pydantic=Profile
 		)
 	
 	@task
