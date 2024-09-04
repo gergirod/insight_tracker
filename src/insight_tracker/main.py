@@ -69,6 +69,7 @@ def display_people_data():
             st.markdown(f"**Role:** {profile.role}")
             st.markdown(f"**Contact:** {profile.contact}")
             st.markdown(f"**Background Experience:** {profile.background_experience}")
+            st.text_area(label=f'Draft Email to Reach {profile.full_name}',value=profile.outreach_email, height=300)
             st.markdown("---")
     elif st.session_state.current_view == 'Table View':
         if st.session_state.data_frame is not None:
@@ -150,10 +151,11 @@ def company_insight_section():
     if st.session_state.company_task_completed and not st.session_state.people_list:
         try:
             st.session_state.pydantic_url_list = st.session_state.result_company.tasks_output[4].pydantic
-            st.session_state.url_list_dict = convert_urls_to_dicts(st.session_state.pydantic_url_list.employee_list)
-            with st.spinner("Scraping People Information... Please wait..."):
-                asyncio.run(run_company_person_crew(st.session_state.url_list_dict))
-            st.success("People information scraped successfully!")
+            if(len(st.session_state.pydantic_url_list.employee_list) > 0) :
+                st.session_state.url_list_dict = convert_urls_to_dicts(st.session_state.pydantic_url_list.employee_list)
+                with st.spinner("Scraping People Information... Please wait..."):
+                    asyncio.run(run_company_person_crew(st.session_state.url_list_dict))
+                st.success("People information scraped successfully!")
         except Exception as e:
             st.error(f"An error occurred while fetching people information: {e}")
 
