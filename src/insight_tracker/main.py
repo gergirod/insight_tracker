@@ -61,21 +61,23 @@ def display_people_data():
     """
     Display people data in either List View or Table View based on user selection.
     """
-    st.subheader(f"{st.session_state.current_view}")
-    if st.session_state.current_view == 'List View':
-        for profile in st.session_state.people_list:
-            st.markdown(f"**Name:** {profile.full_name}")
-            #st.image(profile.profile_image, width=100)
-            st.markdown(f"**Role:** {profile.role}")
-            st.markdown(f"**Contact:** {profile.contact}")
-            st.markdown(f"**Background Experience:** {profile.background_experience}")
-            st.text_area(label=f'Draft Email to Reach {profile.full_name}',value=profile.outreach_email, height=300)
-            st.markdown("---")
-    elif st.session_state.current_view == 'Table View':
-        if st.session_state.data_frame is not None:
-            st.dataframe(st.session_state.data_frame)
-        else:
-            st.warning("No data available to display.")
+
+    if(st.session_state.people_list is not None and len(st.session_state.people_list) > 0): 
+        st.subheader(f"{st.session_state.current_view}")
+        if st.session_state.current_view == 'List View':
+            for profile in st.session_state.people_list:
+                st.markdown(f"**Name:** {profile.full_name}")
+                #st.image(profile.profile_image, width=100)
+                st.markdown(f"**Role:** {profile.role}")
+                st.markdown(f"**Contact:** {profile.contact}")
+                st.markdown(f"**Background Experience:** {profile.background_experience}")
+                st.text_area(label=f'Draft Email to Reach {profile.full_name}',value=profile.outreach_email, height=300)
+                st.markdown("---")
+        elif st.session_state.current_view == 'Table View':
+            if st.session_state.data_frame is not None:
+                st.dataframe(st.session_state.data_frame)
+            else:
+                st.warning("No data available to display.")
 
 # -------------------- Sidebar Navigation -------------------- #
 with st.sidebar:
@@ -151,7 +153,7 @@ def company_insight_section():
     if st.session_state.company_task_completed and not st.session_state.people_list:
         try:
             st.session_state.pydantic_url_list = st.session_state.result_company.tasks_output[4].pydantic
-            if(len(st.session_state.pydantic_url_list.employee_list) > 0) :
+            if(st.session_state.pydantic_url_list.employee_list is not None and len(st.session_state.pydantic_url_list.employee_list) > 0) :
                 st.session_state.url_list_dict = convert_urls_to_dicts(st.session_state.pydantic_url_list.employee_list)
                 with st.spinner("Scraping People Information... Please wait..."):
                     asyncio.run(run_company_person_crew(st.session_state.url_list_dict))
@@ -166,13 +168,6 @@ def company_insight_section():
 
         # View Selection
         st.markdown("### People Information")
-        view_option = st.radio(
-            "Select View",
-            options=["List View", "Table View"],
-            index=0 if st.session_state.current_view == 'List View' else 1,
-            key="view_selection_radio"
-        )
-        st.session_state.current_view = view_option
         display_people_data()
 
 # -------------------- Main Application Flow -------------------- #

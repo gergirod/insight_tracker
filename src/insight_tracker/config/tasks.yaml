@@ -100,7 +100,7 @@ company_research_task:
     Ensure all information is accurate, current, and reflects the latest data available. Avoid fabricating any details.
 
     Follow this steps :
-     1 - Sumarry: Search for 'who we are' or similar sections and scrap the content and do a small summary.
+     1 - Summary: Search for 'who we are' or similar sections and scrap the content and do a small summary.
      2 - Services: Search for areas like solutions or services and scrap the content to get all servicies or solutions the company provided
      3 - Industries: Search for areas like Industries and scrap the content to get all industries the company provided services for.
      4 - Awards/Recognitions: Search for areas where it mentions awards or recognitions and get all information of its.
