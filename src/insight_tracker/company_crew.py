@@ -31,31 +31,34 @@ load_dotenv()
 search = TavilySearchAPIWrapper()
 tavily_tool = TavilySearchResults(api_wrapper=search)
 
-class Profile(BaseModel):
-	full_name: Optional[str] = Field(
-		..., description="The full name of the profile"
+class Company(BaseModel):
+	company_name: Optional[str] = Field(
+		..., description="the name of the company"
 	)
-	profile_image: Optional[str] =  Field(
-		None, description="the profile image"
+	company_website: Optional[str] =  Field(
+		None, description="the website of the company"
 	)
-	role: Optional[str] = Field(
-		None, description="the role the profile"
+	company_summary: Optional[str] = Field(
+		None, description="the summary of the company"
 	)
-	contact: Optional[str] = Field(
-		None, description="the contact of the profile"
+	company_industry: Optional[str] = Field(
+		None, description="the industry of the company"
 	)
-	background_experience: Optional[str] = Field(
-		None, description="The background experience of the profile"
+	company_services: Optional[str] = Field(
+		None, description="the services of the company"
 	)
-
-class Profiles(BaseModel):
-	profile_list : Optional[List[Profile]]
-
+	company_industries: Optional[str] = Field(
+		None, description="the industries of the company"
+	)
+	company_awards_recognitions: Optional[str] = Field(
+		None, description="the awards and recognitions of the company"
+	)
+	company_clients_partners: Optional[str] = Field(
+		None, description="the clients and partners of the company"
+	)
 
 class Employess(BaseModel):
 	employee_list : Optional[List[str]]
-
-
 	   
 
 @CrewBase
@@ -93,7 +96,7 @@ class CompanyInsightTrackerCrew():
 	def company_data_scraper(self) -> Agent:
 		return Agent(
 			config=self.agents_config['company_data_scraper'],
-			tools = [ScrapeWebsiteTool()],
+			tools = [ScrapingCustomTool()],
 			#llm = self.llm(),
 			verbose=True,
 		)
@@ -114,15 +117,6 @@ class CompanyInsightTrackerCrew():
 			tools = [ScrapingCustomTool()],
 			#llm = self.llm(),
 			verbose=True,
-		)
-	
-	@agent
-	def python_developer(self) -> Agent:
-		return Agent(
-			config=self.agents_config['python_developer'],
-			#llm = self.llm(),
-			verbose=True,
-			allow_code_execution=True
 		)
 	
 	@agent
@@ -163,7 +157,8 @@ class CompanyInsightTrackerCrew():
 	def company_research_task(self) -> Task:
 		return Task(
 			config=self.tasks_config['company_research_task'],
-			agent=self.company_data_scraper()
+			agent=self.company_data_scraper(),
+			output_pydantic=Company	
 		)
 	
 	@task
@@ -188,16 +183,6 @@ class CompanyInsightTrackerCrew():
 			context= [self.company_people_research_task()]
 		)
 	
-
-	@task
-	def python_developer_task(self) -> Task:
-		return Task(
-			config=self.tasks_config['python_developer_task'],
-			agent=self.python_developer(),
-			context = [self.company_people_research_task()],
-			output_pydantic=Profiles
-
-		)
 	
 	@task
 	def data_format_task(self) -> Task:
@@ -214,7 +199,7 @@ class CompanyInsightTrackerCrew():
 		return Task(
 			config=self.tasks_config['write_invitation_email_task_two'],
 			agent = self.email_writer(),
-			context = [self.company_research_task(), self.python_developer_task()]
+			context = [self.company_research_task()]
 		)
 
 	

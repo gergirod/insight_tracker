@@ -28,26 +28,23 @@ search = TavilySearchAPIWrapper()
 tavily_tool = TavilySearchResults(api_wrapper=search)
 
 class ProfessionalProfile(BaseModel):
-	first_name: Optional[str] = Field(
-		..., description="The first name of the profile"
+	full_name: Optional[str] = Field(
+		..., description="The full name of the profile"
 	)
-	last_name: Optional[str] = Field(
-		None, description="The last name of the profile"
+	current_job_title: Optional[str] = Field(
+		None, description="The current job title of the profile"
 	)
-	company: Optional[str] =  Field(
-		None, description="the current company of the profile"
+	profesional_background: Optional[str] =  Field(
+		None, description="The professional background of the profile"
 	)
-	profesional_background: Optional[str] = Field(
-		None, description="the professional background of the profile"
+	past_jobs: Optional[str] = Field(
+		None, description="The past jobs of the profile"
 	)
 	key_achievements: Optional[str] = Field(
-		None, description="key achievements of the profile"
+		None, description="The key achievements of the profile"
 	)
-	email_address: Optional[str] = Field(
-		None, description="The email address of the profile"
-	)
-	linkedin_url: Optional[str] = Field(
-		None, description="The LinkedIn profile URL of the profile"
+	contact: Optional[str] = Field(
+		None, description="The contact information of the profile"
 	)
 	   
 
@@ -104,6 +101,7 @@ class InsightTrackerCrew():
 		return Task(
 			config=self.tasks_config['gather_info_task'],
 			agent=self.info_gatherer(),
+			output_pydantic=ProfessionalProfile
 		)
 	
 	@task
