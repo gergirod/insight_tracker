@@ -11,7 +11,9 @@ from streamlit_option_menu import option_menu
 from insight_tracker.profile_crew import InsightTrackerCrew
 from insight_tracker.company_crew import CompanyInsightTrackerCrew
 from insight_tracker.company_person_crew import CompanyPersonInsightTrackerCrew
-
+from insight_tracker.company_crew import Company
+from insight_tracker.company_person_crew import Profile
+from insight_tracker.profile_crew import ProfessionalProfile
 # -------------------- Session State Initialization -------------------- #
 def initialize_session_state():
     default_values = {
@@ -28,7 +30,8 @@ def initialize_session_state():
         'current_view': 'List View',
         'final_crew_result': [],
         'company_insight_tracker_result': None,
-        'data_frame': None,
+        'persons_data_frame': None,
+        'company_data_frame': None,
         'company_inputs': {},
         'person_inputs': {},
         'nav_bar_option_selected': 'Profile Insight',
@@ -54,28 +57,121 @@ async def run_company_person_crew(url_list):
         st.session_state.final_crew_result = await CompanyPersonInsightTrackerCrew().company_person_crew().kickoff_for_each_async(inputs=url_list)
         for output in st.session_state.final_crew_result:
             st.session_state.people_list.append(output.tasks_output[0].pydantic)
-        # Convert people_list to DataFrame
-        st.session_state.data_frame = pd.DataFrame([person.dict() for person in st.session_state.people_list])
+        st.session_state.persons_data_frame = pd.DataFrame([person.dict() for person in st.session_state.people_list])
+
+def inject_profile_css():
+    st.markdown("""
+        <style>
+        .small-text {
+            font-size: 16px;
+            color: #4f4f4f;
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+        .section-header {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333333;
+            margin-top: 10px;
+            margin-bottom: 2px;
+        }
+        .link {
+            color: #1f77b4;
+            text-decoration: none;
+        }
+        .container {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+# Function to display profile data
+def display_profile_data(profile: Profile):
+    inject_profile_css()
+    # Display the profile image, if available
+    if profile.full_name:
+        st.markdown(f"<p class='section-header'>👤 Full Name:</p><p class='small-text'>{profile.full_name}</p>", unsafe_allow_html=True)
+    if profile.role:
+        st.markdown(f"<p class='section-header'>💼 Role:</p><p class='small-text'>{profile.role}</p>", unsafe_allow_html=True)
+    if profile.contact:
+        st.markdown(f"<p class='section-header'>📞 Contact:</p><p class='small-text'>{profile.contact}</p>", unsafe_allow_html=True)
+    if profile.background_experience:
+        st.markdown(f"<p class='section-header'>📝 Background Experience:</p><p class='small-text'>{profile.background_experience}</p>", unsafe_allow_html=True)
+    if profile.outreach_email:
+        st.markdown(f"<p class='section-header'>📧 Outreach Email:</p><p class='small-text'>{profile.outreach_email}</p>", unsafe_allow_html=True)
+
+def inject_css():
+    st.markdown("""
+        <style>
+        .small-text {
+            font-size: 16px !important;
+            line-height: 1.4 !important;
+            margin-bottom: 6px;
+            color: #555;
+        }
+        .section-header {
+            font-size: 16px !important;
+            font-weight: bold;
+            margin-top: 20px;
+            color: #333;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+# Function to display company data
+def display_company_data(company: Company):
+    inject_css()
+    st.markdown("<h2>🏢 Company Information</h2>", unsafe_allow_html=True)
+    st.session_state.company_data_frame = pd.DataFrame([company.dict()])
+
+    if st.session_state.company_data_frame is not None:
+        st.dataframe(st.session_state.company_data_frame)
+
+    if company.company_name:
+        st.markdown(f"<p class='section-header'>🏷️ Company Name:</p><p class='small-text'>{company.company_name}</p>", unsafe_allow_html=True)
+    if company.company_website:
+        st.markdown(f"<p class='section-header'>🌐 Website:</p><p class='small-text'><a href='{company.company_website}' target='_blank'>{company.company_website}</a></p>", unsafe_allow_html=True)
+    if company.company_summary:
+        st.markdown(f"<p class='section-header'>📝 Summary:</p><p class='small-text'>{company.company_summary}</p>", unsafe_allow_html=True)
+    if company.company_industry:
+        st.markdown(f"<p class='section-header'>🏭 Industry:</p><p class='small-text'>{company.company_industry}</p>", unsafe_allow_html=True)
+    if company.company_services:
+        st.markdown(f"<p class='section-header'>🛠️ Services:</p><p class='small-text'>{company.company_services}</p>", unsafe_allow_html=True)
+    if company.company_industries:
+        st.markdown(f"<p class='section-header'>🏢 Industries:</p><p class='small-text'>{company.company_industries}</p>", unsafe_allow_html=True)
+    if company.company_awards_recognitions:
+        st.markdown(f"<p class='section-header'>🏆 Awards and Recognitions:</p><p class='small-text'>{company.company_awards_recognitions}</p>", unsafe_allow_html=True)
+    if company.company_clients_partners:
+        st.markdown(f"<p class='section-header'>🤝 Clients and Partners:</p><p class='small-text'>{company.company_clients_partners}</p>", unsafe_allow_html=True)
+
 
 def display_people_data():
     """
     Display people data in either List View or Table View based on user selection.
     """
-    st.subheader(f"{st.session_state.current_view}")
-    if st.session_state.current_view == 'List View':
-        for profile in st.session_state.people_list:
-            st.markdown(f"**Name:** {profile.full_name}")
-            #st.image(profile.profile_image, width=100)
-            st.markdown(f"**Role:** {profile.role}")
-            st.markdown(f"**Contact:** {profile.contact}")
-            st.markdown(f"**Background Experience:** {profile.background_experience}")
-            st.text_area(label=f'Draft Email to Reach {profile.full_name}',value=profile.outreach_email, height=300)
-            st.markdown("---")
-    elif st.session_state.current_view == 'Table View':
-        if st.session_state.data_frame is not None:
-            st.dataframe(st.session_state.data_frame)
-        else:
-            st.warning("No data available to display.")
+
+    view_option = st.radio(
+        "Select View",
+        options=["List View", "Table View"],
+        index=0 if st.session_state.current_view == 'List View' else 1,
+        key="view_selection_radio"
+    )
+    st.session_state.current_view = view_option
+
+    if(st.session_state.people_list is not None and len(st.session_state.people_list) > 0): 
+        st.markdown("### People Information")
+        st.subheader(f"{st.session_state.current_view}")
+        if st.session_state.current_view == 'List View':
+            for profile in st.session_state.people_list:
+                display_profile_data(profile)
+        elif st.session_state.current_view == 'Table View':
+            if st.session_state.persons_data_frame is not None:
+                st.dataframe(st.session_state.persons_data_frame)
+            else:
+                st.warning("No data available to display.")
 
 # -------------------- Sidebar Navigation -------------------- #
 with st.sidebar:
@@ -85,6 +181,53 @@ with st.sidebar:
         default_index=0,
         key="navigation_menu"
     )
+
+def inject_profesional_profile_css():
+    st.markdown("""
+        <style>
+        .small-text {
+            font-size: 14px;
+            color: #4f4f4f;
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+        .section-header {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333333;
+            margin-top: 10px;
+            margin-bottom: 2px;
+        }
+        .link {
+            color: #1f77b4;
+            text-decoration: none;
+        }
+        .container {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+# Function to display professional profile data
+def display_professional_profile(profile: ProfessionalProfile):
+    inject_profesional_profile_css()
+
+    if profile.full_name:
+        st.markdown(f"<p class='section-header'>👤 Full Name:</p><p class='small-text'>{profile.full_name}</p>", unsafe_allow_html=True)
+    if profile.current_job_title:
+        st.markdown(f"<p class='section-header'>💼 Current Job Title:</p><p class='small-text'>{profile.current_job_title}</p>", unsafe_allow_html=True)
+    if profile.profesional_background:
+        st.markdown(f"<p class='section-header'>📝 Professional Background:</p><p class='small-text'>{profile.profesional_background}</p>", unsafe_allow_html=True)
+    if profile.past_jobs:
+        st.markdown(f"<p class='section-header'>📜 Past Jobs:</p><p class='small-text'>{profile.past_jobs}</p>", unsafe_allow_html=True)
+    if profile.key_achievements:
+        st.markdown(f"<p class='section-header'>🏆 Key Achievements:</p><p class='small-text'>{profile.key_achievements}</p>", unsafe_allow_html=True)
+    if profile.contact:
+        st.markdown(f"<p class='section-header'>📞 Contact Information:</p><p class='small-text'>{profile.contact}</p>", unsafe_allow_html=True)
+
 
 # -------------------- Profile Insight Section -------------------- #
 def profile_insight_section():
@@ -111,8 +254,8 @@ def profile_insight_section():
     # Display results if available
     if st.session_state.company_insight_tracker_result:
         result = st.session_state.company_insight_tracker_result
-        st.markdown("### Research Result")
-        st.markdown(result.tasks_output[1].raw)
+        print(result.tasks_output[1].pydantic)
+        display_professional_profile(result.tasks_output[1].pydantic)
         st.text_area(
             label=f'Draft Email to Reach {st.session_state.person_name}',
             value=result.tasks_output[2].raw if len(result.tasks_output) > 2 else "",
@@ -150,8 +293,9 @@ def company_insight_section():
     # Fetch and display people data if company research is completed
     if st.session_state.company_task_completed and not st.session_state.people_list:
         try:
+            print(st.session_state.result_company.tasks_output[2].pydantic)
             st.session_state.pydantic_url_list = st.session_state.result_company.tasks_output[4].pydantic
-            if(len(st.session_state.pydantic_url_list.employee_list) > 0) :
+            if(st.session_state.pydantic_url_list.employee_list is not None and len(st.session_state.pydantic_url_list.employee_list) > 0) :
                 st.session_state.url_list_dict = convert_urls_to_dicts(st.session_state.pydantic_url_list.employee_list)
                 with st.spinner("Scraping People Information... Please wait..."):
                     asyncio.run(run_company_person_crew(st.session_state.url_list_dict))
@@ -162,17 +306,7 @@ def company_insight_section():
     # Display company and people information
     if st.session_state.company_task_completed:
         st.markdown("### Company Insight")
-        st.markdown(st.session_state.result_company.tasks_output[2].raw)
-
-        # View Selection
-        st.markdown("### People Information")
-        view_option = st.radio(
-            "Select View",
-            options=["List View", "Table View"],
-            index=0 if st.session_state.current_view == 'List View' else 1,
-            key="view_selection_radio"
-        )
-        st.session_state.current_view = view_option
+        display_company_data(st.session_state.result_company.tasks_output[2].pydantic)
         display_people_data()
 
 # -------------------- Main Application Flow -------------------- #

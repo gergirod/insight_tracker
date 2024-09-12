@@ -22,22 +22,34 @@ research_task:
 gather_info_task:
   description: >
     Given a list of relevant links, your task is to scrape and collect detailed information about the specified person. The information should include:
-      - Full name
-      - Job title
-      - Professional background
-      - Past Jobs
-      - Key achievements
-      - Email 
+    
+
+      complete the following pydantic model with the information gathered from the links
+
+      class ProfessionalProfile(BaseModel):
+        full_name: Optional[str] = Field(
+          ..., description="The full name of the profile"
+        )
+        current_job_title: Optional[str] = Field(
+          None, description="The current job title of the profile"
+        )
+        profesional_background: Optional[str] =  Field(
+          None, description="The professional background of the profile"
+        )
+        past_jobs: Optional[str] = Field(
+          None, description="The past jobs of the profile"
+        )
+        key_achievements: Optional[str] = Field(
+          None, description="The key achievements of the profile"
+        )
+        contact: Optional[str] = Field(
+          None, description="The contact information of the profile"
+        )
 
     Use the provided scraping tools to gather this information. Do not fabricate any details; ensure all information is accurate and current.
+    The purpose of this task is to compile a comprehensive and structured profile of the individual for further analysis.
   expected_output: >
-      A comprehensive profile of the individual in a PDF document, organized into the following sections:
-      - Full Name: [Full Name]
-      - Job Title: [Job Title]
-      - Professional Background: [Professional Background]
-      - Past Jobs: [Past Jobs] 
-      - Key Achievements: [Key Achievements]
-      - Email: [Email] 
+      return the ProfessionalProfile pydantic model
 
 write_invitation_email_task:
   description: >
@@ -94,23 +106,50 @@ company_website_research_task:
 
 company_research_task:
   description: >
-    with the string provided by company_website_research_task , your task is to scrape and gather detailed information about the specified company. format:
+    with the string provided by company_website_research_task scrape the website to get all the links and sublinks inside the website related to services, news, clients, partners, awards/recognitions, industries, and blog.
+    create a list with all the links/sublinks
 
-    Use the link with the ScrapingCustomTool to scrape the url the website from company_website_research_task.
-    Ensure all information is accurate, current, and reflects the latest data available. Avoid fabricating any details.
+    once you have the final list of links, 
+    scrape each of the links and gather the following information:
+      - Summary: a brief description of the company's main activities.
+      - Website: the company's website.
+      - Industry: the industry of the company.
+      - Services: a list of services the company offers (just the name of the service).
+      - Industries: a list of industries the company operates in (just the name of the industry).
+      - Awards/Recognitions: a list of awards and recognitions the company has received (just the name of the award).
+      - Clients/Partners: a list of clients and partners of the company.
 
-    Follow this steps :
-     1 - Sumarry: Search for 'who we are' or similar sections and scrap the content and do a small summary.
-     2 - Services: Search for areas like solutions or services and scrap the content to get all servicies or solutions the company provided
-     3 - Industries: Search for areas like Industries and scrap the content to get all industries the company provided services for.
-     4 - Awards/Recognitions: Search for areas where it mentions awards or recognitions and get all information of its.
+      once you have all the information please create a pydantic model with the following format:
+      if any of the information is not available please fill it with None
+      
+      class Company(BaseModel):
+        company_name: Optional[str] = Field(
+          ..., description="the name of the company"
+        )
+        company_website: Optional[str] =  Field(
+          None, description="the website of the company"
+        )
+        company_summary: Optional[str] = Field(
+          None, description="the summary of the company"
+        )
+        company_industry: Optional[str] = Field(
+          None, description="the industry of the company"
+        )
+        company_services: Optional[str] = Field(
+          None, description="the services of the company"
+        )
+        company_industries: Optional[str] = Field(
+          None, description="the industries of the company"
+        )
+        company_awards_recognitions: Optional[str] = Field(
+          None, description="the awards and recognitions of the company"
+        )
+        company_clients_partners: Optional[str] = Field(
+          None, description="the clients and partners of the company"
+        )
+      
   expected_output: >
-    Return a list in the following format:
-    Sumarry : [Summary]
-    Services : [Services]
-    Industies : [Industries]
-    Awards/Recognitions: [Awards/Recognitions]
-
+      return Company pydantic model
 
 company_people_research_task:
   description: >

@@ -42,6 +42,10 @@ class Profile(BaseModel):
 	background_experience: Optional[str] = Field(
 		None, description="The background experience of the profile"
 	)
+	outreach_email : Optional[str] = Field(
+		None, description="The outreach email of the profile"
+	)
+
 
 
 @CrewBase
