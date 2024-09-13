@@ -6,6 +6,7 @@ import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
 from streamlit_option_menu import option_menu
+from insight_tracker.auth import login, handle_callback, signup
 
 # Import your custom modules
 from insight_tracker.profile_crew import InsightTrackerCrew
@@ -37,6 +38,7 @@ def initialize_session_state():
         'nav_bar_option_selected': 'Profile Insight',
         'profile_research_trigger': False,
         'company_research_trigger': False,
+        'user': None
     }
 
     for key, value in default_values.items():
@@ -175,12 +177,13 @@ def display_people_data():
 
 # -------------------- Sidebar Navigation -------------------- #
 with st.sidebar:
-    st.session_state.nav_bar_option_selected = option_menu(
-        menu_title="Insight Tracker",
-        options=["Profile Insight", "Company Insight"],
-        default_index=0,
-        key="navigation_menu"
-    )
+    if 'user' in st.session_state:
+        st.session_state.nav_bar_option_selected = option_menu(
+            menu_title="Insight Tracker",
+            options=["Profile Insight", "Company Insight", "Settings"],
+            default_index=0,
+            key="navigation_menu"
+        )
 
 def inject_profesional_profile_css():
     st.markdown("""
@@ -309,15 +312,122 @@ def company_insight_section():
         display_company_data(st.session_state.result_company.tasks_output[2].pydantic)
         display_people_data()
 
+
+def inject_settings_css():
+    st.markdown("""
+        <style>
+        .small-text {
+            font-size: 14px;
+            color: #4f4f4f;
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+        .section-header {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333333;
+            margin-top: 10px;
+            margin-bottom: 2px;
+        }
+        .container {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        .save-button, .scrape-button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 8px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .scrape-button {
+            background-color: #1f77b4;
+            margin-left: 10px;
+        }
+        .save-button:hover, .scrape-button:hover {
+            background-color: #45a049;
+        }
+        .scrape-button:hover {
+            background-color: #005f8c;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+# -------------------- Company Insight Section -------------------- #
+def settings_section():
+    st.header("Settings")
+
+    inject_settings_css()  # Inject CSS for styling
+
+    # Input fields for the user settings
+    full_name = st.text_input("Full Name", placeholder="Enter your full name")
+    role_position = st.text_input("Role/Position", placeholder="Enter your role or position")
+    company = st.text_input("Company", placeholder="Enter your company name")
+    company_url = st.text_input("Company URL", placeholder="Enter the company URL for scraping")
+
+    # Layout for the buttons
+    col1, col2 = st.columns([1, 1])
+
+    # Save button
+    with col1:
+        if st.button("Save", key="save_button"):
+            # Simulate saving the data (this could be saving to a database or file)
+            st.success(f"Settings saved! \nName: {full_name} \nRole: {role_position} \nCompany: {company}")
+            # Store the settings in session state (this allows you to reuse the settings elsewhere in the app)
+            st.session_state['full_name'] = full_name
+            st.session_state['role_position'] = role_position
+            st.session_state['company'] = company
+            st.session_state['company_url'] = company_url
+
+    # Scrape or Research button
+    with col2:
+        if st.button("Scrape/Research", key="scrape_button"):
+            if company_url:
+                st.info(f"Initiating scraping or research for {company_url}...")
+                # Simulate scraping logic
+                st.success(f"Scraping or researching data from {company_url} completed!")
+            else:
+                st.error("Please enter a valid URL before scraping.")
+
+def auth_section():
+    st.title("Welcome to Insight Tracker")
+    st.write("Please log in or sign up to continue")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        login()
+    with col2:
+        signup()
+    
+
 # -------------------- Main Application Flow -------------------- #
 def main():
-    if st.session_state.nav_bar_option_selected == "Profile Insight":
-        profile_insight_section()
-    elif st.session_state.nav_bar_option_selected == "Company Insight":
-        company_insight_section()
+    st.title("Insight Tracker")
+
+    if 'code' in st.experimental_get_query_params():
+        print("entro por aca carajo o no 3")
+        handle_callback()
+        st.experimental_set_query_params()
+        st.experimental_rerun()
+    # Check if the user is logged in
+    if st.session_state.user not in st.session_state:
+        print("entro por aca carajo o no 2")
+        auth_section()
     else:
-        st.title("Welcome to Insight Tracker")
-        st.write("Please select an option from the sidebar.")
+        print("entro por aca carajo o no 1")
+        # Your existing main application logic goes here
+        if st.session_state.nav_bar_option_selected == "Profile Insight":
+            profile_insight_section()
+        elif st.session_state.nav_bar_option_selected == "Company Insight":
+            company_insight_section()
+        elif st.session_state.nav_bar_option_selected == "Settings":
+            settings_section()
+        else:
+            st.write("Please select an option from the sidebar.")
+
 
 if __name__ == "__main__":
     main()
