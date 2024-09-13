@@ -39,7 +39,7 @@ jobs:
         USER: ${{ secrets.DO_USER }}
       run: |
         ssh -o StrictHostKeyChecking=no $USER@$HOST '
-        cd insight_tracker &&
+        cd insight_tracker/insight_tracker &&
         git pull origin master &&
-        cd insight_tracker/src/insight_tracker &&
-        nohup streamlit run main.py --server.port 80 > streamlit.log 2>&1 &'  
+        cd src/insight_tracker &&
+        nohup streamlit run main.py  
