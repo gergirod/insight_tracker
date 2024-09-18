@@ -38,7 +38,8 @@ def initialize_session_state():
         'nav_bar_option_selected': 'Profile Insight',
         'profile_research_trigger': False,
         'company_research_trigger': False,
-        'user': None
+        'user': None,
+        'name': None
     }
 
     for key, value in default_values.items():
@@ -406,18 +407,13 @@ def auth_section():
 # -------------------- Main Application Flow -------------------- #
 def main():
     st.title("Insight Tracker")
-
-    if 'code' in st.experimental_get_query_params():
-        print("entro por aca carajo o no 3")
+    if 'code' in st.query_params and st.session_state.user is None:
+        print("ento aca lpm que lo re mil puta pario")
         handle_callback()
-        st.experimental_set_query_params()
-        st.experimental_rerun()
     # Check if the user is logged in
     if st.session_state.user not in st.session_state:
-        print("entro por aca carajo o no 2")
         auth_section()
     else:
-        print("entro por aca carajo o no 1")
         # Your existing main application logic goes here
         if st.session_state.nav_bar_option_selected == "Profile Insight":
             profile_insight_section()
