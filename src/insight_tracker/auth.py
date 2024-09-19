@@ -25,8 +25,6 @@ def login():
     Initiates the Auth0 login process.
 
     """
-    print('user' not in st.session_state)
-    print(st.session_state)
     if st.session_state.user is None:
         # Create the authorization URL for login
         authorization_url, _ = auth0.create_authorization_url(
@@ -34,13 +32,24 @@ def login():
             audience=f"https://{AUTH0_DOMAIN}/userinfo",
         )
         # Display the login link
-        st.markdown(f'<a href="{authorization_url}" target="_self">Login with Auth0</a>', unsafe_allow_html=True)
-    else:
-        # If the user is logged in, greet them and show the logout option
-        # st.write(f"Welcome, {st.session_state.user['name']}!")
-        if st.button("Logout"):
-            del st.session_state['user']
-            st.experimental_rerun()
+        st.markdown(f'''
+        <a href="{authorization_url}" target="_self" style="
+            display: inline-block;
+            background-color: transparent;
+            color: #007bff;
+            padding: 10px 30px;
+            font-size: 1rem;
+            font-weight: 600;
+            border: 2px solid #007bff;
+            border-radius: 50px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            " onmouseover="this.style.backgroundColor='#007bff'; this.style.color='white';" 
+            onmouseout="this.style.backgroundColor='transparent'; this.style.color='#007bff';">
+            Login with Auth0
+        </a>
+    ''', unsafe_allow_html=True)
+
 
 def signup():
     """
@@ -60,13 +69,9 @@ def handle_callback():
     # Use Streamlit's built-in function to get the query parameters
     query_params = st.query_params
 
-    print(query_params)
-
     # Check if the authorization code exists in the query parameters
     if 'code' in query_params:
         code = query_params['code']  # The code is returned as a list, so we take the first element
-
-        print(code)
 
         try:
             # Exchange the authorization code for access and ID tokens
@@ -76,12 +81,8 @@ def handle_callback():
                 redirect_uri=AUTH0_CALLBACK_URL
             )
 
-            print(token)
-
             # Fetch the user's profile info from Auth0
             access_token = token.get('access_token')
-
-            print(access_token)
 
             # Fetch the user's profile info from Auth0 using the access token in the Authorization header
             user_info = auth0.get(
@@ -96,6 +97,6 @@ def handle_callback():
             st.rerun()
 
         except Exception as e:
-            st.error(f"Error during callback handling: {e}")
+            print(f"Error during callback handling: {e}")
     else:
-        st.error("Authorization code not found.")
+        print("Authorization code not found.")

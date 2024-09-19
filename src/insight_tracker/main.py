@@ -176,12 +176,13 @@ def display_people_data():
             else:
                 st.warning("No data available to display.")
 
-# -------------------- Sidebar Navigation -------------------- #
-with st.sidebar:
-    if 'user' in st.session_state:
-        st.session_state.nav_bar_option_selected = option_menu(
-            menu_title="Insight Tracker",
-            options=["Profile Insight", "Company Insight", "Settings"],
+def display_side_bar():
+    # -------------------- Sidebar Navigation -------------------- #
+    with st.sidebar:
+        if 'user' in st.session_state:
+            st.session_state.nav_bar_option_selected = option_menu(
+                menu_title="Insight Tracker",
+            options=["Profile Insight", "Company Insight", "Settings", "Logout"],
             default_index=0,
             key="navigation_menu"
         )
@@ -258,7 +259,6 @@ def profile_insight_section():
     # Display results if available
     if st.session_state.company_insight_tracker_result:
         result = st.session_state.company_insight_tracker_result
-        print(result.tasks_output[1].pydantic)
         display_professional_profile(result.tasks_output[1].pydantic)
         st.text_area(
             label=f'Draft Email to Reach {st.session_state.person_name}',
@@ -297,7 +297,6 @@ def company_insight_section():
     # Fetch and display people data if company research is completed
     if st.session_state.company_task_completed and not st.session_state.people_list:
         try:
-            print(st.session_state.result_company.tasks_output[2].pydantic)
             st.session_state.pydantic_url_list = st.session_state.result_company.tasks_output[4].pydantic
             if(st.session_state.pydantic_url_list.employee_list is not None and len(st.session_state.pydantic_url_list.employee_list) > 0) :
                 st.session_state.url_list_dict = convert_urls_to_dicts(st.session_state.pydantic_url_list.employee_list)
@@ -364,7 +363,7 @@ def settings_section():
     inject_settings_css()  # Inject CSS for styling
 
     # Input fields for the user settings
-    full_name = st.text_input("Full Name", placeholder="Enter your full name")
+    full_name = st.text_input("Full Name", placeholder="Enter your full name", value=st.session_state.user.get('name'))
     role_position = st.text_input("Role/Position", placeholder="Enter your role or position")
     company = st.text_input("Company", placeholder="Enter your company name")
     company_url = st.text_input("Company URL", placeholder="Enter the company URL for scraping")
@@ -394,26 +393,72 @@ def settings_section():
                 st.error("Please enter a valid URL before scraping.")
 
 def auth_section():
-    st.title("Welcome to Insight Tracker")
-    st.write("Please log in or sign up to continue")
+    # Minimal CSS for clean and centered layout without scroll issues
+    st.markdown("""
+        <style>
+        /* Center content vertically and horizontally */
+        .full-height-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Title Styling */
+        .main-title {
+            font-size: 2.5rem;
+            color: #333;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        /* Description Styling */
+        .subtitle {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        </style>
+    """, unsafe_allow_html=True)
+
+    # Full height container to ensure proper centering
+    st.markdown('<div class="full-height-container">', unsafe_allow_html=True)
     
-    col1, col2 = st.columns(2)
-    with col1:
-        login()
-    with col2:
-        signup()
+    # Start content structure inside the centered container
+    st.markdown('<div>', unsafe_allow_html=True)
+    
+    # Display title and subtitle
+    st.markdown('<h1 class="main-title">Welcome to Insight Tracker</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="subtitle">Please log in or sign up to continue</p>', unsafe_allow_html=True)
+    
+    # Display the login button
+    login()
+    
+    st.markdown('</div>', unsafe_allow_html=True)  # Close the inner div
+    
+    st.markdown('</div>', unsafe_allow_html=True)  # Close the full-height container
+
+# Call the function to display the landing page
+
+
+# Call the function to display the landing page
+
+
+
     
 
 # -------------------- Main Application Flow -------------------- #
 def main():
-    st.title("Insight Tracker")
     if 'code' in st.query_params and st.session_state.user is None:
-        print("ento aca lpm que lo re mil puta pario")
         handle_callback()
     # Check if the user is logged in
-    if st.session_state.user not in st.session_state:
+    if st.session_state.user is None:
         auth_section()
     else:
+
+        display_side_bar()
         # Your existing main application logic goes here
         if st.session_state.nav_bar_option_selected == "Profile Insight":
             profile_insight_section()
@@ -421,6 +466,9 @@ def main():
             company_insight_section()
         elif st.session_state.nav_bar_option_selected == "Settings":
             settings_section()
+        elif st.session_state.nav_bar_option_selected == "Logout":
+            del st.session_state['user']
+            st.rerun()
         else:
             st.write("Please select an option from the sidebar.")
 
