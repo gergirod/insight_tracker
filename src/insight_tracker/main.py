@@ -15,6 +15,8 @@ from insight_tracker.company_person_crew import CompanyPersonInsightTrackerCrew
 from insight_tracker.company_crew import Company
 from insight_tracker.company_person_crew import Profile
 from insight_tracker.profile_crew import ProfessionalProfile
+from insight_tracker.db import create_user_if_not_exists, getUserByEmail
+from insight_tracker.db import init_db
 # -------------------- Session State Initialization -------------------- #
 def initialize_session_state():
     default_values = {
@@ -39,7 +41,9 @@ def initialize_session_state():
         'profile_research_trigger': False,
         'company_research_trigger': False,
         'user': None,
-        'name': None
+        'name': None,
+        'research_employees': False  # Add this line
+
     }
 
     for key, value in default_values.items():
@@ -47,10 +51,20 @@ def initialize_session_state():
             st.session_state[key] = value
 
 initialize_session_state()
+init_db()
 
 # -------------------- Utility Functions -------------------- #
-def convert_urls_to_dicts(urls, key="url"):
-    return [{key: url} for url in urls]
+def convert_urls_to_dicts(urls, user=None, key="url"):
+    return [
+        {
+            key: url,
+            'user_name': user[1] if user is not None else "[Your Name]",
+            'user_job_title': user[3] if user is not None else "[Company title]",
+            'user_company': user[4] if user is not None else "[Company]",
+            'user_email': user[2] if user is not None else "[Your Email]"
+        }
+        for url in urls
+    ]
 
 async def run_company_person_crew(url_list):
     """
@@ -241,10 +255,16 @@ def profile_insight_section():
     st.session_state.person_company = st.text_input("Company", value=st.session_state.person_company, key="person_company_input")
 
     if st.button("Research", key="profile_research_button"):
+        user_email = st.session_state.user.get('email')
+        user = getUserByEmail(user_email)
         if st.session_state.person_name and st.session_state.person_company:
             st.session_state.person_inputs = {
                 'profile': st.session_state.person_name,
-                'company': st.session_state.person_company
+                'company': st.session_state.person_company,
+                'user_name': user[1] if user is not None else "[Your Name]",
+                'user_job_title' : user[3] if user is not None else "[Company title]",
+                'user_company' : user[4] if user is not None else "[Company]",
+                'user_email' : user[2] if user is not None else "[Your Email]"
             }
             with st.spinner('Researching profile...'):
                 try:
@@ -268,12 +288,20 @@ def profile_insight_section():
         )
 
 # -------------------- Company Insight Section -------------------- #
+# ... existing code ...
+
 def company_insight_section():
     st.header("Company Insight")
     st.session_state.company_name = st.text_input("Company Name", value=st.session_state.company_name, key="company_name_input")
     st.session_state.industry = st.text_input("Industry", value=st.session_state.industry, key="industry_input")
 
-    if st.button("Research Company", key="company_research_button"):
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        research_button = st.button("Research Company", key="company_research_button")
+    with col2:
+        st.session_state.research_employees = st.checkbox('Research Employees', value=st.session_state.research_employees)
+
+    if research_button:
         if st.session_state.company_name and st.session_state.industry:
             st.session_state.company_inputs = {
                 'company': st.session_state.company_name,
@@ -290,27 +318,32 @@ def company_insight_section():
                 st.session_state.result_company = CompanyInsightTrackerCrew().company_crew().kickoff(inputs=st.session_state.company_inputs)
                 st.success("Company information scraped successfully!")
                 st.session_state.company_task_completed = True
-            except Exception as e:
-                st.error(f"An error occurred during company research: {e}")
-                st.session_state.company_task_completed = False
 
-    # Fetch and display people data if company research is completed
-    if st.session_state.company_task_completed and not st.session_state.people_list:
-        try:
-            st.session_state.pydantic_url_list = st.session_state.result_company.tasks_output[4].pydantic
-            if(st.session_state.pydantic_url_list.employee_list is not None and len(st.session_state.pydantic_url_list.employee_list) > 0) :
-                st.session_state.url_list_dict = convert_urls_to_dicts(st.session_state.pydantic_url_list.employee_list)
-                with st.spinner("Scraping People Information... Please wait..."):
-                    asyncio.run(run_company_person_crew(st.session_state.url_list_dict))
-                st.success("People information scraped successfully!")
-        except Exception as e:
-            st.error(f"An error occurred while fetching people information: {e}")
+                # If research_employees is checked, immediately fetch employee data
+                if st.session_state.research_employees:
+                    st.session_state.pydantic_url_list = st.session_state.result_company.tasks_output[4].pydantic
+                    if st.session_state.pydantic_url_list.employee_list is not None and len(st.session_state.pydantic_url_list.employee_list) > 0:
+                        user_email = st.session_state.user.get('email')
+                        user = getUserByEmail(user_email)
+                        st.session_state.url_list_dict = convert_urls_to_dicts(st.session_state.pydantic_url_list.employee_list, user=user)
+                        with st.spinner("Scraping People Information... Please wait..."):
+                            asyncio.run(run_company_person_crew(st.session_state.url_list_dict))
+                        st.success("People information scraped successfully!")
+
+            except Exception as e:
+                st.error(f"An error occurred during research: {e}")
+                st.session_state.company_task_completed = False
 
     # Display company and people information
     if st.session_state.company_task_completed:
         st.markdown("### Company Insight")
         display_company_data(st.session_state.result_company.tasks_output[2].pydantic)
-        display_people_data()
+        if st.session_state.research_employees:
+            display_people_data()
+
+    # Reset the research trigger
+    st.session_state.company_research_trigger = False
+
 
 
 def inject_settings_css():
@@ -357,40 +390,40 @@ def inject_settings_css():
     """, unsafe_allow_html=True)
 
 # -------------------- Company Insight Section -------------------- #
-def settings_section():
+def settings_section(user):
     st.header("Settings")
 
     inject_settings_css()  # Inject CSS for styling
 
+    full_name_value = user[1] if user is not None else ""
+    contact_info = user[2] if user is not None else ""
+    role_position_value = user[3] if user is not None else ""
+    company_value = user[4] if user is not None else ""
     # Input fields for the user settings
-    full_name = st.text_input("Full Name", placeholder="Enter your full name", value=st.session_state.user.get('name'))
-    role_position = st.text_input("Role/Position", placeholder="Enter your role or position")
-    company = st.text_input("Company", placeholder="Enter your company name")
-    company_url = st.text_input("Company URL", placeholder="Enter the company URL for scraping")
-
+    full_name = st.text_input("Full Name", placeholder="Enter your full name", value= full_name_value)
+    email = st.text_input("Email", value=contact_info, disabled=True)
+    role_position = st.text_input("Role/Position", placeholder="Enter your role or position", value= role_position_value)
+    company = st.text_input("Company", placeholder="Enter your company name", value= company_value)
+    #company_url = st.text_input("Company URL", placeholder="Enter the company URL for scraping")
     # Layout for the buttons
     col1, col2 = st.columns([1, 1])
 
     # Save button
     with col1:
         if st.button("Save", key="save_button"):
+            print(role_position)
             # Simulate saving the data (this could be saving to a database or file)
             st.success(f"Settings saved! \nName: {full_name} \nRole: {role_position} \nCompany: {company}")
             # Store the settings in session state (this allows you to reuse the settings elsewhere in the app)
             st.session_state['full_name'] = full_name
             st.session_state['role_position'] = role_position
             st.session_state['company'] = company
-            st.session_state['company_url'] = company_url
 
-    # Scrape or Research button
-    with col2:
-        if st.button("Scrape/Research", key="scrape_button"):
-            if company_url:
-                st.info(f"Initiating scraping or research for {company_url}...")
-                # Simulate scraping logic
-                st.success(f"Scraping or researching data from {company_url} completed!")
-            else:
-                st.error("Please enter a valid URL before scraping.")
+            email = st.session_state.user.get('email')
+            create_user_if_not_exists(full_name, email, role_position, company)
+            user = getUserByEmail(email)
+            print(user)
+            
 
 def auth_section():
     # Minimal CSS for clean and centered layout without scroll issues
@@ -454,10 +487,11 @@ def main():
     if 'code' in st.query_params and st.session_state.user is None:
         handle_callback()
     # Check if the user is logged in
-    if st.session_state.user is None:
+    if st.session_state.user is None :
         auth_section()
     else:
-
+        user_email = st.session_state.user.get('email')
+        user = getUserByEmail(user_email)
         display_side_bar()
         # Your existing main application logic goes here
         if st.session_state.nav_bar_option_selected == "Profile Insight":
@@ -465,7 +499,7 @@ def main():
         elif st.session_state.nav_bar_option_selected == "Company Insight":
             company_insight_section()
         elif st.session_state.nav_bar_option_selected == "Settings":
-            settings_section()
+            settings_section(user)
         elif st.session_state.nav_bar_option_selected == "Logout":
             del st.session_state['user']
             st.rerun()

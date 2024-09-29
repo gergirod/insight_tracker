@@ -75,10 +75,10 @@ write_invitation_email_task:
     [Body]
 
     Best regards,
-    [Your Name]
-    [Your Job Title]
-    [Your Company]
-    [Your Contact Information]
+    {user_name}
+    {user_job_title}
+    {user_company}
+    {user_email}
 
 #Company Insight
 
@@ -165,7 +165,8 @@ company_people_research_task:
     4. Finally for those links create a lisf with the profile_link to the detail.
     
     Notes :
-      If you could found any link return a empty list
+      If you could found any link return a empty list.
+      Avoid creating hypotetical or example list
     
     The purpose of this task is to compile a detailed and structured list of people working at the firm
   expected_output: >
@@ -268,10 +269,10 @@ write_invitation_email_task_two:
     [Body]
 
     Best regards,
-    [Your Name]
-    [Your Job Title]
-    [Your Company]
-    [Your Contact Information]
+    {user_name}
+    {user_job_title}
+    {user_company}
+    {user_email}
 
 
 company_person_detail_scraping_task:
@@ -337,7 +338,7 @@ write_invitation_email_task_three:
     [Body]
 
     Best regards,
-    [Your Name]
-    [Your Job Title]
-    [Your Company]
-    [Your Contact Information]
+    {user_name}
+    {user_job_title}
+    {user_company}
+    {user_email}

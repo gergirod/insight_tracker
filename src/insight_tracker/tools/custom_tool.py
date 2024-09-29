@@ -41,3 +41,14 @@ class ScrapingCustomTool(BaseTool) :
         content = app.scrape_url(argument)
 
         return content
+    
+class MapCustomTool(BaseTool) :
+    name: str = "map tool"
+    description : str = ('this tool is to get all the links from a website')
+
+    def _run(self, argument :str) -> Any:
+        app = FirecrawlApp()
+        map_result = app.map_url(argument)
+
+        return map_result
+

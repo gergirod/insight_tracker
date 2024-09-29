@@ -2,9 +2,11 @@ import os
 import streamlit as st
 from authlib.integrations.requests_client import OAuth2Session
 from dotenv import load_dotenv
+from http.cookies import SimpleCookie
 
 # Load environment variables
 load_dotenv()
+
 
 # Auth0 configuration
 AUTH0_CLIENT_ID = os.getenv("AUTH0_CLIENT_ID")
@@ -21,6 +23,7 @@ auth0 = OAuth2Session(
 )
 
 def login():
+
     """
     Initiates the Auth0 login process.
 
@@ -92,7 +95,6 @@ def handle_callback():
 
             # Store user information in the session state
             st.session_state.user = user_info
-
             # Refresh the app to reflect the login state
             st.rerun()
 
