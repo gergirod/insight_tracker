@@ -26,13 +26,20 @@ auth0 = OAuth2Session(
 )
 
 def get_cookie():
-    return CookieController().get("id_token")
+    try:
+        return CookieController().get("id_token")
+    except Exception as e:
+        print(f"Error getting cookie: {e}")
+        return None
 
 def set_cookie(token):
     CookieController().set("id_token", token)
 
 def remove_cookie():
-    CookieController().remove("id_token")
+    try:
+        CookieController().remove("id_token")
+    except Exception as e:
+        print(f"Error removing cookie: {e}")
 
 def validate_token_and_get_user(token):
     try:
@@ -116,3 +123,4 @@ def logout():
     st.session_state.user = None
     remove_cookie()
     st.success("You have been logged out successfully.")
+    st.rerun()

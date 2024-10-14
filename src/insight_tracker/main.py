@@ -45,7 +45,6 @@ def display_main_content(user):
         settings_section(user)
     elif st.session_state.nav_bar_option_selected == "Logout":
         logout()
-        st.rerun()
     else:
         st.write("Please select an option from the sidebar.")
 
