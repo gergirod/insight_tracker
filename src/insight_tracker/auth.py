@@ -69,6 +69,7 @@ def login():
             f"https://{AUTH0_DOMAIN}/authorize",
             audience=f"https://{AUTH0_DOMAIN}/userinfo",
         )
+        print(f"Authorization URL: {authorization_url}")
         st.markdown(f'''
         <a href="{authorization_url}" target="_self" style="
             display: inline-block;
