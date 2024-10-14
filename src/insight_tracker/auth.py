@@ -97,6 +97,8 @@ def signup():
 def handle_callback():
     query_params = st.query_params
 
+    print(f"Query params: {query_params}")
+
     if 'code' in query_params:
         code = query_params['code']
 
