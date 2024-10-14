@@ -2,11 +2,14 @@ import os
 import streamlit as st
 from authlib.integrations.requests_client import OAuth2Session
 from dotenv import load_dotenv
-from http.cookies import SimpleCookie
+import json
+import streamlit.components.v1 as components
+import jwt
+import time
+from streamlit_cookies_controller import CookieController
 
 # Load environment variables
 load_dotenv()
-
 
 # Auth0 configuration
 AUTH0_CLIENT_ID = os.getenv("AUTH0_CLIENT_ID")
@@ -22,19 +25,37 @@ auth0 = OAuth2Session(
     redirect_uri=AUTH0_CALLBACK_URL
 )
 
+def get_cookie():
+    return CookieController().get("id_token")
+
+def set_cookie(token):
+    CookieController().set("id_token", token)
+
+def remove_cookie():
+    CookieController().remove("id_token")
+
+def validate_token_and_get_user(token):
+    try:
+        # Decode the token
+        decoded = jwt.decode(token, options={"verify_signature": False})
+        
+        # Get user info from Auth0
+        user_info = auth0.get(
+            f"https://{AUTH0_DOMAIN}/userinfo", 
+            headers={"Authorization": f"Bearer {token}"}
+        ).json()
+        
+        return user_info
+    except Exception as e:
+        print(f"Error validating token: {e}")
+        return None
+
 def login():
-
-    """
-    Initiates the Auth0 login process.
-
-    """
     if st.session_state.user is None:
-        # Create the authorization URL for login
         authorization_url, _ = auth0.create_authorization_url(
             f"https://{AUTH0_DOMAIN}/authorize",
             audience=f"https://{AUTH0_DOMAIN}/userinfo",
         )
-        # Display the login link
         st.markdown(f'''
         <a href="{authorization_url}" target="_self" style="
             display: inline-block;
@@ -53,52 +74,45 @@ def login():
         </a>
     ''', unsafe_allow_html=True)
 
-
 def signup():
-    """
-    Initiates the Auth0 signup process.
-    """
-    # Create the signup URL
     signup_url = f"https://{AUTH0_DOMAIN}/authorize?response_type=code&client_id={AUTH0_CLIENT_ID}&redirect_uri={AUTH0_CALLBACK_URL}&scope=openid%20profile%20email&screen_hint=signup"
     
-    # Display the signup button
     if st.button("Sign Up with Auth0"):
         st.markdown(f'<meta http-equiv="refresh" content="0;url={signup_url}">', unsafe_allow_html=True)
 
 def handle_callback():
-    """
-    Handle the Auth0 callback, exchange authorization code for tokens, and retrieve user info.
-    """
-    # Use Streamlit's built-in function to get the query parameters
     query_params = st.query_params
 
-    # Check if the authorization code exists in the query parameters
     if 'code' in query_params:
-        code = query_params['code']  # The code is returned as a list, so we take the first element
+        code = query_params['code']
 
         try:
-            # Exchange the authorization code for access and ID tokens
             token = auth0.fetch_token(
                 f"https://{AUTH0_DOMAIN}/oauth/token",
                 code=code,
                 redirect_uri=AUTH0_CALLBACK_URL
             )
 
-            # Fetch the user's profile info from Auth0
             access_token = token.get('access_token')
+            id_token = token.get('id_token')
 
-            # Fetch the user's profile info from Auth0 using the access token in the Authorization header
+            print(f"Received id_token: {id_token[:10]}...")
+
             user_info = auth0.get(
                 f"https://{AUTH0_DOMAIN}/userinfo", 
                 headers={"Authorization": f"Bearer {access_token}"}
             ).json()
 
-            # Store user information in the session state
             st.session_state.user = user_info
-            # Refresh the app to reflect the login state
+            set_cookie(id_token)
             st.rerun()
 
         except Exception as e:
             print(f"Error during callback handling: {e}")
     else:
         print("Authorization code not found.")
+
+def logout():
+    st.session_state.user = None
+    remove_cookie()
+    st.success("You have been logged out successfully.")

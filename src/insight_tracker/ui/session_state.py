@@ -24,8 +24,8 @@ def initialize_session_state():
         'company_research_trigger': False,
         'user': None,
         'name': None,
-        'research_employees': False  # Add this line
-
+        'research_employees': False,
+        'token': None
     }
 
     for key, value in default_values.items():
