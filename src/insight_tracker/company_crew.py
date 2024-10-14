@@ -193,14 +193,6 @@ class CompanyInsightTrackerCrew():
 			output_pydantic=Employess
 
 		)
-	
-	@task
-	def write_invitation_email_task(self) -> Task:
-		return Task(
-			config=self.tasks_config['write_invitation_email_task_two'],
-			agent = self.email_writer(),
-			context = [self.company_research_task()]
-		)
 
 	
 	
