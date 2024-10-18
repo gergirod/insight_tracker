@@ -16,13 +16,6 @@ AUTH0_CLIENT_ID = os.getenv("AUTH0_CLIENT_ID")
 AUTH0_CLIENT_SECRET = os.getenv("AUTH0_CLIENT_SECRET")
 AUTH0_DOMAIN = os.getenv("AUTH0_DOMAIN")
 AUTH0_CALLBACK_URL = os.getenv("AUTH0_CALLBACK_URL")
-
-print("esto es importante para imprimir")
-print(AUTH0_CLIENT_ID)
-print(AUTH0_CLIENT_SECRET)
-print(AUTH0_DOMAIN)
-print(AUTH0_CALLBACK_URL)
-
 # Initialize OAuth2 session with Auth0
 auth0 = OAuth2Session(
     client_id=AUTH0_CLIENT_ID,
@@ -39,7 +32,10 @@ def get_cookie():
         return None
 
 def set_cookie(token):
-    CookieController().set("id_token", token)
+    try:
+        CookieController().set("id_token", token)
+    except Exception as e:
+        print(f"Error setting cookie: {e}")
 
 def remove_cookie():
     try:
@@ -111,16 +107,12 @@ def handle_callback():
 
             access_token = token.get('access_token')
             id_token = token.get('id_token')
-
-            print(f"Received id_token: {id_token[:10]}...")
-
+            set_cookie(id_token)
             user_info = auth0.get(
                 f"https://{AUTH0_DOMAIN}/userinfo", 
                 headers={"Authorization": f"Bearer {access_token}"}
             ).json()
-
             st.session_state.user = user_info
-            set_cookie(id_token)
             st.rerun()
 
         except Exception as e:

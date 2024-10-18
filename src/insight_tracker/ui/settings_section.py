@@ -65,7 +65,6 @@ def settings_section(user):
     # Save button
     with col1:
         if st.button("Save", key="save_button"):
-            print(role_position)
             # Simulate saving the data (this could be saving to a database or file)
             st.success(f"Settings saved! \nName: {full_name} \nRole: {role_position} \nCompany: {company}")
             # Store the settings in session state (this allows you to reuse the settings elsewhere in the app)

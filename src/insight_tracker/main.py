@@ -8,6 +8,23 @@ from insight_tracker.ui.settings_section import settings_section
 from insight_tracker.ui.side_bar import display_side_bar
 from insight_tracker.ui.session_state import initialize_session_state
 
+st.set_page_config(
+    page_title="Insight Tracker",  # Title that appears in the browser tab
+    page_icon="🎯",  # Can be a string emoji or a URL to an image
+    initial_sidebar_state="expanded",
+)
+
+hide_streamlit_style = """
+    <style>
+    /* Hide the header (contains the "running", "stop", and 3 dots menu) */
+    #MainMenu {visibility: hidden;}
+    header {visibility: hidden;}
+    footer {visibility: hidden;}
+    </style>
+    """
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
+
 # Initialize session state and database
 initialize_session_state()
 init_db()

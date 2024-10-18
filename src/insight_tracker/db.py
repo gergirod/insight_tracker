@@ -60,12 +60,10 @@ def create_user_if_not_exists(full_name, email, company, role):
     
     if user:
         update_user_info(company, role, email)
-        print(f"User with email {email} updated successfully!")
         return False  # User already exists
     else:
         try:
             save_user_info(full_name, email, company, role)
-            print(f"User with email {email} created successfully!")
             return True  # New user created
         except sqlite3.IntegrityError as e:
             print(f"Error: {e}")

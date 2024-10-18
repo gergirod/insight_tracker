@@ -1,45 +1,24 @@
-name: Deploy to DigitalOcean
+###
+# This workflow is currently disabled
+# name: Deploy to DigitalOcean
 
-on:
-  push:
-    branches:
-      - master  # Trigger deployment on push to the main branch
+# on:
+#   push:
+#     branches: [ main ]
 
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v2
+#       # Add your deployment steps here
+###
+
+# Placeholder to ensure file is valid YAML
+name: disabled-workflow
+on: workflow_dispatch
 jobs:
-  deploy:
+  noop:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'  # Specify your Python version
-
-    - name: Install Poetry
-      run: curl -sSL https://install.python-poetry.org | python3 -
-
-    - name: lock dependencies
-      run: poetry lock
-
-    - name: Install dependencies
-      run: poetry install
-
-
-    - name: Add SSH key
-      uses: webfactory/ssh-agent@v0.9.0
-      with:
-        ssh-private-key: ${{ secrets.DO_SSH_KEY }}
-
-    - name: Deploy to DigitalOcean
-      env:
-        HOST: ${{ secrets.DO_HOST }}
-        USER: ${{ secrets.DO_USER }}
-      run: |
-        ssh -o StrictHostKeyChecking=no $USER@$HOST '
-        cd insight_tracker/insight_tracker &&
-        git pull origin master &&
-        cd src/insight_tracker &&
-        nohup streamlit run main.py  
+      - run: echo "This workflow is currently disabled"
