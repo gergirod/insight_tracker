@@ -25,7 +25,9 @@ def initialize_session_state():
         'user': None,
         'name': None,
         'research_employees': False,
-        'token': None
+        'token': None,
+        'handling_callback': False,
+        'authentication_status': 'checking'  # Add this line
     }
 
     for key, value in default_values.items():
