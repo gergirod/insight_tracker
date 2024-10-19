@@ -28,24 +28,27 @@ search = TavilySearchAPIWrapper()
 tavily_tool = TavilySearchResults(api_wrapper=search)
 
 class ProfessionalProfile(BaseModel):
-	full_name: Optional[str] = Field(
-		..., description="The full name of the profile"
-	)
-	current_job_title: Optional[str] = Field(
-		None, description="The current job title of the profile"
-	)
-	profesional_background: Optional[str] =  Field(
-		None, description="The professional background of the profile"
-	)
-	past_jobs: Optional[str] = Field(
-		None, description="The past jobs of the profile"
-	)
-	key_achievements: Optional[str] = Field(
-		None, description="The key achievements of the profile"
-	)
-	contact: Optional[str] = Field(
-		None, description="The contact information of the profile"
-	)
+    full_name: Optional[str] = Field(
+        ..., description="The full name of the profile"
+    )
+    current_job_title: Optional[str] = Field(
+        None, description="The current job title of the profile"
+    )
+    profesional_background: Optional[str] =  Field(
+        None, description="The professional background of the profile"
+    )
+    past_jobs: Optional[str] = Field(
+        None, description="The past jobs of the profile"
+    )
+    key_achievements: Optional[str] = Field(
+        None, description="The key achievements of the profile"
+    )
+    contact: Optional[str] = Field(
+        None, description="The contact information of the profile"
+    )
+    search_date: Optional[str] = Field(
+        None, description="The date of the search"
+    )
 	   
 
 @CrewBase

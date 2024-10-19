@@ -32,30 +32,33 @@ search = TavilySearchAPIWrapper()
 tavily_tool = TavilySearchResults(api_wrapper=search)
 
 class Company(BaseModel):
-	company_name: Optional[str] = Field(
-		..., description="the name of the company"
-	)
-	company_website: Optional[str] =  Field(
-		None, description="the website of the company"
-	)
-	company_summary: Optional[str] = Field(
-		None, description="the summary of the company"
-	)
-	company_industry: Optional[str] = Field(
-		None, description="the industry of the company"
-	)
-	company_services: Optional[str] = Field(
-		None, description="the services of the company"
-	)
-	company_industries: Optional[str] = Field(
-		None, description="the industries of the company"
-	)
-	company_awards_recognitions: Optional[str] = Field(
-		None, description="the awards and recognitions of the company"
-	)
-	company_clients_partners: Optional[str] = Field(
-		None, description="the clients and partners of the company"
-	)
+    company_name: Optional[str] = Field(
+        ..., description="the name of the company"
+    )
+    company_website: Optional[str] =  Field(
+        None, description="the website of the company"
+    )
+    company_summary: Optional[str] = Field(
+        None, description="the summary of the company"
+    )
+    company_industry: Optional[str] = Field(
+        None, description="the industry of the company"
+    )
+    company_services: Optional[str] = Field(
+        None, description="the services of the company"
+    )
+    company_industries: Optional[str] = Field(
+        None, description="the industries of the company"
+    )
+    company_awards_recognitions: Optional[str] = Field(
+        None, description="the awards and recognitions of the company"
+    )
+    company_clients_partners: Optional[str] = Field(
+        None, description="the clients and partners of the company"
+    )
+    search_date: Optional[str] = Field(
+        None, description="The date of the search"
+    )
 
 class Employess(BaseModel):
 	employee_list : Optional[List[str]]
