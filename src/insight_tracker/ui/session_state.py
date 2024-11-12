@@ -27,7 +27,10 @@ def initialize_session_state():
         'research_employees': False,
         'token': None,
         'handling_callback': False,
-        'authentication_status': 'checking'  # Add this line
+        'authentication_status': 'checking',
+        'company_data': None,
+        'profile_data': None,
+        'search_method': 'Search by Name and Industry'  # Default search method
     }
 
     for key, value in default_values.items():

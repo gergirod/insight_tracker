@@ -1,57 +1,137 @@
-# InsightTracker Crew
+# Insight Tracker
 
-Welcome to the InsightTracker Crew project, powered by [crewAI](https://crewai.com). This template is designed to help you set up a multi-agent AI system with ease, leveraging the powerful and flexible framework provided by crewAI. Our goal is to enable your agents to collaborate effectively on complex tasks, maximizing their collective intelligence and capabilities.
+A streamlined tool for gathering and analyzing company and professional profile insights using AI-powered analysis.
+
+## Overview
+
+Insight Tracker is a Streamlit-based application that helps you:
+- Research companies and their market presence
+- Analyze professional profiles
+- Track business insights
+- Generate outreach content
+
+## Prerequisites
+
+- Python 3.8 or higher
+- Virtual environment management tool (venv)
 
 ## Installation
 
-Ensure you have Python >=3.10 <=3.13 installed on your system. This project uses [Poetry](https://python-poetry.org/) for dependency management and package handling, offering a seamless setup and execution experience.
-
-First, if you haven't already, install Poetry:
-
+1. Clone the repository:
 ```bash
-pip install poetry
+git clone https://github.com/yourusername/insight_tracker.git
+cd insight_tracker
 ```
 
-Next, navigate to your project directory and install the dependencies:
-
-1. First lock the dependencies and then install them:
+2. Create and activate a virtual environment:
 ```bash
-poetry lock
-```
-```bash
-poetry install
-```
-### Customizing
-
-**Add your `OPENAI_API_KEY` into the `.env` file**
-
-- Modify `src/insight_tracker/config/agents.yaml` to define your agents
-- Modify `src/insight_tracker/config/tasks.yaml` to define your tasks
-- Modify `src/insight_tracker/crew.py` to add your own logic, tools and specific args
-- Modify `src/insight_tracker/main.py` to add custom inputs for your agents and tasks
-
-## Running the Project
-
-To kickstart your crew of AI agents and begin task execution, run this from the root folder of your project:
-
-```bash
-poetry run insight_tracker
+python -m venv venv
+source venv/bin/activate  # On Unix/macOS
+# or
+.\venv\Scripts\activate  # On Windows
 ```
 
-This command initializes the insight_tracker Crew, assembling the agents and assigning them tasks as defined in your configuration.
+3. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
 
-This example, unmodified, will run the create a `report.md` file with the output of a research on LLMs in the root folder.
+4. Set up environment variables:
+Create a `.env` file in the root directory and add:
+```env
+API_BASE_URL=your_api_base_url
+API_KEY=your_api_key
+OPENAI_API_KEY=your_openai_api_key
+```
 
-## Understanding Your Crew
+## Project Structure
 
-The insight_tracker Crew is composed of multiple AI agents, each with unique roles, goals, and tools. These agents collaborate on a series of tasks, defined in `config/tasks.yaml`, leveraging their collective skills to achieve complex objectives. The `config/agents.yaml` file outlines the capabilities and configurations of each agent in your crew.
+```
+insight_tracker/
+├── src/
+│   ├── insight_tracker/
+│   │   ├── main.py           # Main application
+│   │   ├── db.py            # Database operations
+│   │   ├── utils/           # Utility functions
+│   │   └── ui/             # User interface components
+│   └── api/
+│       ├── client/         # API client
+│       ├── models/         # Data models
+│       ├── exceptions/     # Custom exceptions
+│       └── services/       # Business logic
+├── requirements.txt        # Project dependencies
+└── README.md              # Project documentation
+```
+
+## Usage
+
+1. Start the application:
+```bash
+streamlit run src/insight_tracker/main.py
+```
+
+2. Access the web interface at `http://localhost:8501`
+
+3. Enter your credentials to begin using the tool
+
+## Features
+
+### Company Research
+- Company profile analysis
+- Industry insights
+- Employee information
+- Market positioning
+
+### Profile Analysis
+- Professional background analysis
+- Career trajectory
+- Key achievements
+- Contact information
+
+### Data Management
+- Save and track research history
+- Export insights
+- Manage user preferences
+
+## Development
+
+### Setting Up Development Environment
+
+1. Install development dependencies:
+```bash
+pip install -r requirements-dev.txt
+```
+
+2. Run tests:
+```bash
+pytest
+```
+
+3. Format code:
+```bash
+black src/
+```
+
+### Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## Support
 
-For support, questions, or feedback regarding the InsightTracker Crew or crewAI.
-- Visit our [documentation](https://docs.crewai.com)
-- Reach out to us through our [GitHub repository](https://github.com/joaomdmoura/crewai)
-- [Join our Discord](https://discord.com/invite/X4JWnZnxPb)
-- [Chat with our docs](https://chatg.pt/DWjSBZn)
+For support, questions, or feedback:
+- Create an issue in the GitHub repository
+- Contact the development team
+- Check the documentation
 
-Let's create wonders together with the power and simplicity of crewAI.
+## Acknowledgments
+
+- Built with [Streamlit](https://streamlit.io/)
+- Powered by [Pydantic](https://pydantic-docs.helpmanual.io/)

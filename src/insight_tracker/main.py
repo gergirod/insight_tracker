@@ -120,7 +120,9 @@ def main():
             st.rerun()
         else:
             user_email = st.session_state.user.get('email')
+            print(f"User email: {user_email}")
             user = getUserByEmail(user_email)
+            print(f"User: {user}")
             display_main_content(user)
     else:  # unauthenticated
         auth_section()
