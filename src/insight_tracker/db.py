@@ -1,27 +1,218 @@
 import sqlite3
 from datetime import datetime
-from insight_tracker.profile_crew import ProfessionalProfile
-from insight_tracker.company_crew import Company
-
+from typing import List, Optional
+from insight_tracker.api.models.responses import ProfessionalProfile, Company
 def init_db():
-    """
-    Initialize the SQLite database and create the users table with a unique email constraint.
-    """
+    """Initialize the SQLite database and create the users table"""
     conn = sqlite3.connect('user_data.db')
     c = conn.cursor()
     c.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             full_name TEXT,
-            email TEXT UNIQUE,  -- Ensures email is unique
+            email TEXT UNIQUE,
             company TEXT,
             role TEXT
         )
-    ''')  # Corrected the SQL syntax here
+    ''')
     conn.commit()
     conn.close()
 
-def save_user_info(full_name, email, company, role):
+def init_recent_searches_db():
+    """Initialize the recent searches database"""
+    conn = sqlite3.connect('recent_searches.db')
+    c = conn.cursor()
+    
+    # Create profile_searches table matching ProfessionalProfile model
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS profile_searches (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_email TEXT,
+            full_name TEXT NOT NULL,
+            current_job_title TEXT,
+            company TEXT,
+            professional_background TEXT,
+            past_jobs TEXT,
+            key_achievements TEXT,
+            contact TEXT,
+            linkedin_url TEXT,
+            search_date TIMESTAMP
+        )
+    ''')
+    
+    # Create company_searches table matching Company model
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS company_searches (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_email TEXT,
+            company_name TEXT NOT NULL,
+            company_website TEXT,
+            company_linkedin TEXT,
+            company_summary TEXT,
+            company_industry TEXT,
+            company_size TEXT,
+            company_services TEXT,
+            company_industries TEXT,
+            company_awards_recognitions TEXT,
+            company_clients_partners TEXT,
+            company_founded_year INTEGER,
+            company_headquarters TEXT,
+            company_culture TEXT,
+            company_recent_updates TEXT,
+            search_date TIMESTAMP
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
+
+def save_profile_search(user_email: str, profile: ProfessionalProfile, company: str) -> None:
+    """Save profile search to database"""
+    conn = sqlite3.connect('recent_searches.db')
+    cursor = conn.cursor()
+    
+    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
+    try:
+        cursor.execute("""
+            INSERT INTO profile_searches 
+            (user_email, full_name, current_job_title, company, professional_background, past_jobs, key_achievements, contact, linkedin_url, search_date)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            user_email,
+            profile.full_name,
+            profile.current_job_title,
+            company,
+            profile.professional_background,
+            profile.past_jobs,
+            profile.key_achievements,
+            profile.contact,
+            profile.linkedin_url,
+            current_time
+        ))
+        conn.commit()
+    except Exception as e:
+        print(f"Error saving profile search: {e}")
+        raise
+    finally:
+        conn.close()
+
+def save_company_search(user_email: str, company: Company) -> None:
+    """Save company search to database"""
+    conn = sqlite3.connect('recent_searches.db')
+    c = conn.cursor()
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+    
+    # Convert lists to strings for storage
+    company_services = ','.join(company.company_services) if company.company_services else None
+    company_industries = ','.join(company.company_industries) if company.company_industries else None
+    company_awards = ','.join(company.company_awards_recognitions) if company.company_awards_recognitions else None
+    company_clients = ','.join(company.company_clients_partners) if company.company_clients_partners else None
+    company_culture = ','.join(company.company_culture) if company.company_culture else None
+    company_updates = ','.join(company.company_recent_updates) if company.company_recent_updates else None
+    
+    c.execute('''
+        INSERT INTO company_searches (
+            user_email, company_name, company_website, company_linkedin,
+            company_summary, company_industry, company_size,
+            company_services, company_industries, company_awards_recognitions,
+            company_clients_partners, company_founded_year, company_headquarters,
+            company_culture, company_recent_updates, search_date
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (
+        user_email,
+        company.company_name,
+        company.company_website,
+        company.company_linkedin,
+        company.company_summary,
+        company.company_industry,
+        company.company_size,
+        company_services,
+        company_industries,
+        company_awards,
+        company_clients,
+        company.company_founded_year,
+        company.company_headquarters,
+        company_culture,
+        company_updates,
+        current_time
+    ))
+    
+    conn.commit()
+    conn.close()
+
+def get_recent_profile_searches(user_email: str, limit: int = 5) -> List[ProfessionalProfile]:
+    """Get recent profile searches from database"""
+    conn = sqlite3.connect('recent_searches.db')
+    c = conn.cursor()
+    
+    c.execute('''
+        SELECT full_name, current_job_title, professional_background,
+               past_jobs, key_achievements, contact, linkedin_url
+        FROM profile_searches
+        WHERE user_email = ?
+        ORDER BY search_date DESC
+        LIMIT ?
+    ''', (user_email, limit))
+    
+    searches = c.fetchall()
+    conn.close()
+    
+    return [
+        ProfessionalProfile(
+            full_name=row[0],
+            current_job_title=row[1],
+            professional_background=row[2],
+            past_jobs=row[3],
+            key_achievements=row[4],
+            contact=row[5],
+            linkedin_url=row[6]
+        )
+        for row in searches
+    ]
+
+def get_recent_company_searches(user_email: str, limit: int = 5) -> List[Company]:
+    """Get recent company searches from database"""
+    conn = sqlite3.connect('recent_searches.db')
+    c = conn.cursor()
+    
+    c.execute('''
+        SELECT company_name, company_website, company_linkedin, company_summary,
+               company_industry, company_size, company_services, company_industries,
+               company_awards_recognitions, company_clients_partners,
+               company_founded_year, company_headquarters, company_culture,
+               company_recent_updates
+        FROM company_searches
+        WHERE user_email = ?
+        ORDER BY search_date DESC
+        LIMIT ?
+    ''', (user_email, limit))
+    
+    searches = c.fetchall()
+    conn.close()
+    
+    return [
+        Company(
+            company_name=row[0],
+            company_website=row[1],
+            company_linkedin=row[2],
+            company_summary=row[3],
+            company_industry=row[4],
+            company_size=row[5],
+            company_services=row[6].split(',') if row[6] else None,
+            company_industries=row[7].split(',') if row[7] else None,
+            company_awards_recognitions=row[8].split(',') if row[8] else None,
+            company_clients_partners=row[9].split(',') if row[9] else None,
+            company_founded_year=row[10],
+            company_headquarters=row[11],
+            company_culture=row[12].split(',') if row[12] else None,
+            company_recent_updates=row[13].split(',') if row[13] else None
+        )
+        for row in searches
+    ]
+
+# User management functions remain unchanged
+def save_user_info(full_name: str, email: str, company: str, role: str) -> None:
     conn = sqlite3.connect('user_data.db')
     c = conn.cursor()
     c.execute('''
@@ -31,148 +222,35 @@ def save_user_info(full_name, email, company, role):
     conn.commit()
     conn.close()
 
-def getUserByEmail(email):
-    """
-    Retrieve a user from the database by their email address.
-    """
+def getUserByEmail(email: str) -> Optional[tuple]:
     conn = sqlite3.connect('user_data.db')
     c = conn.cursor()
     c.execute('SELECT * FROM users WHERE email = ?', (email,))
-    user = c.fetchone()  # Fetch only one user since email should be unique
+    user = c.fetchone()
     conn.close()
     return user
 
-def update_user_info(company, role, email):
+def update_user_info(company: str, role: str, email: str) -> None:
     conn = sqlite3.connect('user_data.db')
     c = conn.cursor()
-    conn.execute('''
+    c.execute('''
         UPDATE users
         SET company = ?, role = ?
         WHERE email = ?
-        ''', (company, role, email))  
+    ''', (company, role, email))
     conn.commit()
     conn.close()
 
-
-def create_user_if_not_exists(full_name, email, company, role):
-    """
-    Check if a user with the given email exists. If not, create a new user.
-    """
-    # Check if the email already exists
+def create_user_if_not_exists(full_name: str, email: str, company: str, role: str) -> bool:
     user = getUserByEmail(email)
     
     if user:
         update_user_info(company, role, email)
-        return False  # User already exists
+        return False
     else:
         try:
             save_user_info(full_name, email, company, role)
-            return True  # New user created
+            return True
         except sqlite3.IntegrityError as e:
             print(f"Error: {e}")
-            return False  # Failed to create the user
-        
-
-# ... (existing code) ...
-
-def init_recent_searches_db():
-    conn = sqlite3.connect('recent_searches.db')
-    c = conn.cursor()
-    
-    # Create profile_searches table
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS profile_searches (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_email TEXT,
-            full_name TEXT,
-            current_job_title TEXT,
-            professional_background TEXT,
-            past_jobs TEXT,
-            key_achievements TEXT,
-            contact TEXT,
-            search_date TIMESTAMP
-        )
-    ''')
-    
-    # Create company_searches table
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS company_searches (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_email TEXT,
-            company_name TEXT,
-            company_website TEXT,
-            company_summary TEXT,
-            company_industry TEXT,
-            company_services TEXT,
-            company_industries TEXT,
-            company_awards_recognitions TEXT,
-            company_clients_partners TEXT,
-            search_date TIMESTAMP
-        )
-    ''')
-    
-    conn.commit()
-    conn.close()
-
-def save_profile_search(user_email, profile):
-    conn = sqlite3.connect('recent_searches.db')
-    c = conn.cursor()
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-    c.execute('''
-        INSERT INTO profile_searches 
-        (user_email, full_name, current_job_title, professional_background, past_jobs, key_achievements, contact, search_date) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (user_email, profile.full_name, profile.current_job_title, profile.profesional_background, 
-          profile.past_jobs, profile.key_achievements, profile.contact, current_time))
-    conn.commit()
-    conn.close()
-
-def save_company_search(user_email, company):
-    conn = sqlite3.connect('recent_searches.db')
-    c = conn.cursor()
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-    c.execute('''
-        INSERT INTO company_searches 
-        (user_email, company_name, company_website, company_summary, company_industry, company_services, 
-        company_industries, company_awards_recognitions, company_clients_partners, search_date) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (user_email, company.company_name, company.company_website, company.company_summary, 
-          company.company_industry, company.company_services, company.company_industries, 
-          company.company_awards_recognitions, company.company_clients_partners, current_time))
-    conn.commit()
-    conn.close()
-
-
-def get_recent_profile_searches(user_email, limit=5):
-    conn = sqlite3.connect('recent_searches.db')
-    c = conn.cursor()
-    c.execute('''
-        SELECT full_name, current_job_title, professional_background, past_jobs, key_achievements, contact, search_date 
-        FROM profile_searches
-        WHERE user_email = ?
-        ORDER BY search_date DESC
-        LIMIT ?
-    ''', (user_email, limit))
-    searches = c.fetchall()
-    conn.close()
-    return [ProfessionalProfile(full_name=s[0], current_job_title=s[1], profesional_background=s[2], 
-                                past_jobs=s[3], key_achievements=s[4], contact=s[5], search_date=s[6]) 
-            for s in searches]
-
-def get_recent_company_searches(user_email, limit=5):
-    conn = sqlite3.connect('recent_searches.db')
-    c = conn.cursor()
-    c.execute('''
-        SELECT company_name, company_website, company_summary, company_industry, company_services, 
-               company_industries, company_awards_recognitions, company_clients_partners, search_date
-        FROM company_searches
-        WHERE user_email = ?
-        ORDER BY search_date DESC
-        LIMIT ?
-    ''', (user_email, limit))
-    searches = c.fetchall()
-    conn.close()
-    return [Company(company_name=s[0], company_website=s[1], company_summary=s[2], company_industry=s[3],
-                    company_services=s[4], company_industries=s[5], company_awards_recognitions=s[6],
-                    company_clients_partners=s[7], search_date=s[8]) 
-            for s in searches]
+            return False

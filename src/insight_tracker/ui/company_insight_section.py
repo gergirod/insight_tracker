@@ -1,11 +1,10 @@
 import streamlit as st
-from insight_tracker.company_crew import CompanyInsightTrackerCrew, Company
-from insight_tracker.company_person_crew import Profile
-from insight_tracker.db import getUserByEmail, save_company_search, get_recent_company_searches
-from insight_tracker.utils.util import convert_urls_to_dicts
-from insight_tracker.utils.util import run_company_person_crew
-import asyncio
 import pandas as pd
+from insight_tracker.db import getUserByEmail, save_company_search, get_recent_company_searches
+from insight_tracker.api.client.insight_client import InsightApiClient
+from insight_tracker.api.services.insight_service import InsightService
+from insight_tracker.api.models.requests import CompanyInsightRequest, ProfileInsightRequest
+from insight_tracker.api.exceptions.api_exceptions import ApiError
 
 def inject_css():
     st.markdown("""
@@ -25,11 +24,18 @@ def inject_css():
         </style>
     """, unsafe_allow_html=True)
 
-def company_insight_section():
+async def company_insight_section():
     st.header("Company Insight")
     
     user_email = st.session_state.user.get('email')
 
+    # Initialize API client and service
+    api_client = InsightApiClient(
+        base_url=st.secrets["API_BASE_URL"],
+        api_key=st.secrets["API_KEY"],
+        openai_api_key=st.secrets["OPENAI_API_KEY"]
+    )
+    insight_service = InsightService(api_client)
 
     st.session_state.company_name = st.text_input("Company Name", value=st.session_state.company_name, key="company_name_input")
     st.session_state.industry = st.text_input("Industry", value=st.session_state.industry, key="industry_input")
@@ -38,111 +44,139 @@ def company_insight_section():
     with col1:
         research_button = st.button("Research Company", key="company_research_button")
     with col2:
-        st.session_state.research_employees = st.checkbox('Research Employees', value=st.session_state.research_employees)
+        st.session_state.research_employees = st.checkbox('Research Employees', value=False)
 
     if research_button:
         if st.session_state.company_name and st.session_state.industry:
-            st.session_state.company_inputs = {
-                'company': st.session_state.company_name,
-                'industry': st.session_state.industry
-            }
-            st.session_state.company_research_trigger = True
+            with st.spinner('Researching company...'):
+                try:
+                    # Get company insights
+                    company_result = await insight_service.get_company_analysis(
+                        company_name=st.session_state.company_name,
+                        industry=st.session_state.industry,
+                        include_employees=st.session_state.research_employees
+                    )
+                    
+                    st.session_state.company_insight_result = company_result
+                    st.success("Company research completed!")
+
+                    # Display results
+                    display_company_data(company_result.insight)
+                    
+                    # If employees were requested and available
+                    if st.session_state.research_employees and company_result.employees:
+                        st.session_state.employee_profiles = []
+                        with st.spinner("Researching employees..."):
+                            for employee in company_result.employees:
+                                try:
+                                    profile_result = await insight_service.get_profile_analysis(
+                                        full_name=employee,
+                                        company_name=st.session_state.company_name
+                                    )
+                                    st.session_state.employee_profiles.append(profile_result.profile)
+                                except ApiError as e:
+                                    st.warning(f"Couldn't fetch profile for {employee}: {e.error_message}")
+                        
+                        if st.session_state.employee_profiles:
+                            display_people_data()
+
+                    # Add save button
+                    if st.button("Save Search", key="save_company_search"):
+                        save_company_search(user_email, company_result.insight)
+                        st.success("Search saved successfully!")
+
+                except ApiError as e:
+                    st.error(f"API Error: {e.error_message}")
+                except Exception as e:
+                    st.error(f"An error occurred: {str(e)}")
         else:
             st.warning("Please provide both Company Name and Industry.")
 
-    # Run company research if triggered
-    if st.session_state.company_research_trigger and not st.session_state.company_task_completed:
-        with st.spinner('Scraping Company Information... Please wait...'):
-            try:
-                st.session_state.result_company = CompanyInsightTrackerCrew().company_crew().kickoff(inputs=st.session_state.company_inputs)
-                st.success("Company information scraped successfully!")
-                st.session_state.company_task_completed = True
-
-                # If research_employees is checked, immediately fetch employee data
-                if st.session_state.research_employees:
-                    st.session_state.pydantic_url_list = st.session_state.result_company.tasks_output[4].pydantic
-                    if st.session_state.pydantic_url_list.employee_list is not None and len(st.session_state.pydantic_url_list.employee_list) > 0:
-                        user = getUserByEmail(user_email)
-                        st.session_state.url_list_dict = convert_urls_to_dicts(st.session_state.pydantic_url_list.employee_list, user=user)
-                        with st.spinner("Scraping People Information... Please wait..."):
-                            asyncio.run(run_company_person_crew(st.session_state.url_list_dict))
-                        st.success("People information scraped successfully!")
-
-            except Exception as e:
-                st.error(f"An error occurred during research: {e}")
-                st.session_state.company_task_completed = False
-
-    # Display company and people information
-    if st.session_state.company_task_completed:
-        st.markdown("### Company Insight")
-        company_data = st.session_state.result_company.tasks_output[2].pydantic
-        display_company_data(company_data)
-        if st.session_state.research_employees:
-            display_people_data()
-        
-        # Add save button
-        if st.button("Save Search", key="save_company_search"):
-            save_company_search(user_email, company_data)
-            st.success("Search saved successfully!")
-
-    # Reset the research trigger
-    st.session_state.company_research_trigger = False
-
-def display_company_data(company: Company):
+def display_company_data(company):
     inject_css()
     st.markdown("<h2>🏢 Company Information</h2>", unsafe_allow_html=True)
-    st.session_state.company_data_frame = pd.DataFrame([company.dict()])
+    
+    # Convert company data to DataFrame
+    company_dict = {
+        'Name': company.company_name,
+        'Website': company.company_website,
+        'LinkedIn': company.company_linkedin,
+        'Industry': company.company_industry,
+        'Size': company.company_size,
+        'Summary': company.company_summary
+    }
+    st.session_state.company_data_frame = pd.DataFrame([company_dict])
+    st.dataframe(st.session_state.company_data_frame)
 
-    if st.session_state.company_data_frame is not None:
-        st.dataframe(st.session_state.company_data_frame)
+    # Display detailed information
+    company_fields = {
+        "🏷️ Company Name": company.company_name,
+        "🌐 Website": company.company_website,
+        "📝 Summary": company.company_summary,
+        "🏭 Industry": company.company_industry,
+        "👥 Size": company.company_size,
+        "🛠️ Services": ', '.join(company.company_services) if company.company_services else None,
+        "🏢 Industries": ', '.join(company.company_industries) if company.company_industries else None,
+        "🏆 Awards": ', '.join(company.company_awards_recognitions) if company.company_awards_recognitions else None,
+        "🤝 Clients": ', '.join(company.company_clients_partners) if company.company_clients_partners else None,
+        "📍 Headquarters": company.company_headquarters,
+        "📅 Founded": company.company_founded_year
+    }
 
-    if company.company_name:
-        st.markdown(f"<p class='section-header'>🏷️ Company Name:</p><p class='small-text'>{company.company_name}</p>", unsafe_allow_html=True)
-    if company.company_website:
-        st.markdown(f"<p class='section-header'>🌐 Website:</p><p class='small-text'><a href='{company.company_website}' target='_blank'>{company.company_website}</a></p>", unsafe_allow_html=True)
-    if company.company_summary:
-        st.markdown(f"<p class='section-header'>📝 Summary:</p><p class='small-text'>{company.company_summary}</p>", unsafe_allow_html=True)
-    if company.company_industry:
-        st.markdown(f"<p class='section-header'>🏭 Industry:</p><p class='small-text'>{company.company_industry}</p>", unsafe_allow_html=True)
-    if company.company_services:
-        st.markdown(f"<p class='section-header'>🛠️ Services:</p><p class='small-text'>{company.company_services}</p>", unsafe_allow_html=True)
-    if company.company_industries:
-        st.markdown(f"<p class='section-header'>🏢 Industries:</p><p class='small-text'>{company.company_industries}</p>", unsafe_allow_html=True)
-    if company.company_awards_recognitions:
-        st.markdown(f"<p class='section-header'>🏆 Awards and Recognitions:</p><p class='small-text'>{company.company_awards_recognitions}</p>", unsafe_allow_html=True)
-    if company.company_clients_partners:
-        st.markdown(f"<p class='section-header'>🤝 Clients and Partners:</p><p class='small-text'>{company.company_clients_partners}</p>", unsafe_allow_html=True)
+    for label, value in company_fields.items():
+        if value:
+            st.markdown(
+                f"<p class='section-header'>{label}:</p><p class='small-text'>{value}</p>",
+                unsafe_allow_html=True
+            )
 
 def display_people_data():
+    if not st.session_state.employee_profiles:
+        return
+
     view_option = st.radio(
         "Select View",
         options=["List View", "Table View"],
-        index=0 if st.session_state.current_view == 'List View' else 1,
-        key="view_selection_radio"
+        index=0
     )
-    st.session_state.current_view = view_option
 
-    if st.session_state.people_list is not None and len(st.session_state.people_list) > 0:
-        st.markdown("### People Information")
-        st.subheader(f"{st.session_state.current_view}")
-        if st.session_state.current_view == 'List View':
-            for profile in st.session_state.people_list:
-                display_profile_data(profile)
-        elif st.session_state.current_view == 'Table View':
-            if st.session_state.persons_data_frame is not None:
-                st.dataframe(st.session_state.persons_data_frame)
-            else:
-                st.warning("No data available to display.")
+    st.markdown("### 👥 Employee Profiles")
 
-def display_profile_data(profile: Profile):
-    inject_css()
-    if profile.full_name:
-        st.markdown(f"<p class='section-header'>👤 Full Name:</p><p class='small-text'>{profile.full_name}</p>", unsafe_allow_html=True)
-    if profile.role:
-        st.markdown(f"<p class='section-header'>💼 Role:</p><p class='small-text'>{profile.role}</p>", unsafe_allow_html=True)
-    if profile.contact:
-        st.markdown(f"<p class='section-header'>📞 Contact:</p><p class='small-text'>{profile.contact}</p>", unsafe_allow_html=True)
-    if profile.background_experience:
-        st.markdown(f"<p class='section-header'>📝 Background Experience:</p><p class='small-text'>{profile.background_experience}</p>", unsafe_allow_html=True)
-    if profile.outreach_email:
-        st.markdown(f"<p class='section-header'>📧 Outreach Email:</p><p class='small-text'>{profile.outreach_email}</p>", unsafe_allow_html=True)
+    if view_option == "Table View":
+        # Convert profiles to DataFrame
+        profiles_data = []
+        for profile in st.session_state.employee_profiles:
+            profiles_data.append({
+                'Name': profile.full_name,
+                'Title': profile.current_job_title,
+                'Background': profile.professional_background,
+                'Contact': profile.contact,
+                'LinkedIn': profile.linkedin_url
+            })
+        st.dataframe(pd.DataFrame(profiles_data))
+    else:
+        for profile in st.session_state.employee_profiles:
+            with st.expander(f"📋 {profile.full_name}"):
+                if profile.current_job_title:
+                    st.markdown(f"**Current Title:** {profile.current_job_title}")
+                if profile.professional_background:
+                    st.markdown(f"**Background:** {profile.professional_background}")
+                if profile.past_jobs:
+                    st.markdown(f"**Past Jobs:** {profile.past_jobs}")
+                if profile.key_achievements:
+                    st.markdown(f"**Key Achievements:** {profile.key_achievements}")
+                if profile.contact:
+                    st.markdown(f"**Contact:** {profile.contact}")
+                if profile.linkedin_url:
+                    st.markdown(f"**LinkedIn:** [{profile.linkedin_url}]({profile.linkedin_url})")
+
+# Add this to handle async operations with Streamlit
+def init():
+    import asyncio
+    if "company_insight_section" not in st.session_state:
+        st.session_state.company_insight_section = asyncio.new_event_loop()
+
+    loop = st.session_state.company_insight_section
+    asyncio.set_event_loop(loop)
+    
+    loop.run_until_complete(company_insight_section())

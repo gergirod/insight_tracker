@@ -1,6 +1,7 @@
 import streamlit as st
 from insight_tracker.db import get_recent_profile_searches, get_recent_company_searches
 from datetime import datetime
+from insight_tracker.api.models.responses import ProfessionalProfile
 
 def inject_recent_searches_css():
     st.markdown("""
@@ -63,7 +64,7 @@ def format_date(date_string):
     except ValueError:
         return "N/A"
 
-def display_profile_search(profile, index):
+def display_profile_search(profile : ProfessionalProfile, index):
     
     expander_title = profile.full_name or "Unknown"
     if profile.current_job_title:
@@ -71,8 +72,8 @@ def display_profile_search(profile, index):
     
     with st.expander(expander_title, expanded=False):
         details = []
-        if profile.profesional_background:
-            details.append(f"<strong>Background:</strong> {profile.profesional_background}")
+        if profile.professional_background:
+            details.append(f"<strong>Background:</strong> {profile.professional_background}")
         if profile.past_jobs:
             details.append(f"<strong>Past Jobs:</strong> {profile.past_jobs}")
         if profile.key_achievements:
@@ -88,7 +89,6 @@ def display_profile_search(profile, index):
             <div class="search-details">
                 {details_html}
             </div>
-            <div class="search-date">{format_date(profile.search_date)}</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -140,6 +140,7 @@ def recent_searches_section():
         profile_searches = get_recent_profile_searches(user_email, limit=5)
         if profile_searches:
             for index, profile in enumerate(profile_searches):
+                print(profile)
                 display_profile_search(profile, index)
         else:
             st.markdown('<div class="no-searches-message">No recent profile searches</div>', unsafe_allow_html=True)
