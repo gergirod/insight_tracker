@@ -10,6 +10,7 @@ def inject_settings_css():
             line-height: 1.5;
             margin-bottom: 8px;
         }
+        
         .section-header {
             font-size: 16px;
             font-weight: bold;
@@ -17,29 +18,53 @@ def inject_settings_css():
             margin-top: 10px;
             margin-bottom: 2px;
         }
+        
         .container {
             border: 1px solid #ddd;
             padding: 15px;
             border-radius: 8px;
             background-color: #fafafa;
         }
-        .save-button, .scrape-button {
-            background-color: #4CAF50;
-            color: white;
-            padding: 8px 20px;
+
+        /* Input field styling */
+        .stTextInput > div > div {
+            border-radius: 8px;
+        }
+        
+        /* Button styling */
+        .stButton > button {
+            width: 100%;
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            background-color: #007bff;
+            color: white !important;
             border: none;
-            border-radius: 4px;
-            cursor: pointer;
+            transition: all 0.2s ease;
         }
-        .scrape-button {
-            background-color: #1f77b4;
-            margin-left: 10px;
+        
+        .stButton > button:hover,
+        .stButton > button:active,
+        .stButton > button:focus {
+            background-color: #0056b3;
+            border: none;
+            color: white !important;
         }
-        .save-button:hover, .scrape-button:hover {
-            background-color: #45a049;
+        
+        /* Save button specific styling */
+        .stButton > button:has(div:contains("Save")) {
+            background-color: #28a745;
         }
-        .scrape-button:hover {
-            background-color: #005f8c;
+        
+        .stButton > button:has(div:contains("Save")):hover,
+        .stButton > button:has(div:contains("Save")):active,
+        .stButton > button:has(div:contains("Save")):focus {
+            background-color: #218838;
+            color: white !important;
+        }
+
+        /* Ensure button text stays white in all states */
+        .stButton > button > div {
+            color: white !important;
         }
         </style>
     """, unsafe_allow_html=True)

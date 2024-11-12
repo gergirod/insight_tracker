@@ -64,7 +64,7 @@ def format_date(date_string):
     except ValueError:
         return "N/A"
 
-def display_profile_search(profile : ProfessionalProfile, index):
+def display_profile_search(profile: ProfessionalProfile, index):
     
     expander_title = profile.full_name or "Unknown"
     if profile.current_job_title:
@@ -78,6 +78,10 @@ def display_profile_search(profile : ProfessionalProfile, index):
             details.append(f"<strong>Past Jobs:</strong> {profile.past_jobs}")
         if profile.key_achievements:
             details.append(f"<strong>Achievements:</strong> {profile.key_achievements}")
+        if profile.contact:
+            details.append(f"<strong>Contact:</strong> {profile.contact}")
+        if profile.linkedin_url:
+            details.append(f"<strong>LinkedIn:</strong> <a href='{profile.linkedin_url}' target='_blank'>{profile.linkedin_url}</a>")
         
         details_html = "<br>".join(details) if details else "No additional details available."
         
@@ -93,7 +97,6 @@ def display_profile_search(profile : ProfessionalProfile, index):
         """, unsafe_allow_html=True)
 
 def display_company_search(company, index):
-    print(company)
     expander_title = company.company_name or "Unknown Company"
     if company.company_industry:
         expander_title += f" - {company.company_industry}"
@@ -102,16 +105,26 @@ def display_company_search(company, index):
         details = []
         if company.company_website:
             details.append(f"<strong>Website:</strong> <a href='{company.company_website}' target='_blank'>{company.company_website}</a>")
+        if company.company_linkedin:
+            details.append(f"<strong>LinkedIn:</strong> <a href='{company.company_linkedin}' target='_blank'>{company.company_linkedin}</a>")
         if company.company_summary:
             details.append(f"<strong>Summary:</strong> {company.company_summary}")
         if company.company_services:
-            details.append(f"<strong>Services:</strong> {company.company_services}")
+            details.append(f"<strong>Services:</strong> {', '.join(company.company_services)}")
         if company.company_industries:
-            details.append(f"<strong>Industries:</strong> {company.company_industries}")
+            details.append(f"<strong>Industries:</strong> {', '.join(company.company_industries)}")
         if company.company_awards_recognitions:
-            details.append(f"<strong>Awards:</strong> {company.company_awards_recognitions}")
+            details.append(f"<strong>Awards:</strong> {', '.join(company.company_awards_recognitions)}")
         if company.company_clients_partners:
-            details.append(f"<strong>Clients/Partners:</strong> {company.company_clients_partners}")
+            details.append(f"<strong>Clients/Partners:</strong> {', '.join(company.company_clients_partners)}")
+        if company.company_founded_year:
+            details.append(f"<strong>Founded Year:</strong> {company.company_founded_year}")
+        if company.company_headquarters:
+            details.append(f"<strong>Headquarters:</strong> {company.company_headquarters}")
+        if company.company_culture:
+            details.append(f"<strong>Culture:</strong> {', '.join(company.company_culture)}")
+        if company.company_recent_updates:
+            details.append(f"<strong>Recent Updates:</strong> {', '.join(company.company_recent_updates)}")
         
         details_html = "<br>".join(details) if details else "No additional details available."
         
@@ -123,7 +136,6 @@ def display_company_search(company, index):
             <div class="search-details">
                 {details_html}
             </div>
-            <div class="search-date">{format_date(company.search_date)}</div>
         </div>
         """, unsafe_allow_html=True)
 

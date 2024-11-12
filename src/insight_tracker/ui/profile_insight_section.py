@@ -17,7 +17,79 @@ def run_async(coroutine):
     asyncio.set_event_loop(loop)
     return loop.run_until_complete(coroutine)
 
+def inject_css():
+    st.markdown("""
+        <style>
+        /* Button styling */
+        .stButton > button {
+            width: 100%;
+            border-radius: 4px;
+            padding: 0.5rem 1rem;
+            background-color: #007bff;
+            color: white !important;
+            border: none;
+            transition: all 0.2s ease;
+            margin-top: 1rem;
+        }
+        
+        .stButton > button:hover {
+            background-color: #0056b3;
+            color: white !important;
+            border: none;
+        }
+        
+        /* Save button specific styling */
+        .stButton > button:has(div:contains("💾")) {
+            background-color: #28a745;
+            color: white !important;
+            margin-top: 0.5rem;
+        }
+        
+        .stButton > button:has(div:contains("💾")):hover {
+            background-color: #218838;
+            color: white !important;
+        }
+
+        /* Disabled button styling */
+        .stButton > button:disabled {
+            background-color: #6c757d !important;
+            opacity: 0.65;
+            cursor: not-allowed;
+            color: white !important;
+        }
+
+        /* Input field styling */
+        .stTextInput > div > div {
+            border-radius: 4px;
+        }
+
+        /* Add spacing between input fields */
+        .stTextInput {
+            margin-bottom: 0.5rem;
+        }
+
+        /* Expander styling */
+        .streamlit-expanderHeader {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        /* Ensure button text stays white in all states */
+        .stButton > button:active, 
+        .stButton > button:focus,
+        .stButton > button:visited {
+            color: white !important;
+        }
+
+        /* Ensure button content (text and emoji) stays white */
+        .stButton > button > div {
+            color: white !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
 def profile_insight_section():
+    inject_css()
     st.header("Profile Insight")
     
     user_email = st.session_state.user.get('email')
@@ -47,40 +119,17 @@ def profile_insight_section():
                         )
                     )
                     st.session_state.profile_result = profile_result
-
-                if profile_result:
-                    with st.spinner('Generating email...'):
-                        print("User email:")
-                        print(user_email)
-                        user = getUserByEmail(user_email)
-                        print("User:")
-                        print(user)
-                        print("--------------------------------")
-                        
-                        sender_info = {
-                            "full_name": user[1] if user else "[Your Name]",
-                            "company": user[4] if user else "[Company]",
-                            "role": user[3] if user else "[Company title]"
-                        }
-                        
-                        # Convert profile_result.profile to a dictionary
-                        profile_data = profile_result.profile.__dict__  # Assuming profile is a standard class
-                       
-                        email_result = run_async(
-                            insight_service.generate_outreach_email(
-                                profile_data=profile_data,  # Updated to use the dictionary
-                                sender_info=sender_info
-                            )
-                        )
-                        st.session_state.email_result = email_result
+                    st.session_state.search_completed = True
                 
                 st.success("Research completed!")
                 
             except ApiError as e:
                 st.error(f"API Error: {e.error_message}")
+                st.session_state.search_completed = False
             except Exception as e:
                 st.error(f"An error occurred: {str(e)}")
-                st.error(f"Error details: {type(e).__name__}")  # Added for debugging
+                st.error(f"Error details: {type(e).__name__}")
+                st.session_state.search_completed = False
         else:
             st.warning("Please provide both Name and Company.")
 
@@ -111,12 +160,45 @@ def profile_insight_section():
             with st.expander("🏆 Key Achievements"):
                 st.markdown(profile.key_achievements)
 
+            # Optional Proposal URL field
+            st.markdown("### Optional")
+            proposal_url = st.text_input("Proposal URL", key="proposal_url_input", 
+                                       help="Add a proposal URL to include in the outreach email")
+
+            # Action buttons in horizontal layout
+            col1, col2 = st.columns(2)
+            with col1:
+                generate_email = st.button("Generate Outreach Email")
+                if generate_email:
+                    st.markdown("🔄 Crafting personalized email...")  # Local loading message
+                    user = getUserByEmail(user_email)
+                    sender_info = {
+                        "full_name": user[1] if user else "[Your Name]",
+                        "company": user[4] if user else "[Company]",
+                        "role": user[3] if user else "[Company title]"
+                    }
+                    profile_data = profile.__dict__
+                    # Add proposal URL to the request if provided
+                    if proposal_url:
+                        profile_data['proposal_url'] = proposal_url
+                        
+                    email_result = run_async(
+                        insight_service.generate_outreach_email(
+                            profile_data=profile_data,
+                            sender_info=sender_info
+                        )
+                    )
+                    st.session_state.email_result = email_result
+                    st.success("Email generated successfully!")
+
+            with col2:
+                st.button("Prepare for Meeting", disabled=True, key="prepare_meeting_button")
+
         # Email section
         if 'email_result' in st.session_state:
             st.subheader("✉️ Outreach Email")
             email_result = st.session_state.email_result
-            # Fix: Access the email content directly
-            email_content = email_result.email  # Changed from email_result.profile.get()
+            email_content = email_result.email
             
             if email_result.subject:
                 st.markdown(f"**Subject:** {email_result.subject}")
@@ -128,14 +210,7 @@ def profile_insight_section():
                 key="email_content"
             )
 
-        # Save results
-        if st.button("💾 Save Research", key="save_button"):
-            save_profile_search(user_email, profile, person_company)
-            st.success("Research saved successfully!")
-
-        # Clear results
-        if st.button("🗑️ Clear Results", key="clear_button"):
-            for key in ['profile_result', 'email_result']:
-                if key in st.session_state:
-                    del st.session_state[key]
-            st.rerun()
+            # Save button appears only after email is generated
+            if st.button("💾 Save Research", key="save_button"):
+                save_profile_search(user_email, profile, person_company)
+                st.success("Research saved successfully!")

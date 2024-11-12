@@ -4,6 +4,7 @@ from authlib.integrations.requests_client import OAuth2Session
 from dotenv import load_dotenv
 import jwt
 from streamlit_cookies_controller import CookieController
+from insight_tracker.db import create_user_if_not_exists
 
 # Load environment variables
 load_dotenv()
@@ -109,6 +110,21 @@ def handle_callback():
                 f"https://{AUTH0_DOMAIN}/userinfo", 
                 headers={"Authorization": f"Bearer {access_token}"}
             ).json()
+            
+            # Create or update user in database
+            created = create_user_if_not_exists(
+                full_name=user_info.get('name', ''),
+                email=user_info.get('email', ''),
+                company="",  # Empty initially
+                role=""      # Empty initially
+            )
+            
+            if created:
+                print(f"Created new user: {user_info.get('email')}")
+            else:
+                print(f"User already exists: {user_info.get('email')}")
+
+            print(f"User info: {user_info}")
             st.session_state.user = user_info
             st.session_state.authentication_status = 'authenticated'
             st.query_params.clear()

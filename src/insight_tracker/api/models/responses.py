@@ -35,10 +35,10 @@ class Company:
 
 @dataclass
 class CompanyInsightResponse:
-    insight: Company
+    company: Company
     total_tokens: int
     status_code: int = 200
-    employees: Optional[List[str]] = None
+    employee_links: Optional[List[str]] = None
 
 @dataclass
 class ProfileInsightResponse:

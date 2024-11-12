@@ -1,7 +1,7 @@
 from typing import Optional, Dict, Any, List
 from ..client.insight_client import InsightApiClient
 from ..exceptions.api_exceptions import ApiError
-from ..models.responses import ProfileInsightResponse, CompanyInsightResponse, EmailResponse, ProfessionalProfile
+from ..models.responses import ProfileInsightResponse, CompanyInsightResponse, EmailResponse, ProfessionalProfile, Company
 
 class InsightService:
     def __init__(self, api_client: InsightApiClient):
@@ -29,7 +29,20 @@ class InsightService:
                 language=language,
                 scrape_employees=scrape_employees
             )
-            return CompanyInsightResponse(**response)
+            
+            # Extract the company data from the response
+            company_data = response.get('company', {})
+            
+            # Create a Company instance from the company data
+            company = Company(**company_data)  # Convert dict to Company data class
+            
+            # Return the CompanyInsightResponse with the Company instance
+            return CompanyInsightResponse(
+                company=company,
+                total_tokens=response.get('total_tokens', 0),
+                status_code=response.get('status_code', 200),
+                employee_links=response.get('employee_links', [])
+            )
         except ApiError as e:
             raise
 
@@ -46,7 +59,18 @@ class InsightService:
                 language=language,
                 scrape_employees=scrape_employees
             )
-            return CompanyInsightResponse(**response)
+
+            # Extract the company data from the response
+            company_data = response.get('company', {})
+            
+            # Create a Company instance from the company data
+            company = Company(**company_data)  # Convert
+            return CompanyInsightResponse(
+                company=company,
+                total_tokens=response.get('total_tokens', 0),
+                status_code=response.get('status_code', 200),
+                employee_links=response.get('employee_links', [])
+            )
         except ApiError as e:
             raise
 
