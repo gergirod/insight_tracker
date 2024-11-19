@@ -148,11 +148,8 @@ def profile_insight_section():
                     st.markdown(f"**🏢 Title:** {profile.current_job_title or 'N/A'}")
                     st.markdown(f"**🏢 Company:** {profile.current_company or 'N/A'}")
                     st.markdown(f"**🔗 Company URL:** {profile.current_company_url or 'N/A'}")
-                    st.markdown(f"**📜 Professional Background:** {profile.professional_background or 'N/A'}")
-                    st.markdown(f"**🕒 Past Jobs:** {profile.past_jobs or 'N/A'}")
                     
                 with cols[1]:
-                    st.markdown(f"**🏆 Key Achievements:** {profile.key_achievements or 'N/A'}")
                     st.markdown(f"**📞 Contact:** {profile.contact or 'N/A'}")
                     st.markdown(f"**🔗 LinkedIn:** {profile.linkedin_url or 'N/A'}")
 
@@ -171,7 +168,7 @@ def profile_insight_section():
                                        help="Add a proposal URL to include in the outreach email")
 
             # Action buttons in horizontal layout
-            col1, col2 = st.columns(2)
+            col1, col2, col3 = st.columns(3)
             with col1:
                 generate_email = st.button("Generate Outreach Email")
                 if generate_email:
@@ -199,6 +196,20 @@ def profile_insight_section():
             with col2:
                 st.button("Prepare for Meeting", disabled=True, key="prepare_meeting_button")
 
+            with col3:
+                evaluate_fit = st.button("Evaluate Fit")
+                if evaluate_fit:
+                    with st.spinner('Evaluating fit...'):
+                        fit_result = run_async(
+                            insight_service.evaluate_profile_fit(
+                                profile_data=profile.__dict__,
+                                company_data=get_user_company_info(user_email).__dict__
+                            )
+                        )
+                        st.session_state.fit_evaluation_result = fit_result
+                        st.success("Fit evaluation completed!")
+                    
+
         # Email section
         if 'email_result' in st.session_state:
             st.subheader("✉️ Outreach Email")
@@ -214,6 +225,114 @@ def profile_insight_section():
                 height=200,
                 key="email_content"
             )
+
+        # Fit Evaluation Results
+        if 'fit_evaluation_result' in st.session_state:
+            with st.expander("🔍 Fit Evaluation Results", expanded=False):
+                fit_result = st.session_state.fit_evaluation_result.evaluation
+
+                # Display fit score and summary
+                st.markdown(f"**Fit Score:** {fit_result.get('fit_score', 'N/A')}")
+                st.markdown(f"**Summary:** {fit_result.get('fit_summary', 'N/A')}")
+
+                # Key Insights
+                st.markdown("### Key Insights")
+                for insight in fit_result.get('key_insights', []):
+                    st.markdown(f"- {insight}")
+
+                # Expertise Matches
+                st.markdown("### Expertise Matches")
+                for match in fit_result.get('expertise_matches', []):
+                    st.markdown(f"- **Area:** {match.get('area', 'N/A')}")
+                    st.markdown(f"  - Relevance Score: {match.get('relevance_score', 'N/A')}")
+                    st.markdown(f"  - Description: {match.get('description', 'N/A')}")
+                    st.markdown(f"  - Evidence: {', '.join(match.get('evidence', []))}")
+                    st.markdown(f"  - Target Company Alignment: {match.get('target_company_alignment', 'N/A')}")
+                    st.markdown(f"  - My Company Alignment: {match.get('my_company_alignment', 'N/A')}")
+                    st.markdown(f"  - Score Explanation: {match.get('score_explanation', 'N/A')}")
+
+                # Decision Maker Analysis
+                st.markdown("### Decision Maker Analysis")
+                decision_maker_analysis = fit_result.get('decision_maker_analysis', {})
+                st.markdown(f"**Influence Level:** {decision_maker_analysis.get('influence_level', 'N/A')}")
+                for evidence in decision_maker_analysis.get('influence_evidence', []):
+                    st.markdown(f"- {evidence}")
+
+                # Business Model Fit
+                st.markdown("### Business Model Fit")
+                st.markdown(f"**Score:** {fit_result.get('business_model_fit', 'N/A')}")
+                st.markdown(f"**Analysis:** {fit_result.get('business_model_analysis', 'N/A')}")
+
+                # Market Synergy
+                st.markdown("### Market Synergy")
+                st.markdown(f"**Score:** {fit_result.get('market_synergy', 'N/A')}")
+                st.markdown(f"**Explanation:** {fit_result.get('market_synergy_explanation', 'N/A')}")
+
+                # Company Alignments
+                st.markdown("### Company Alignments")
+                for alignment in fit_result.get('company_alignments', []):
+                    st.markdown(f"- **Area:** {alignment.get('area', 'N/A')}")
+                    st.markdown(f"  - Strength: {alignment.get('strength', 'N/A')}")
+                    st.markdown(f"  - Description: {alignment.get('description', 'N/A')}")
+                    st.markdown(f"  - Evidence: {', '.join(alignment.get('evidence', []))}")
+                    st.markdown(f"  - Impact Potential: {alignment.get('impact_potential', 'N/A')}")
+
+                # Engagement Opportunities
+                st.markdown("### Engagement Opportunities")
+                for opportunity in fit_result.get('engagement_opportunities', []):
+                    st.markdown(f"- **Opportunity:** {opportunity.get('opportunity', 'N/A')}")
+                    st.markdown(f"  - Evidence: {opportunity.get('evidence', 'N/A')}")
+
+                # Growth Potential
+                st.markdown("### Growth Potential")
+                for growth in fit_result.get('growth_potential', []):
+                    st.markdown(f"- **Potential:** {growth.get('potential', 'N/A')}")
+                    st.markdown(f"  - Evidence: {growth.get('evidence', 'N/A')}")
+
+                # Cultural Alignment
+                st.markdown("### Cultural Alignment")
+                for alignment in fit_result.get('cultural_alignment', []):
+                    st.markdown(f"- **Factor:** {alignment.get('factor', 'N/A')}")
+                    st.markdown(f"  - Evidence: {alignment.get('evidence', 'N/A')}")
+
+                # Potential Challenges
+                st.markdown("### Potential Challenges")
+                for challenge in fit_result.get('potential_challenges', []):
+                    st.markdown(f"- **Challenge:** {challenge.get('challenge', 'N/A')}")
+                    st.markdown(f"  - Evidence: {challenge.get('evidence', 'N/A')}")
+
+                # Risk Analysis
+                st.markdown("### Risk Analysis")
+                st.markdown(f"{fit_result.get('risk_analysis', 'N/A')}")
+
+                # Recommended Approach
+                st.markdown("### Recommended Approach")
+                recommended_approach = fit_result.get('recommended_approach', {})
+                st.markdown(f"**Approach:** {recommended_approach.get('approach', 'N/A')}")
+                st.markdown(f"**Justification:** {recommended_approach.get('justification', 'N/A')}")
+
+                # Priority Level
+                st.markdown("### Priority Level")
+                st.markdown(f"**Level:** {fit_result.get('priority_level', 'N/A')}")
+                st.markdown(f"**Justification:** {fit_result.get('priority_justification', 'N/A')}")
+
+                # Next Steps
+                st.markdown("### Next Steps")
+                for step in fit_result.get('next_steps', []):
+                    st.markdown(f"- **Step:** {step.get('step', 'N/A')}")
+                    st.markdown(f"  - Description: {step.get('description', 'N/A')}")
+
+                # Competitive Analysis
+                st.markdown("### Competitive Analysis")
+                st.markdown(f"{fit_result.get('competitive_analysis', 'N/A')}")
+
+                # Long Term Potential
+                st.markdown("### Long Term Potential")
+                st.markdown(f"{fit_result.get('long_term_potential', 'N/A')}")
+
+                # Resource Implications
+                st.markdown("### Resource Implications")
+                st.markdown(f"{fit_result.get('resource_implications', 'N/A')}")
 
         if st.button("💾 Save Research", key="save_button"):
             save_profile_search(user_email, profile, person_company)
