@@ -78,6 +78,7 @@ class InsightApiClient:
     ) -> Dict[str, Any]:
         """Get profile insights"""
         endpoint = "/api/getProfileInsight"
+        print(f"Debug - Full Name: {full_name}, Company Name: {company_name}")
         params = {
             "fullName": full_name,
             "companyName": company_name,
@@ -132,6 +133,40 @@ class InsightApiClient:
         url = f"{self.base_url}{endpoint}"
         try:
             response = self.session.post(url, json=data)
+            print(f"Debug - POST Request URL: {response.url}")
+            print(f"Debug - Response Status: {response.status_code}")
+            
+            if response.status_code in [401, 403]:
+                print(f"Debug - Auth Error Response: {response.text}")
+                raise ApiError(
+                    f"Authentication failed: {response.text}",
+                    status_code=response.status_code
+                )
+                
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"Debug - Request Error: {str(e)}")
+            raise ApiError(str(e))
+
+    async def evaluate_profile_fit(
+        self,
+        profile: Dict[str, Any],
+        company: Dict[str, Any],
+        language: str = "en"
+    ) -> Dict[str, Any]:
+        """Evaluate profile fit for company"""
+        endpoint = "/api/getProfileCompanyFitAnalysis"
+        payload = {
+            "profile": profile,
+            "myCompany": company,
+            "language": language
+        }
+        headers = {
+            "Content-Type": "application/json"
+        }
+        try:
+            response = self.session.post(f"{self.base_url}{endpoint}", json=payload, headers=headers)
             print(f"Debug - POST Request URL: {response.url}")
             print(f"Debug - Response Status: {response.status_code}")
             

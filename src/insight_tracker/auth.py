@@ -4,7 +4,7 @@ from authlib.integrations.requests_client import OAuth2Session
 from dotenv import load_dotenv
 import jwt
 from streamlit_cookies_controller import CookieController
-from insight_tracker.db import create_user_if_not_exists
+from insight_tracker.db import create_user_if_not_exists, get_user_company_info
 
 # Load environment variables
 load_dotenv()
@@ -123,6 +123,12 @@ def handle_callback():
                 print(f"Created new user: {user_info.get('email')}")
             else:
                 print(f"User already exists: {user_info.get('email')}")
+
+            print(f"User info company check: {user_info}")
+            # Retrieve and set user company info
+            user_company = get_user_company_info(user_info.get('email'))
+            print(f"Retrieved user company: {user_company}")
+            st.session_state.user_company = user_company
 
             print(f"User info: {user_info}")
             st.session_state.user = user_info
