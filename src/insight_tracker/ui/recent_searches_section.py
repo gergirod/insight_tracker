@@ -72,6 +72,10 @@ def display_profile_search(profile: ProfessionalProfile, index):
     
     with st.expander(expander_title, expanded=False):
         details = []
+        if profile.current_company:
+            details.append(f"<strong>Current Company:</strong> {profile.current_company}")
+        if profile.current_company_url:
+            details.append(f"<strong>Company URL:</strong> <a href='{profile.current_company_url}' target='_blank'>{profile.current_company_url}</a>")
         if profile.professional_background:
             details.append(f"<strong>Background:</strong> {profile.professional_background}")
         if profile.past_jobs:

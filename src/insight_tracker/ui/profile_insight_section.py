@@ -210,7 +210,7 @@ def profile_insight_section():
                 key="email_content"
             )
 
-            # Save button appears only after email is generated
-            if st.button("💾 Save Research", key="save_button"):
-                save_profile_search(user_email, profile, person_company)
-                st.success("Research saved successfully!")
+        if st.button("💾 Save Research", key="save_button"):
+            save_profile_search(user_email, profile, person_company)
+            st.success("Research saved successfully!")
+            

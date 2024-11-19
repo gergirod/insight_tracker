@@ -1,6 +1,7 @@
+import sqlite3
 import streamlit as st
 from insight_tracker.auth import handle_callback, get_cookie, logout, validate_token_and_get_user
-from insight_tracker.db import getUserByEmail, init_db, init_recent_searches_db
+from insight_tracker.db import getUserByEmail, init_db, init_recent_searches_db, alter_profile_searches_table
 from insight_tracker.ui.profile_insight_section import profile_insight_section
 from insight_tracker.ui.company_insight_section import company_insight_section
 from insight_tracker.ui.recent_searches_section import recent_searches_section
@@ -8,6 +9,19 @@ from insight_tracker.ui.login_section import auth_section
 from insight_tracker.ui.settings_section import settings_section
 from insight_tracker.ui.side_bar import display_side_bar
 from insight_tracker.ui.session_state import initialize_session_state
+
+def check_and_alter_table():
+    """Check if the table needs alteration and perform it if necessary."""
+    conn = sqlite3.connect('recent_searches.db')
+    c = conn.cursor()
+    try:
+        # Check if the column exists
+        c.execute("PRAGMA table_info(profile_searches)")
+        columns = [column[1] for column in c.fetchall()]
+        if 'current_company' not in columns or 'current_company_url' not in columns:
+            alter_profile_searches_table()
+    finally:
+        conn.close()
 
 st.set_page_config(
     page_title="Insight Tracker",
@@ -28,6 +42,7 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 initialize_session_state()
 init_db()
 init_recent_searches_db()
+check_and_alter_table()  # Check and alter the table if necessary
 
 def show_loading_screen():
     st.markdown("""

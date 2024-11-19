@@ -10,6 +10,8 @@ class ErrorResponse:
 class ProfessionalProfile:
     full_name: str
     current_job_title: Optional[str] = None
+    current_company: Optional[str] = None
+    current_company_url: Optional[str] = None
     professional_background: Optional[str] = None
     past_jobs: Optional[str] = None
     key_achievements: Optional[str] = None

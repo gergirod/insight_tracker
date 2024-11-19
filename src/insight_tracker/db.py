@@ -30,7 +30,8 @@ def init_recent_searches_db():
             user_email TEXT,
             full_name TEXT NOT NULL,
             current_job_title TEXT,
-            company TEXT,
+            current_company TEXT,
+            current_company_url TEXT,
             professional_background TEXT,
             past_jobs TEXT,
             key_achievements TEXT,
@@ -76,13 +77,14 @@ def save_profile_search(user_email: str, profile: ProfessionalProfile, company: 
     try:
         cursor.execute("""
             INSERT INTO profile_searches 
-            (user_email, full_name, current_job_title, company, professional_background, past_jobs, key_achievements, contact, linkedin_url, search_date)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (user_email, full_name, current_job_title, current_company, current_company_url, professional_background, past_jobs, key_achievements, contact, linkedin_url, search_date)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             user_email,
             profile.full_name,
             profile.current_job_title,
-            company,
+            profile.current_company,
+            profile.current_company_url,
             profile.professional_background,
             profile.past_jobs,
             profile.key_achievements,
@@ -254,3 +256,14 @@ def create_user_if_not_exists(full_name: str, email: str, company: str, role: st
         except sqlite3.IntegrityError as e:
             print(f"Error: {e}")
             return False
+
+def alter_profile_searches_table():
+    conn = sqlite3.connect('recent_searches.db')
+    c = conn.cursor()
+    
+    # Add the new columns
+    c.execute('ALTER TABLE profile_searches ADD COLUMN current_company TEXT')
+    c.execute('ALTER TABLE profile_searches ADD COLUMN current_company_url TEXT')
+    
+    conn.commit()
+    conn.close()
