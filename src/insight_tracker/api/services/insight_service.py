@@ -145,7 +145,8 @@ class InsightService:
                 company=company_data,
                 language=language
             )
-            return ProfileCompanyFitResponse(**response)
+            # Use the from_dict method to handle nested structures
+            return ProfileCompanyFitResponse.from_dict(response)
         except ApiError as e:
             print(f"Debug - API Error in evaluate_profile_fit: {str(e)}")
             raise

@@ -232,107 +232,113 @@ def profile_insight_section():
                 fit_result = st.session_state.fit_evaluation_result.evaluation
 
                 # Display fit score and summary
-                st.markdown(f"**Fit Score:** {fit_result.get('fit_score', 'N/A')}")
-                st.markdown(f"**Summary:** {fit_result.get('fit_summary', 'N/A')}")
+                st.markdown(f"**Fit Score:** {fit_result.fit_score if fit_result.fit_score is not None else 'N/A'}")
+                st.markdown(f"**Summary:** {fit_result.fit_summary if fit_result.fit_summary is not None else 'N/A'}")
 
                 # Key Insights
                 st.markdown("### Key Insights")
-                for insight in fit_result.get('key_insights', []):
+                for insight in fit_result.key_insights:
                     st.markdown(f"- {insight}")
 
                 # Expertise Matches
-                st.markdown("### Expertise Matches")
-                for match in fit_result.get('expertise_matches', []):
-                    st.markdown(f"- **Area:** {match.get('area', 'N/A')}")
-                    st.markdown(f"  - Relevance Score: {match.get('relevance_score', 'N/A')}")
-                    st.markdown(f"  - Description: {match.get('description', 'N/A')}")
-                    st.markdown(f"  - Evidence: {', '.join(match.get('evidence', []))}")
-                    st.markdown(f"  - Target Company Alignment: {match.get('target_company_alignment', 'N/A')}")
-                    st.markdown(f"  - My Company Alignment: {match.get('my_company_alignment', 'N/A')}")
-                    st.markdown(f"  - Score Explanation: {match.get('score_explanation', 'N/A')}")
+                if(fit_result.expertise_matches):
+                    st.markdown("### Expertise Matches")
+                    for match in fit_result.expertise_matches:
+                        st.markdown(f"- **Area:** {match.area if match.area is not None else 'N/A'}")
+                        st.markdown(f"  - Relevance Score: {match.relevance_score if match.relevance_score is not None else 'N/A'}")
+                        st.markdown(f"  - Description: {match.description if match.description is not None else 'N/A'}")
+                        st.markdown(f"  - Evidence: {', '.join(match.evidence) if match.evidence else 'N/A'}")
+                        st.markdown(f"  - Target Company Alignment: {match.target_company_alignment if match.target_company_alignment is not None else 'N/A'}")
+                        st.markdown(f"  - My Company Alignment: {match.my_company_alignment if match.my_company_alignment is not None else 'N/A'}")
+                        st.markdown(f"  - Score Explanation: {match.score_explanation if match.score_explanation is not None else 'N/A'}")
 
                 # Decision Maker Analysis
                 st.markdown("### Decision Maker Analysis")
-                decision_maker_analysis = fit_result.get('decision_maker_analysis', {})
-                st.markdown(f"**Influence Level:** {decision_maker_analysis.get('influence_level', 'N/A')}")
-                for evidence in decision_maker_analysis.get('influence_evidence', []):
-                    st.markdown(f"- {evidence}")
+                decision_maker_analysis = fit_result.decision_maker_analysis
+                if decision_maker_analysis:
+                    st.markdown(f"**Influence Level:** {decision_maker_analysis.influence_level if decision_maker_analysis.influence_level is not None else 'N/A'}")
+                    for evidence in decision_maker_analysis.influence_evidence:
+                        st.markdown(f"- {evidence}")
 
                 # Business Model Fit
                 st.markdown("### Business Model Fit")
-                st.markdown(f"**Score:** {fit_result.get('business_model_fit', 'N/A')}")
-                st.markdown(f"**Analysis:** {fit_result.get('business_model_analysis', 'N/A')}")
+                st.markdown(f"**Score:** {fit_result.business_model_fit if fit_result.business_model_fit is not None else 'N/A'}")
+                st.markdown(f"**Analysis:** {fit_result.business_model_analysis if fit_result.business_model_analysis is not None else 'N/A'}")
 
                 # Market Synergy
                 st.markdown("### Market Synergy")
-                st.markdown(f"**Score:** {fit_result.get('market_synergy', 'N/A')}")
-                st.markdown(f"**Explanation:** {fit_result.get('market_synergy_explanation', 'N/A')}")
+                st.markdown(f"**Score:** {fit_result.market_synergy if fit_result.market_synergy is not None else 'N/A'}")
+                st.markdown(f"**Explanation:** {fit_result.market_synergy_explanation if fit_result.market_synergy_explanation is not None else 'N/A'}")
 
                 # Company Alignments
                 st.markdown("### Company Alignments")
-                for alignment in fit_result.get('company_alignments', []):
-                    st.markdown(f"- **Area:** {alignment.get('area', 'N/A')}")
-                    st.markdown(f"  - Strength: {alignment.get('strength', 'N/A')}")
-                    st.markdown(f"  - Description: {alignment.get('description', 'N/A')}")
-                    st.markdown(f"  - Evidence: {', '.join(alignment.get('evidence', []))}")
-                    st.markdown(f"  - Impact Potential: {alignment.get('impact_potential', 'N/A')}")
+                for alignment in fit_result.company_alignments:
+                    st.markdown(f"- **Area:** {alignment.area if alignment.area is not None else 'N/A'}")
+                    st.markdown(f"  - Strength: {alignment.strength if alignment.strength is not None else 'N/A'}")
+                    st.markdown(f"  - Description: {alignment.description if alignment.description is not None else 'N/A'}")
+                    st.markdown(f"  - Evidence: {', '.join(alignment.evidence) if alignment.evidence else 'N/A'}")
+                    st.markdown(f"  - Impact Potential: {alignment.impact_potential if alignment.impact_potential is not None else 'N/A'}")
 
                 # Engagement Opportunities
                 st.markdown("### Engagement Opportunities")
-                for opportunity in fit_result.get('engagement_opportunities', []):
-                    st.markdown(f"- **Opportunity:** {opportunity.get('opportunity', 'N/A')}")
-                    st.markdown(f"  - Evidence: {opportunity.get('evidence', 'N/A')}")
+                for opportunity in fit_result.engagement_opportunities:
+                    st.markdown(f"- **Opportunity:** {opportunity.opportunity_description if opportunity.opportunity_description is not None else 'N/A'}")
+                    st.markdown(f"  - Rationale: {opportunity.rationale if opportunity.rationale is not None else 'N/A'}")
 
                 # Growth Potential
                 st.markdown("### Growth Potential")
-                for growth in fit_result.get('growth_potential', []):
-                    st.markdown(f"- **Potential:** {growth.get('potential', 'N/A')}")
-                    st.markdown(f"  - Evidence: {growth.get('evidence', 'N/A')}")
+                for growth in fit_result.growth_potential:
+                    st.markdown(f"- **Potential:** {growth.opportunity_area if growth.opportunity_area is not None else 'N/A'}")
+                    st.markdown(f"  - Analysis: {growth.analysis if growth.analysis is not None else 'N/A'}")
 
                 # Cultural Alignment
                 st.markdown("### Cultural Alignment")
-                for alignment in fit_result.get('cultural_alignment', []):
-                    st.markdown(f"- **Factor:** {alignment.get('factor', 'N/A')}")
-                    st.markdown(f"  - Evidence: {alignment.get('evidence', 'N/A')}")
+                for alignment in fit_result.cultural_alignment:
+                    st.markdown(f"- **Aspect:** {alignment.cultural_aspect if alignment.cultural_aspect is not None else 'N/A'}")
+                    st.markdown(f"  - Evidence: {alignment.evidence if alignment.evidence is not None else 'N/A'}")
 
                 # Potential Challenges
                 st.markdown("### Potential Challenges")
-                for challenge in fit_result.get('potential_challenges', []):
-                    st.markdown(f"- **Challenge:** {challenge.get('challenge', 'N/A')}")
-                    st.markdown(f"  - Evidence: {challenge.get('evidence', 'N/A')}")
+                for challenge in fit_result.potential_challenges:
+                    st.markdown(f"- **Challenge:** {challenge.challenge_description if challenge.challenge_description is not None else 'N/A'}")
+                    st.markdown(f"  - Impact Assessment: {challenge.impact_assessment if challenge.impact_assessment is not None else 'N/A'}")
+                    st.markdown(f"  - Mitigation Strategy: {challenge.mitigation_strategy if challenge.mitigation_strategy is not None else 'N/A'}")
 
                 # Risk Analysis
                 st.markdown("### Risk Analysis")
-                st.markdown(f"{fit_result.get('risk_analysis', 'N/A')}")
+                st.markdown(f"{fit_result.risk_analysis if fit_result.risk_analysis is not None else 'N/A'}")
 
                 # Recommended Approach
                 st.markdown("### Recommended Approach")
-                recommended_approach = fit_result.get('recommended_approach', {})
-                st.markdown(f"**Approach:** {recommended_approach.get('approach', 'N/A')}")
-                st.markdown(f"**Justification:** {recommended_approach.get('justification', 'N/A')}")
+                recommended_approach = fit_result.recommended_approach
+                if recommended_approach:
+                    st.markdown(f"**Approach:** {recommended_approach.approach_description if recommended_approach.approach_description is not None else 'N/A'}")
+                    st.markdown(f"**Rationale:** {recommended_approach.rationale if recommended_approach.rationale is not None else 'N/A'}")
+                    st.markdown(f"**Expected Outcomes:** {', '.join(recommended_approach.expected_outcomes) if recommended_approach.expected_outcomes else 'N/A'}")
+                    st.markdown(f"**Resources Required:** {', '.join(recommended_approach.resources_required) if recommended_approach.resources_required else 'N/A'}")
 
                 # Priority Level
                 st.markdown("### Priority Level")
-                st.markdown(f"**Level:** {fit_result.get('priority_level', 'N/A')}")
-                st.markdown(f"**Justification:** {fit_result.get('priority_justification', 'N/A')}")
+                st.markdown(f"**Level:** {fit_result.priority_level if fit_result.priority_level is not None else 'N/A'}")
+                st.markdown(f"**Justification:** {fit_result.priority_justification if fit_result.priority_justification is not None else 'N/A'}")
 
                 # Next Steps
                 st.markdown("### Next Steps")
-                for step in fit_result.get('next_steps', []):
-                    st.markdown(f"- **Step:** {step.get('step', 'N/A')}")
-                    st.markdown(f"  - Description: {step.get('description', 'N/A')}")
+                for step in fit_result.next_steps:
+                    st.markdown(f"- **Step:** {step.step_description if step.step_description is not None else 'N/A'}")
+                    st.markdown(f"  - Rationale: {step.rationale if step.rationale is not None else 'N/A'}")
 
                 # Competitive Analysis
                 st.markdown("### Competitive Analysis")
-                st.markdown(f"{fit_result.get('competitive_analysis', 'N/A')}")
+                st.markdown(f"{fit_result.competitive_analysis if fit_result.competitive_analysis is not None else 'N/A'}")
 
                 # Long Term Potential
                 st.markdown("### Long Term Potential")
-                st.markdown(f"{fit_result.get('long_term_potential', 'N/A')}")
+                st.markdown(f"{fit_result.long_term_potential if fit_result.long_term_potential is not None else 'N/A'}")
 
                 # Resource Implications
                 st.markdown("### Resource Implications")
-                st.markdown(f"{fit_result.get('resource_implications', 'N/A')}")
+                st.markdown(f"{fit_result.resource_implications if fit_result.resource_implications is not None else 'N/A'}")
 
         if st.button("💾 Save Research", key="save_button"):
             save_profile_search(user_email, profile, person_company)
