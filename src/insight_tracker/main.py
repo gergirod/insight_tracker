@@ -1,7 +1,7 @@
 import sqlite3
 import streamlit as st
 from insight_tracker.auth import handle_callback, get_cookie, logout, validate_token_and_get_user
-from insight_tracker.db import getUserByEmail, init_db, init_recent_searches_db, alter_profile_searches_table
+from insight_tracker.db import getUserByEmail, init_db, init_recent_searches_db, alter_profile_searches_table, init_user_company_db, get_user_company_info
 from insight_tracker.ui.profile_insight_section import profile_insight_section
 from insight_tracker.ui.company_insight_section import company_insight_section
 from insight_tracker.ui.recent_searches_section import recent_searches_section
@@ -43,6 +43,7 @@ initialize_session_state()
 init_db()
 init_recent_searches_db()
 check_and_alter_table()  # Check and alter the table if necessary
+init_user_company_db()
 
 def show_loading_screen():
     st.markdown("""
@@ -113,7 +114,13 @@ def display_main_content(user):
     elif st.session_state.nav_bar_option_selected == "Company Insight":
         company_insight_section()
     elif st.session_state.nav_bar_option_selected == "Settings":
-        settings_section(user)
+        print("Settings section")
+        print(st.session_state)
+        print(f"User company check in main: {st.session_state.user_company}")
+        user_company = get_user_company_info(user[2])
+        print(user[2])
+        print(f"User company check in main after get: {user_company}")
+        settings_section(user, user_company)
     elif st.session_state.nav_bar_option_selected == "Logout":
         logout()
     else:

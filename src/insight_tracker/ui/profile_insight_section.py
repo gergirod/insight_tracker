@@ -3,7 +3,7 @@ import os
 import asyncio
 import warnings
 import urllib3
-from insight_tracker.db import getUserByEmail, save_profile_search, get_recent_profile_searches
+from insight_tracker.db import getUserByEmail, save_profile_search, get_recent_profile_searches, get_user_company_info
 from insight_tracker.api.client.insight_client import InsightApiClient
 from insight_tracker.api.services.insight_service import InsightService
 from insight_tracker.api.exceptions.api_exceptions import ApiError
@@ -120,6 +120,7 @@ def profile_insight_section():
                     )
                     st.session_state.profile_result = profile_result
                     st.session_state.search_completed = True
+                    st.session_state.fit_evaluated = False  # Reset fit evaluation flag
                 
                 st.success("Research completed!")
                 
@@ -133,23 +134,27 @@ def profile_insight_section():
         else:
             st.warning("Please provide both Name and Company.")
 
-    # Display results
-    if 'profile_result' in st.session_state:
-        with st.container():
-            st.subheader("👤 Profile Information")
-            response = st.session_state.profile_result
-            profile = response.profile
-                        
-            cols = st.columns(2)
-            with cols[0]:
-                st.markdown(f"**Name:** {profile.full_name}")
-                st.markdown(f"**Title:** {profile.current_job_title}")
-                st.markdown(f"**Contact:** {profile.contact}")
-            
-            with cols[1]:
-                if profile.linkedin_url:
-                    st.markdown(f"**LinkedIn:** [{profile.linkedin_url}]({profile.linkedin_url})")
-                st.markdown(f"**Company:** {person_company}")
+    # Display results only if research is completed
+    if st.session_state.get('search_completed', False):
+        if 'profile_result' in st.session_state:
+            with st.container():
+                st.subheader("👤 Profile Information")
+                response = st.session_state.profile_result
+                profile = response.profile
+                            
+                cols = st.columns(2)
+                with cols[0]:
+                    st.markdown(f"**👨‍💼 Name:** {profile.full_name}")
+                    st.markdown(f"**🏢 Title:** {profile.current_job_title or 'N/A'}")
+                    st.markdown(f"**🏢 Company:** {profile.current_company or 'N/A'}")
+                    st.markdown(f"**🔗 Company URL:** {profile.current_company_url or 'N/A'}")
+                    st.markdown(f"**📜 Professional Background:** {profile.professional_background or 'N/A'}")
+                    st.markdown(f"**🕒 Past Jobs:** {profile.past_jobs or 'N/A'}")
+                    
+                with cols[1]:
+                    st.markdown(f"**🏆 Key Achievements:** {profile.key_achievements or 'N/A'}")
+                    st.markdown(f"**📞 Contact:** {profile.contact or 'N/A'}")
+                    st.markdown(f"**🔗 LinkedIn:** {profile.linkedin_url or 'N/A'}")
 
             with st.expander("📚 Professional Background", expanded=True):
                 st.markdown(profile.professional_background)

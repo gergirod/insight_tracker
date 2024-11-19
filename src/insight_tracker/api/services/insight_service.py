@@ -1,7 +1,7 @@
 from typing import Optional, Dict, Any, List
 from ..client.insight_client import InsightApiClient
 from ..exceptions.api_exceptions import ApiError
-from ..models.responses import ProfileInsightResponse, CompanyInsightResponse, EmailResponse, ProfessionalProfile, Company
+from ..models.responses import ProfileInsightResponse, CompanyInsightResponse, EmailResponse, ProfessionalProfile, Company, ProfileCompanyFitResponse
 
 class InsightService:
     def __init__(self, api_client: InsightApiClient):
@@ -130,4 +130,25 @@ class InsightService:
             raise
         except Exception as e:
             print("Debug - Unexpected Error:", str(e))
+            raise
+
+    async def evaluate_profile_fit(
+        self,
+        profile_data: Dict[str, Any],
+        company_data: Dict[str, Any],
+        language: str = "en"
+    ) -> ProfileCompanyFitResponse:
+        """Evaluate profile fit"""
+        try:
+            response = await self.api_client.evaluate_profile_fit(
+                profile=profile_data,
+                company=company_data,
+                language=language
+            )
+            return ProfileCompanyFitResponse(**response)
+        except ApiError as e:
+            print(f"Debug - API Error in evaluate_profile_fit: {str(e)}")
+            raise
+        except Exception as e:
+            print(f"Debug - Unexpected error in evaluate_profile_fit: {str(e)}")
             raise

@@ -23,6 +23,7 @@ def initialize_session_state():
         'profile_research_trigger': False,
         'company_research_trigger': False,
         'user': None,
+        'user_company': None,
         'name': None,
         'research_employees': False,
         'token': None,
@@ -30,7 +31,8 @@ def initialize_session_state():
         'authentication_status': 'checking',
         'company_data': None,
         'profile_data': None,
-        'search_method': 'Search by Name and Industry'  # Default search method
+        'search_method': 'Search by Name and Industry',
+        'fit_result': None
     }
 
     for key, value in default_values.items():
