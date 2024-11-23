@@ -162,183 +162,215 @@ def profile_insight_section():
             with st.expander("🏆 Key Achievements"):
                 st.markdown(profile.key_achievements)
 
-            # Optional Proposal URL field
-            st.markdown("### Optional")
-            proposal_url = st.text_input("Proposal URL", key="proposal_url_input", 
-                                       help="Add a proposal URL to include in the outreach email")
-
             # Action buttons in horizontal layout
             col1, col2, col3 = st.columns(3)
+            
             with col1:
                 generate_email = st.button("Generate Outreach Email")
                 if generate_email:
-                    st.markdown("🔄 Crafting personalized email...")  # Local loading message
-                    user = getUserByEmail(user_email)
-                    sender_info = {
-                        "full_name": user[1] if user else "[Your Name]",
-                        "company": user[4] if user else "[Company]",
-                        "role": user[3] if user else "[Company title]"
-                    }
-                    profile_data = profile.__dict__
-                    # Add proposal URL to the request if provided
-                    if proposal_url:
-                        profile_data['proposal_url'] = proposal_url
-                        
-                    email_result = run_async(
-                        insight_service.generate_outreach_email(
-                            profile_data=profile_data,
-                            sender_info=sender_info
-                        )
-                    )
-                    st.session_state.email_result = email_result
-                    st.success("Email generated successfully!")
+                    try:
+                        with st.spinner('Generating outreach email...'):
+                            user = getUserByEmail(user_email)
+                            sender_info = {
+                                "full_name": user[1] if user else "[Your Name]",
+                                "company": user[4] if user else "[Company]",
+                                "role": user[3] if user else "[Company title]"
+                            }
+                            profile_data = profile.__dict__
+                            
+                            email_content = run_async(
+                                insight_service.generate_outreach_email(
+                                    profile=profile_data,
+                                    company=get_user_company_info(user_email).__dict__,
+                                    sender_info=sender_info
+                                )
+                            )
+                            st.session_state.email_content = email_content
+                            st.success("Email generated successfully!")
+                    except Exception as e:
+                        st.error(f"Failed to generate email: {str(e)}")
 
             with col2:
-                st.button("Prepare for Meeting", disabled=True, key="prepare_meeting_button")
+                prepare_meeting = st.button("Prepare for Meeting")
+                if prepare_meeting:
+                    try:
+                        with st.spinner('Preparing meeting strategy...'):
+                            meeting_result = run_async(
+                                insight_service.prepare_meeting(
+                                    profile=profile.__dict__,
+                                    company=get_user_company_info(user_email).__dict__
+                                )
+                            )
+                            st.session_state.meeting_result = meeting_result
+                            st.success("Meeting preparation completed!")
+                    except Exception as e:
+                        st.error(f"Failed to prepare meeting: {str(e)}")
 
             with col3:
                 evaluate_fit = st.button("Evaluate Fit")
                 if evaluate_fit:
-                    with st.spinner('Evaluating fit...'):
-                        fit_result = run_async(
-                            insight_service.evaluate_profile_fit(
-                                profile_data=profile.__dict__,
-                                company_data=get_user_company_info(user_email).__dict__
+                    try:
+                        with st.spinner('Evaluating fit...'):
+                            fit_result = run_async(
+                                insight_service.evaluate_profile_fit(
+                                    profile=profile.__dict__,
+                                    company=get_user_company_info(user_email).__dict__
+                                )
                             )
-                        )
-                        st.session_state.fit_evaluation_result = fit_result
-                        st.success("Fit evaluation completed!")
-                    
+                            st.session_state.fit_evaluation_result = fit_result
+                            st.success("Fit evaluation completed!")
+                    except Exception as e:
+                        st.error(f"Failed to evaluate fit: {str(e)}")
 
-        # Email section
-        if 'email_result' in st.session_state:
-            st.subheader("✉️ Outreach Email")
-            email_result = st.session_state.email_result
-            email_content = email_result.email
+            # Display sections based on results
             
-            if email_result.subject:
-                st.markdown(f"**Subject:** {email_result.subject}")
-                
-            st.text_area(
-                "Draft Email",
-                value=email_content,
-                height=200,
-                key="email_content"
-            )
+            # Email section
+            if 'email_content' in st.session_state:
+                with st.expander("✉️ Outreach Email", expanded=False):
+                    st.markdown('<div class="meeting-header">📧 Draft Email</div>', unsafe_allow_html=True)
+                    st.markdown(f"""
+                        <div class="agenda-item">
+                            <div style="font-family: monospace; white-space: pre-wrap; padding: 1rem; font-size: 0.9rem; line-height: 1.5;">
+                                {st.session_state.email_content}
+                            </div>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Optional: Add some context or tips
+                    st.markdown('<div class="meeting-header">💡 Email Tips</div>', unsafe_allow_html=True)
+                    st.markdown("""
+                        <div class="meeting-item">• Review and personalize the email before sending</div>
+                        <div class="meeting-item">• Double-check all names and company references</div>
+                        <div class="meeting-item">• Adjust the tone based on your relationship level</div>
+                    """, unsafe_allow_html=True)
 
-        # Fit Evaluation Results
-        if 'fit_evaluation_result' in st.session_state:
-            with st.expander("🔍 Fit Evaluation Results", expanded=False):
-                fit_result = st.session_state.fit_evaluation_result.evaluation
+            # Meeting Preparation section
+            if 'meeting_result' in st.session_state:
+                with st.expander("📅 Meeting Preparation", expanded=False):
+                    print(st.session_state.meeting_result)
+                    print(type(st.session_state.meeting_result))
+                    meeting_prep = st.session_state.meeting_result
+                    
+                    # Meeting Objectives
+                    st.markdown('<div class="meeting-header">🎯 Meeting Objectives</div>', unsafe_allow_html=True)
+                    for objective in meeting_prep.meeting_objectives:
+                        st.markdown(f'<div class="meeting-item">• {objective}</div>', unsafe_allow_html=True)
+                    
+                    # Key Talking Points
+                    st.markdown('<div class="meeting-header">💡 Key Talking Points</div>', unsafe_allow_html=True)
+                    for point in meeting_prep.key_talking_points:
+                        st.markdown(f'<div class="meeting-item">• {point}</div>', unsafe_allow_html=True)
+                    
+                    # Prepared Questions
+                    st.markdown('<div class="meeting-header">❓ Prepared Questions</div>', unsafe_allow_html=True)
+                    for question in meeting_prep.prepared_questions:
+                        st.markdown(f'<div class="meeting-item">• {question}</div>', unsafe_allow_html=True)
+                    
+                    # Risk Factors
+                    st.markdown('<div class="meeting-header">⚠️ Risk Factors</div>', unsafe_allow_html=True)
+                    for risk in meeting_prep.risk_factors:
+                        st.markdown(f'<div class="meeting-item risk-item">• {risk}</div>', unsafe_allow_html=True)
+                    
+                    # Success Metrics
+                    st.markdown('<div class="meeting-header">📊 Success Metrics</div>', unsafe_allow_html=True)
+                    for metric in meeting_prep.success_metrics:
+                        st.markdown(f'<div class="meeting-item success-item">• {metric}</div>', unsafe_allow_html=True)
+                    
+                    # Next Steps
+                    st.markdown('<div class="meeting-header">➡️ Next Steps</div>', unsafe_allow_html=True)
+                    for step in meeting_prep.next_steps:
+                        st.markdown(f'<div class="meeting-item next-step-item">• {step}</div>', unsafe_allow_html=True)
+                    
+                    # Follow-up Items
+                    st.markdown('<div class="meeting-header">📝 Follow-up Items</div>', unsafe_allow_html=True)
+                    for item in meeting_prep.follow_up_items:
+                        st.markdown(f'<div class="meeting-item">• {item}</div>', unsafe_allow_html=True)
 
-                # Display fit score and summary
-                st.markdown(f"**Fit Score:** {fit_result.fit_score if fit_result.fit_score is not None else 'N/A'}")
-                st.markdown(f"**Summary:** {fit_result.fit_summary if fit_result.fit_summary is not None else 'N/A'}")
+            # Fit Evaluation Results
+            if 'fit_evaluation_result' in st.session_state:
+                with st.expander("🔍 Fit Evaluation Results", expanded=False):
+                    fit_result = st.session_state.fit_evaluation_result.evaluation
 
-                # Key Insights
-                st.markdown("### Key Insights")
-                for insight in fit_result.key_insights:
-                    st.markdown(f"- {insight}")
+                    # Fit Score and Summary
+                    st.markdown('<div class="meeting-header">📊 Overall Fit Assessment</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="meeting-item"><strong>Fit Score:</strong> {fit_result.fit_score if fit_result.fit_score is not None else "N/A"}</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="meeting-item"><strong>Summary:</strong> {fit_result.fit_summary if fit_result.fit_summary is not None else "N/A"}</div>', unsafe_allow_html=True)
 
-                # Expertise Matches
-                if(fit_result.expertise_matches):
-                    st.markdown("### Expertise Matches")
-                    for match in fit_result.expertise_matches:
-                        st.markdown(f"- **Area:** {match.area if match.area is not None else 'N/A'}")
-                        st.markdown(f"  - Relevance Score: {match.relevance_score if match.relevance_score is not None else 'N/A'}")
-                        st.markdown(f"  - Description: {match.description if match.description is not None else 'N/A'}")
-                        st.markdown(f"  - Evidence: {', '.join(match.evidence) if match.evidence else 'N/A'}")
-                        st.markdown(f"  - Target Company Alignment: {match.target_company_alignment if match.target_company_alignment is not None else 'N/A'}")
-                        st.markdown(f"  - My Company Alignment: {match.my_company_alignment if match.my_company_alignment is not None else 'N/A'}")
-                        st.markdown(f"  - Score Explanation: {match.score_explanation if match.score_explanation is not None else 'N/A'}")
+                    # Key Insights
+                    st.markdown('<div class="meeting-header">💡 Key Insights</div>', unsafe_allow_html=True)
+                    for insight in fit_result.key_insights:
+                        st.markdown(f'<div class="meeting-item">• {insight}</div>', unsafe_allow_html=True)
 
-                # Decision Maker Analysis
-                st.markdown("### Decision Maker Analysis")
-                decision_maker_analysis = fit_result.decision_maker_analysis
-                if decision_maker_analysis:
-                    st.markdown(f"**Influence Level:** {decision_maker_analysis.influence_level if decision_maker_analysis.influence_level is not None else 'N/A'}")
-                    for evidence in decision_maker_analysis.influence_evidence:
-                        st.markdown(f"- {evidence}")
+                    # Expertise Matches
+                    if fit_result.expertise_matches:
+                        st.markdown('<div class="meeting-header">🎯 Expertise Matches</div>', unsafe_allow_html=True)
+                        for match in fit_result.expertise_matches:
+                            st.markdown(f"""
+                                <div class="agenda-item">
+                                    <div class="agenda-title">{match.area if match.area is not None else 'N/A'}</div>
+                                    <div class="meeting-item">• Relevance Score: {match.relevance_score if match.relevance_score is not None else 'N/A'}</div>
+                                    <div class="meeting-item">• {match.description if match.description is not None else 'N/A'}</div>
+                                    <div class="meeting-item">• Evidence: {', '.join(match.evidence) if match.evidence else 'N/A'}</div>
+                                </div>
+                            """, unsafe_allow_html=True)
 
-                # Business Model Fit
-                st.markdown("### Business Model Fit")
-                st.markdown(f"**Score:** {fit_result.business_model_fit if fit_result.business_model_fit is not None else 'N/A'}")
-                st.markdown(f"**Analysis:** {fit_result.business_model_analysis if fit_result.business_model_analysis is not None else 'N/A'}")
+                    # Decision Maker Analysis
+                    st.markdown('<div class="meeting-header">👔 Decision Maker Analysis</div>', unsafe_allow_html=True)
+                    decision_maker_analysis = fit_result.decision_maker_analysis
+                    if decision_maker_analysis:
+                        st.markdown(f'<div class="meeting-item"><strong>Influence Level:</strong> {decision_maker_analysis.influence_level if decision_maker_analysis.influence_level is not None else "N/A"}</div>', unsafe_allow_html=True)
+                        for evidence in decision_maker_analysis.influence_evidence:
+                            st.markdown(f'<div class="meeting-item">• {evidence}</div>', unsafe_allow_html=True)
 
-                # Market Synergy
-                st.markdown("### Market Synergy")
-                st.markdown(f"**Score:** {fit_result.market_synergy if fit_result.market_synergy is not None else 'N/A'}")
-                st.markdown(f"**Explanation:** {fit_result.market_synergy_explanation if fit_result.market_synergy_explanation is not None else 'N/A'}")
+                    # Business Model & Market Synergy
+                    st.markdown('<div class="meeting-header">💼 Business Alignment</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="meeting-item"><strong>Business Model Fit:</strong> {fit_result.business_model_fit if fit_result.business_model_fit is not None else "N/A"}</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="meeting-item">{fit_result.business_model_analysis if fit_result.business_model_analysis is not None else "N/A"}</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="meeting-item"><strong>Market Synergy:</strong> {fit_result.market_synergy if fit_result.market_synergy is not None else "N/A"}</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="meeting-item">{fit_result.market_synergy_explanation if fit_result.market_synergy_explanation is not None else "N/A"}</div>', unsafe_allow_html=True)
 
-                # Company Alignments
-                st.markdown("### Company Alignments")
-                for alignment in fit_result.company_alignments:
-                    st.markdown(f"- **Area:** {alignment.area if alignment.area is not None else 'N/A'}")
-                    st.markdown(f"  - Strength: {alignment.strength if alignment.strength is not None else 'N/A'}")
-                    st.markdown(f"  - Description: {alignment.description if alignment.description is not None else 'N/A'}")
-                    st.markdown(f"  - Evidence: {', '.join(alignment.evidence) if alignment.evidence else 'N/A'}")
-                    st.markdown(f"  - Impact Potential: {alignment.impact_potential if alignment.impact_potential is not None else 'N/A'}")
+                    # Engagement Opportunities
+                    st.markdown('<div class="meeting-header">🚀 Engagement Opportunities</div>', unsafe_allow_html=True)
+                    for opportunity in fit_result.engagement_opportunities:
+                        st.markdown(f"""
+                            <div class="agenda-item">
+                                <div class="agenda-title">{opportunity.opportunity_description if opportunity.opportunity_description is not None else 'N/A'}</div>
+                                <div class="meeting-item">• {opportunity.rationale if opportunity.rationale is not None else 'N/A'}</div>
+                            </div>
+                        """, unsafe_allow_html=True)
 
-                # Engagement Opportunities
-                st.markdown("### Engagement Opportunities")
-                for opportunity in fit_result.engagement_opportunities:
-                    st.markdown(f"- **Opportunity:** {opportunity.opportunity_description if opportunity.opportunity_description is not None else 'N/A'}")
-                    st.markdown(f"  - Rationale: {opportunity.rationale if opportunity.rationale is not None else 'N/A'}")
+                    # Potential Challenges
+                    st.markdown('<div class="meeting-header">⚠️ Potential Challenges</div>', unsafe_allow_html=True)
+                    for challenge in fit_result.potential_challenges:
+                        st.markdown(f"""
+                            <div class="agenda-item risk-item">
+                                <div class="agenda-title">{challenge.challenge_description if challenge.challenge_description is not None else 'N/A'}</div>
+                                <div class="meeting-item">• Impact: {challenge.impact_assessment if challenge.impact_assessment is not None else 'N/A'}</div>
+                                <div class="meeting-item">• Mitigation: {challenge.mitigation_strategy if challenge.mitigation_strategy is not None else 'N/A'}</div>
+                            </div>
+                        """, unsafe_allow_html=True)
 
-                # Growth Potential
-                st.markdown("### Growth Potential")
-                for growth in fit_result.growth_potential:
-                    st.markdown(f"- **Potential:** {growth.opportunity_area if growth.opportunity_area is not None else 'N/A'}")
-                    st.markdown(f"  - Analysis: {growth.analysis if growth.analysis is not None else 'N/A'}")
+                    # Recommended Approach
+                    st.markdown('<div class="meeting-header">🎯 Recommended Approach</div>', unsafe_allow_html=True)
+                    recommended_approach = fit_result.recommended_approach
+                    if recommended_approach:
+                        st.markdown(f"""
+                            <div class="agenda-item success-item">
+                                <div class="agenda-title">{recommended_approach.approach_description if recommended_approach.approach_description is not None else 'N/A'}</div>
+                                <div class="meeting-item">• Rationale: {recommended_approach.rationale if recommended_approach.rationale is not None else 'N/A'}</div>
+                                <div class="meeting-item">• Expected Outcomes: {', '.join(recommended_approach.expected_outcomes) if recommended_approach.expected_outcomes else 'N/A'}</div>
+                                <div class="meeting-item">• Resources Required: {', '.join(recommended_approach.resources_required) if recommended_approach.resources_required else 'N/A'}</div>
+                            </div>
+                        """, unsafe_allow_html=True)
 
-                # Cultural Alignment
-                st.markdown("### Cultural Alignment")
-                for alignment in fit_result.cultural_alignment:
-                    st.markdown(f"- **Aspect:** {alignment.cultural_aspect if alignment.cultural_aspect is not None else 'N/A'}")
-                    st.markdown(f"  - Evidence: {alignment.evidence if alignment.evidence is not None else 'N/A'}")
-
-                # Potential Challenges
-                st.markdown("### Potential Challenges")
-                for challenge in fit_result.potential_challenges:
-                    st.markdown(f"- **Challenge:** {challenge.challenge_description if challenge.challenge_description is not None else 'N/A'}")
-                    st.markdown(f"  - Impact Assessment: {challenge.impact_assessment if challenge.impact_assessment is not None else 'N/A'}")
-                    st.markdown(f"  - Mitigation Strategy: {challenge.mitigation_strategy if challenge.mitigation_strategy is not None else 'N/A'}")
-
-                # Risk Analysis
-                st.markdown("### Risk Analysis")
-                st.markdown(f"{fit_result.risk_analysis if fit_result.risk_analysis is not None else 'N/A'}")
-
-                # Recommended Approach
-                st.markdown("### Recommended Approach")
-                recommended_approach = fit_result.recommended_approach
-                if recommended_approach:
-                    st.markdown(f"**Approach:** {recommended_approach.approach_description if recommended_approach.approach_description is not None else 'N/A'}")
-                    st.markdown(f"**Rationale:** {recommended_approach.rationale if recommended_approach.rationale is not None else 'N/A'}")
-                    st.markdown(f"**Expected Outcomes:** {', '.join(recommended_approach.expected_outcomes) if recommended_approach.expected_outcomes else 'N/A'}")
-                    st.markdown(f"**Resources Required:** {', '.join(recommended_approach.resources_required) if recommended_approach.resources_required else 'N/A'}")
-
-                # Priority Level
-                st.markdown("### Priority Level")
-                st.markdown(f"**Level:** {fit_result.priority_level if fit_result.priority_level is not None else 'N/A'}")
-                st.markdown(f"**Justification:** {fit_result.priority_justification if fit_result.priority_justification is not None else 'N/A'}")
-
-                # Next Steps
-                st.markdown("### Next Steps")
-                for step in fit_result.next_steps:
-                    st.markdown(f"- **Step:** {step.step_description if step.step_description is not None else 'N/A'}")
-                    st.markdown(f"  - Rationale: {step.rationale if step.rationale is not None else 'N/A'}")
-
-                # Competitive Analysis
-                st.markdown("### Competitive Analysis")
-                st.markdown(f"{fit_result.competitive_analysis if fit_result.competitive_analysis is not None else 'N/A'}")
-
-                # Long Term Potential
-                st.markdown("### Long Term Potential")
-                st.markdown(f"{fit_result.long_term_potential if fit_result.long_term_potential is not None else 'N/A'}")
-
-                # Resource Implications
-                st.markdown("### Resource Implications")
-                st.markdown(f"{fit_result.resource_implications if fit_result.resource_implications is not None else 'N/A'}")
+                    # Next Steps
+                    st.markdown('<div class="meeting-header">➡️ Next Steps</div>', unsafe_allow_html=True)
+                    for step in fit_result.next_steps:
+                        st.markdown(f"""
+                            <div class="meeting-item next-step-item">• {step.step_description if step.step_description is not None else 'N/A'}
+                                <div class="meeting-item" style="margin-left: 1rem;">Rationale: {step.rationale if step.rationale is not None else 'N/A'}</div>
+                            </div>
+                        """, unsafe_allow_html=True)
 
         if st.button("💾 Save Research", key="save_button"):
             save_profile_search(user_email, profile, person_company)

@@ -1,7 +1,7 @@
 from typing import Optional, Dict, Any, List
 from ..client.insight_client import InsightApiClient
 from ..exceptions.api_exceptions import ApiError
-from ..models.responses import ProfileInsightResponse, CompanyInsightResponse, EmailResponse, ProfessionalProfile, Company, ProfileCompanyFitResponse
+from ..models.responses import ProfileInsightResponse, CompanyInsightResponse, EmailResponse, ProfessionalProfile, Company, ProfileCompanyFitResponse, OutreachResponse, MeetingResponse, MeetingPreparation
 
 class InsightService:
     def __init__(self, api_client: InsightApiClient):
@@ -107,49 +107,72 @@ class InsightService:
 
     async def generate_outreach_email(
         self,
-        profile_data: Dict[str, Any],
-        sender_info: Optional[Dict[str, Any]] = None,
-        language: str = "en",
-        proposal_url: Optional[str] = None
-    ) -> EmailResponse:
-        """Generate outreach email"""
+        profile: Dict[str, Any],
+        company: Dict[str, Any],
+        sender_info: Dict[str, Any],
+        language: str = "en"
+    ) -> str:
+        """Generate personalized outreach email"""
         try:
-            print("Debug - Profile Data:", profile_data)
-            print("Debug - Sender Info:", sender_info)
-            
-            response = await self.api_client.get_outreach_email(
-                profile=profile_data,
+            response = await self.api_client.generate_outreach_email(
+                profile=profile,
+                company=company,
                 sender_info=sender_info,
-                language=language,
-                proposal_url=proposal_url
+                language=language
             )
-            print("Debug - Email Response:", response)
-            return EmailResponse(**response)
+            # Return just the email string
+            return response.email
         except ApiError as e:
-            print("Debug - API Error:", str(e))
+            print(f"Debug - API Error in generate_outreach_email: {str(e)}")
             raise
         except Exception as e:
-            print("Debug - Unexpected Error:", str(e))
+            print(f"Debug - Unexpected error in generate_outreach_email: {str(e)}")
             raise
 
     async def evaluate_profile_fit(
         self,
-        profile_data: Dict[str, Any],
-        company_data: Dict[str, Any],
+        profile: Dict[str, Any],
+        company: Dict[str, Any],
         language: str = "en"
     ) -> ProfileCompanyFitResponse:
         """Evaluate profile fit"""
         try:
+            # Add debug logging
+            print("Debug - Sending profile data:", profile)
+            print("Debug - Sending company data:", company)
+            
             response = await self.api_client.evaluate_profile_fit(
-                profile=profile_data,
-                company=company_data,
+                profile=profile,
+                company=company,
                 language=language
             )
-            # Use the from_dict method to handle nested structures
-            return ProfileCompanyFitResponse.from_dict(response)
+            return response
         except ApiError as e:
             print(f"Debug - API Error in evaluate_profile_fit: {str(e)}")
+            print(f"Debug - Request details: {e.response.text if hasattr(e, 'response') else 'No response details'}")
             raise
         except Exception as e:
             print(f"Debug - Unexpected error in evaluate_profile_fit: {str(e)}")
+            raise
+
+    async def prepare_meeting(
+        self,
+        profile: Dict[str, Any],
+        company: Dict[str, Any],
+        language: str = "en"
+    ) -> MeetingPreparation:
+        """Prepare meeting strategy"""
+        try:
+            response = await self.api_client.prepare_meeting(
+                profile=profile,
+                company=company,
+                language=language
+            )
+            # Return just the meeting preparation data
+            return response.meeting_preparation
+        except ApiError as e:
+            print(f"Debug - API Error in prepare_meeting: {str(e)}")
+            raise
+        except Exception as e:
+            print(f"Debug - Unexpected error in prepare_meeting: {str(e)}")
             raise

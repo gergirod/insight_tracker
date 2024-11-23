@@ -236,3 +236,70 @@ class ProfileCompanyFitResponse:
             total_tokens=data['total_tokens'],
             status_code=data.get('status_code', 200)
         )
+
+@dataclass
+class OutreachResponse:
+    email: str
+    total_tokens: int
+    status_code: int = 200
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'OutreachResponse':
+        # Extract email from the nested structure
+        if 'outreach_data' in data:
+            email = data['outreach_data']['email']
+        else:
+            email = data.get('email', '')  # Fallback for backward compatibility
+            
+        return cls(
+            email=email,
+            total_tokens=data.get('total_tokens', 0),
+            status_code=data.get('status_code', 200)
+        )
+
+@dataclass
+class MeetingAgendaItem:
+    title: str
+    duration: str
+    description: Optional[str] = None
+    objectives: Optional[List[str]] = field(default_factory=list)
+
+@dataclass
+class MeetingPreparation:
+    meeting_objectives: List[str]
+    key_talking_points: List[str]
+    prepared_questions: List[str]
+    risk_factors: List[str]
+    success_metrics: List[str]
+    next_steps: List[str]
+    follow_up_items: List[str]
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'MeetingPreparation':
+        return cls(
+            meeting_objectives=data.get('meeting_objectives', []),
+            key_talking_points=data.get('key_talking_points', []),
+            prepared_questions=data.get('prepared_questions', []),
+            risk_factors=data.get('risk_factors', []),
+            success_metrics=data.get('success_metrics', []),
+            next_steps=data.get('next_steps', []),
+            follow_up_items=data.get('follow_up_items', [])
+        )
+
+@dataclass
+class MeetingResponse:
+    meeting_preparation: MeetingPreparation
+    total_tokens: int
+    status_code: int = 200
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'MeetingResponse':
+        # First create the MeetingPreparation instance
+        meeting_preparation = MeetingPreparation.from_dict(data['meeting_preparation'])
+        
+        # Then create the MeetingResponse with the proper structure
+        return cls(
+            meeting_preparation=meeting_preparation,
+            total_tokens=data['total_tokens'],
+            status_code=data.get('status_code', 200)
+        )
