@@ -62,25 +62,40 @@ def login():
         f"https://{AUTH0_DOMAIN}/authorize",
         audience=f"https://{AUTH0_DOMAIN}/userinfo",
     )
-    print(f"Authorization URL: {authorization_url}")
     st.markdown(f'''
-    <a href="{authorization_url}" target="_self" style="
-        display: inline-block;
-        background-color: transparent;
-        color: #007bff;
-        padding: 10px 30px;
-        font-size: 1rem;
-        font-weight: 600;
-        border: 2px solid #007bff;
-        border-radius: 50px;
-        text-decoration: none;
-        transition: all 0.3s ease;
-        " onmouseover="this.style.backgroundColor='#007bff'; this.style.color='white';" 
-        onmouseout="this.style.backgroundColor='transparent'; this.style.color='#007bff';">
-        Login with Auth0
-    </a>
+    <div style="text-align: center;">
+        <a href="{authorization_url}" target="_self" style="
+            display: inline-block;
+            background-color: #1E88E5;
+            color: white;
+            padding: 14px 48px;
+            font-size: 16px;
+            font-weight: 500;
+            text-decoration: none;
+            border-radius: 50px;
+            border: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.2s ease;
+            margin: 10px 0;
+            letter-spacing: 0.3px;">
+            Continue with Auth0
+        </a>
+        <div style="
+            margin-top: 8px;
+            font-size: 13px;
+            color: #666;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="#666">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
+            </svg>
+            Secure authentication powered by Auth0
+        </div>
+    </div>
     ''', unsafe_allow_html=True)
-    return False  # Always return False as the actual login happens in the callback
+    return False
 
 def signup():
     signup_url = f"https://{AUTH0_DOMAIN}/authorize?response_type=code&client_id={AUTH0_CLIENT_ID}&redirect_uri={AUTH0_CALLBACK_URL}&scope=openid%20profile%20email&screen_hint=signup"
