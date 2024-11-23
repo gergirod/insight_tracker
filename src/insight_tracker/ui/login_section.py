@@ -83,21 +83,81 @@ def auth_section():
         <p>Get AI-powered meeting strategies tailored to your context. Includes agenda planning, key talking points, and strategic recommendations for successful interactions.</p>
         </div>
         """, unsafe_allow_html=True)
-
-    # Call to Action
-    st.markdown("<br>", unsafe_allow_html=True)  # Add some spacing
+    
+    # Enhanced features highlight before login
     st.markdown("""
-    <h3 style="text-align: center;">Ready to unlock meaningful connections?</h3>
+    <div style="
+        text-align: center;
+        margin-top: 0.5rem;    
+        margin-left: auto;      
+        margin-right: auto; 
+        max-width: 800px;
+        padding: 0.5rem;">
+        <h2 style="
+            color: #1E88E5;
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;">
+            Ready to unlock meaningful connections?
+        </h2>
+        <div style="
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;">
+            <div style="
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                color: #666;">
+                <span style="color: #1E88E5;">✓</span> AI-Powered Insights
+            </div>
+            <div style="
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                color: #666;">
+                <span style="color: #1E88E5;">✓</span> Smart Outreach
+            </div>
+            <div style="
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                color: #666;">
+                <span style="color: #1E88E5;">✓</span> Meeting Preparation
+            </div>
+        </div>
+    </div>
     """, unsafe_allow_html=True)
     
-    login_col1, login_col2, login_col3 = st.columns([1,1,1])
-    
+    # Login button
+    login_col1, login_col2, login_col3 = st.columns([1,2,1])
     with login_col2:
         login()
 
-    # Testimonial or extra info
+    # Enhanced testimonial
     st.markdown("""
-    <div style="margin-top: 50px; text-align: center; font-style: italic;">
-    "Insight Tracker transformed how we connect with people. The AI-powered analysis helps us understand our contacts better, evaluate opportunities more effectively, and prepare for meaningful interactions." - Sarah Chen, Innovation Lead
+    <div style="
+        text-align: center;
+        max-width: 800px;
+        margin-left: auto;
+        margin-right: auto;
+        padding: 2rem;
+        background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+        border-radius: 16px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+        <div style="
+            font-style: italic;
+            color: #555;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 1rem;">
+            "Insight Tracker transformed how we connect with people. The AI-powered analysis helps us understand our contacts better, evaluate opportunities more effectively, and prepare for meaningful interactions."
+        </div>
+        <div style="
+            color: #1E88E5;
+            font-weight: 500;">
+            Sarah Chen, Innovation Lead
+        </div>
     </div>
     """, unsafe_allow_html=True)

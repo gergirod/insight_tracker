@@ -104,9 +104,39 @@ def handle_auth():
     
     return st.session_state.user is not None
 
+def check_user_setup_complete(user, user_company) -> bool:
+    """
+    Check if user has completed their setup
+    Returns False if any required data is missing
+    """
+    if not user:
+        return False
+    
+    # Check if user has role and company set
+    if not user[3] or not user[4]:  # user[3] is company, user[4] is role
+        return False
+    
+    # Check if user has company data saved
+    if not user_company:
+        return False
+        
+    return True
+
 def display_main_content(user):
     """Display main content based on selected navigation option"""
+    user_company = get_user_company_info(user[2])  # user[2] is email
+    setup_complete = check_user_setup_complete(user, user_company)
+    
+    # Set initial navigation based on setup status
+    if 'nav_bar_option_selected' not in st.session_state:
+        if not setup_complete:
+            st.session_state.nav_bar_option_selected = "Settings"
+        else:
+            st.session_state.nav_bar_option_selected = "Profile Insight"
+    
+    # Display sidebar and content
     display_side_bar()
+    
     if st.session_state.nav_bar_option_selected == "Recent Searches":
         recent_searches_section()
     elif st.session_state.nav_bar_option_selected == "Profile Insight":
@@ -114,13 +144,7 @@ def display_main_content(user):
     elif st.session_state.nav_bar_option_selected == "Company Insight":
         company_insight_section()
     elif st.session_state.nav_bar_option_selected == "Settings":
-        print("Settings section")
-        print(st.session_state)
-        print(f"User company check in main: {st.session_state.user_company}")
-        user_company = get_user_company_info(user[2])
-        print(user[2])
-        print(f"User company check in main after get: {user_company}")
-        settings_section(user, user_company)
+        settings_section(user, user_company, setup_complete)
     elif st.session_state.nav_bar_option_selected == "Logout":
         logout()
     else:
@@ -142,9 +166,7 @@ def main():
             st.rerun()
         else:
             user_email = st.session_state.user.get('email')
-            print(f"User email: {user_email}")
             user = getUserByEmail(user_email)
-            print(f"User: {user}")
             display_main_content(user)
     else:  # unauthenticated
         auth_section()
