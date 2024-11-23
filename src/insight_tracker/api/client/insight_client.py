@@ -1,7 +1,12 @@
 import requests
 import json
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Union
 from ..exceptions.api_exceptions import ApiError
+from ..models.responses import (
+    OutreachResponse,
+    ProfileCompanyFitResponse,
+    MeetingResponse
+)
 
 # Optional: Add logging for better debugging
 import logging
@@ -149,36 +154,116 @@ class InsightApiClient:
             print(f"Debug - Request Error: {str(e)}")
             raise ApiError(str(e))
 
+    async def _make_strategy_request(
+        self,
+        action: str,
+        profile: Dict[str, Any],
+        company: Dict[str, Any],
+        language: str = "en",
+        sender_info: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """Make a strategy request to the API"""
+        endpoint = "/api/generateProfileCompanyInteractionStrategy"
+        
+        data = {
+            "action": action,
+            "profile": profile,
+            "myCompany": company,
+            "language": language
+        }
+        
+        if sender_info:
+            data["sender_info"] = sender_info
+            
+        # Add debug logging
+        print(f"Debug - Making request to {endpoint}")
+        print(f"Debug - Request data: {json.dumps(data, indent=2)}")
+        
+        try:
+            response = await self.post(endpoint, data)
+            return response
+        except Exception as e:
+            print(f"Debug - Error in _make_strategy_request: {str(e)}")
+            raise
+
+    async def generate_outreach_email(
+        self,
+        profile: Dict[str, Any],
+        company: Dict[str, Any],
+        sender_info: Dict[str, Any],
+        language: str = "en"
+    ) -> OutreachResponse:
+        """Generate an outreach email"""
+        response = await self._make_strategy_request(
+            action="outreach",
+            profile=profile,
+            company=company,
+            language=language,
+            sender_info=sender_info
+        )
+        
+        if response.get('action') == 'outreach' and 'outreach_data' in response:
+            # Create a dictionary with the expected structure
+            email_data = {
+                'email': response['outreach_data']['email'],
+                'total_tokens': response['total_tokens'],
+                'status_code': response.get('status_code', 200)
+            }
+            return OutreachResponse.from_dict(email_data)
+        raise ApiError("Invalid response format or missing outreach data", status_code=500)
+
     async def evaluate_profile_fit(
         self,
         profile: Dict[str, Any],
         company: Dict[str, Any],
         language: str = "en"
-    ) -> Dict[str, Any]:
+    ) -> ProfileCompanyFitResponse:
         """Evaluate profile fit for company"""
-        endpoint = "/api/getProfileCompanyFitAnalysis"
-        payload = {
-            "profile": profile,
-            "myCompany": company,
-            "language": language
-        }
-        headers = {
-            "Content-Type": "application/json"
-        }
         try:
-            response = self.session.post(f"{self.base_url}{endpoint}", json=payload, headers=headers)
-            print(f"Debug - POST Request URL: {response.url}")
-            print(f"Debug - Response Status: {response.status_code}")
+            response = await self._make_strategy_request(
+                action="evaluation",
+                profile=profile,
+                company=company,
+                language=language
+            )
             
-            if response.status_code in [401, 403]:
-                print(f"Debug - Auth Error Response: {response.text}")
-                raise ApiError(
-                    f"Authentication failed: {response.text}",
-                    status_code=response.status_code
-                )
-                
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            print(f"Debug - Request Error: {str(e)}")
-            raise ApiError(str(e))
+            # Add debug logging
+            print("Debug - Response from server:", response)
+            
+            if response.get('action') == 'evaluation' and 'evaluation_data' in response:
+                return ProfileCompanyFitResponse.from_dict({
+                    'evaluation': response['evaluation_data']['evaluation'],
+                    'total_tokens': response['total_tokens']
+                })
+            raise ApiError("Invalid response format or missing evaluation data", status_code=500)
+        except Exception as e:
+            print(f"Debug - Error in evaluate_profile_fit: {str(e)}")
+            print(f"Debug - Request data: action=evaluation, profile={profile}, company={company}")
+            raise
+
+    async def prepare_meeting(
+        self,
+        profile: Dict[str, Any],
+        company: Dict[str, Any],
+        language: str = "en"
+    ) -> MeetingResponse:
+        """Prepare meeting strategy"""
+        response = await self._make_strategy_request(
+            action="meeting",
+            profile=profile,
+            company=company,
+            language=language
+        )
+        
+        if response.get('action') == 'meeting' and 'meeting_data' in response:
+            print(response)
+            print(type(response))
+            # Create the response data structure
+            meeting_data = {
+                'meeting_preparation': response['meeting_data']['meeting_preparation'],
+                'total_tokens': response['total_tokens'],
+                'status_code': response.get('status_code', 200)
+            }
+
+            return MeetingResponse.from_dict(meeting_data)
+        raise ApiError("Invalid response format or missing meeting data", status_code=500)
