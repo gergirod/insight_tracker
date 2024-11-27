@@ -19,132 +19,95 @@ def run_async(coroutine):
 def inject_settings_css():
     st.markdown("""
         <style>
-        .small-text {
-            font-size: 14px;
-            color: #4f4f4f;
-            line-height: 1.5;
-            margin-bottom: 8px;
-        }
-        
-        .section-header {
-            font-size: 16px;
-            font-weight: bold;
-            color: #333333;
-            margin-top: 10px;
-            margin-bottom: 2px;
-        }
-        
-        .container {
-            border: 1px solid #ddd;
-            padding: 15px;
-            border-radius: 8px;
-            background-color: #fafafa;
-        }
-
-        /* Input field styling */
-        .stTextInput > div > div {
-            border-radius: 8px;
-        }
-        
         /* Button styling */
         .stButton > button {
             width: 100%;
-            border-radius: 8px;
-            padding: 0.5rem 1rem;
-            background-color: #007bff;
+            background-color: rgb(49, 132, 252) !important;  /* Updated to match app theme */
             color: white !important;
-            border: none;
-            transition: all 0.2s ease;
+            padding: 0.5rem 1rem !important;
+            font-size: 1rem !important;
+            font-weight: 500 !important;
+            border: none !important;
+            border-radius: 8px !important;
+            transition: all 0.2s ease !important;
         }
         
-        .stButton > button:hover,
-        .stButton > button:active,
-        .stButton > button:focus {
-            background-color: #0056b3;
-            border: none;
-            color: white !important;
+        .stButton > button:hover {
+            background-color: rgb(28, 119, 252) !important;  /* Slightly darker on hover */
+            box-shadow: 0 2px 6px rgba(49, 132, 252, 0.2) !important;
         }
         
-        /* Save button specific styling */
-        .stButton > button:has(div:contains("Save")) {
-            background-color: #28a745;
-        }
-        
-        .stButton > button:has(div:contains("Save")):hover,
-        .stButton > button:has(div:contains("Save")):active,
-        .stButton > button:has(div:contains("Save")):focus {
-            background-color: #218838;
-            color: white !important;
-        }
-
-        /* Ensure button text stays white in all states */
-        .stButton > button > div {
-            color: white !important;
+        .stButton > button:active {
+            transform: translateY(1px);
         }
         </style>
     """, unsafe_allow_html=True)
 
 def display_company_data(company):
-    st.markdown("<h2>🏢 Company Information</h2>", unsafe_allow_html=True)
+    st.markdown('<div class="settings-card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">🏢 Company Information</div>', unsafe_allow_html=True)
     
-    cols = st.columns(2)  # Create two columns for layout
-
-    with cols[0]:
-        st.markdown(f"**🏷️ Company Name:** {company.company_name}")
-        st.markdown(f"**🌐 Website:** {company.company_website or 'N/A'}")
-        st.markdown(f"**🔗 LinkedIn:** [{company.company_linkedin}]({company.company_linkedin})" if company.company_linkedin else "N/A")
-        st.markdown(f"**📝 Summary:** {company.company_summary or 'N/A'}")
-        st.markdown(f"**🏭 Industry:** {company.company_industry or 'N/A'}")
-        st.markdown(f"**👥 Size:** {company.company_size or 'N/A'}")
-
-    with cols[1]:
-        st.markdown(f"**🛠️ Services:** {', '.join(company.company_services) if company.company_services else 'N/A'}")
-        st.markdown(f"**🏢 Industries:** {', '.join(company.company_industries) if company.company_industries else 'N/A'}")
-        st.markdown(f"**🏆 Awards:** {', '.join(company.company_awards_recognitions) if company.company_awards_recognitions else 'N/A'}")
-        st.markdown(f"**🤝 Clients:** {', '.join(company.company_clients_partners) if company.company_clients_partners else 'N/A'}")
-        st.markdown(f"**📍 Headquarters:** {company.company_headquarters or 'N/A'}")
-        st.markdown(f"**📅 Founded:** {company.company_founded_year or 'N/A'}")
-        st.markdown(f"**🌱 Culture:** {', '.join(company.company_culture) if company.company_culture else 'N/A'}")
-        st.markdown(f"**📰 Recent Updates:** {', '.join(company.company_recent_updates) if company.company_recent_updates else 'N/A'}")
-
-def settings_section(user, user_company, setup_complete=True):
-    """Display and handle settings section"""
+    st.markdown('<div class="company-data-grid">', unsafe_allow_html=True)
     
-    if not setup_complete:
-        st.markdown("""
-            <div style="padding: 2rem; background-color: #f8f9fa; border-radius: 0.5rem; margin: 1rem 0;">
-                <h2 style="color: #1E88E5;">🎯 Complete Your Profile Setup</h2>
-                <p style="font-size: 1.1rem; margin: 1rem 0;">
-                    Welcome to Insight Tracker! Please complete your profile setup to access all features.
-                </p>
-                <div style="background-color: white; padding: 1rem; border-radius: 0.5rem; margin: 1rem 0;">
-                    <h3 style="color: #2C3E50; margin-top: 0;">Why this matters:</h3>
-                    <ul style="list-style-type: none; padding-left: 0;">
-                        <li style="margin: 0.5rem 0;">✨ <strong>Personalized AI Content:</strong> Get tailored insights</li>
-                        <li style="margin: 0.5rem 0;">🎯 <strong>Better Fit Evaluations:</strong> More accurate matches</li>
-                        <li style="margin: 0.5rem 0;">📧 <strong>Smarter Outreach:</strong> More relevant communications</li>
-                    </ul>
-                </div>
+    # Company Basic Info
+    data_items = [
+        ("Company Name", company.company_name, "🏷️"),
+        ("Website", company.company_website or "N/A", "🌐"),
+        ("Industry", company.company_industry or "N/A", "🏭"),
+        ("Size", company.company_size or "N/A", "👥"),
+        ("Headquarters", company.company_headquarters or "N/A", "📍"),
+        ("Founded", company.company_founded_year or "N/A", "📅")
+    ]
+    
+    for label, value, icon in data_items:
+        st.markdown(f"""
+            <div class="data-item">
+                <div class="data-label">{icon} {label}</div>
+                <div class="data-value">{value}</div>
             </div>
         """, unsafe_allow_html=True)
     
+    # Company Details
+    if company.company_summary:
+        st.markdown("""
+            <div class="data-item" style="grid-column: 1 / -1;">
+                <div class="data-label">📝 Company Summary</div>
+                <div class="data-value">{}</div>
+            </div>
+        """.format(company.company_summary), unsafe_allow_html=True)
+    
+    st.markdown('</div></div>', unsafe_allow_html=True)
+
+def settings_section(user, user_company, setup_complete=True):
+    inject_settings_css()
+    
     # Personal Information Section
     st.markdown("""
-        <div style="padding: 20px; background-color: white; border-radius: 10px; border: 1px solid #eee; margin-bottom: 30px;">
-            <h3 style="color: #1E88E5; margin-bottom: 20px;">👤 Personal Information</h3>
-            <p style="color: #666; margin-bottom: 20px;">
-                Update your basic profile information below. This information helps personalize your experience.
+        <div style="margin-bottom: 32px;">
+            <h2 style="
+                color: #1E88E5;
+                font-size: 1.5rem;
+                font-weight: 600;
+                margin-bottom: 8px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            ">
+                👤 Personal Information
+            </h2>
+            <p style="
+                color: #666;
+                margin-bottom: 24px;
+                font-size: 0.95rem;
+            ">
+                Update your professional details to enhance your outreach effectiveness. 
+                This information helps us provide personalized insights for building meaningful connections 
+                and crafting more impactful communications.
             </p>
         </div>
     """, unsafe_allow_html=True)
-
-    api_client = InsightApiClient(
-        base_url=os.getenv("API_BASE_URL"),
-        api_key=os.getenv("API_KEY"),
-        openai_api_key=os.getenv("OPENAI_API_KEY"),
-        verify_ssl=False
-    )
     
+    # Form inputs
     full_name_value = user[1] if user is not None else ""
     contact_info = user[2] if user is not None else ""
     role_position_value = user[3] if user is not None else ""
@@ -155,100 +118,103 @@ def settings_section(user, user_company, setup_complete=True):
     role_position = st.text_input("Role/Position", placeholder="Enter your role or position", value=role_position_value)
     company = st.text_input("Company", placeholder="Enter your company name", value=company_value)
 
-    if st.button("💾 Save Personal Information", key="save_button", help="Save your personal profile information"):
+    # Add some space before the button
+    st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
+    
+    # Personal Information save button
+    st.markdown("""
+        <style>
+        [data-testid="stButton"] > button {
+            background-color: rgb(49, 132, 252);
+            color: white;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    if st.button("Save", 
+                key="save_button",
+                use_container_width=True,
+                help="Save your personal profile information"):
         email = st.session_state.user.get('email')
         create_user_if_not_exists(full_name, email, role_position, company)
         st.success("✅ Personal information saved successfully!")
-        
-    # Company Information Section
+
+    # Add spacing between sections
+    st.markdown("<div style='margin-top: 3rem;'></div>", unsafe_allow_html=True)
+    
+    # Company Information Section - matching style with Personal Information
     st.markdown("""
-        <div style="padding: 20px; background-color: white; border-radius: 10px; border: 1px solid #eee; margin: 30px 0;">
-            <h3 style="color: #1E88E5; margin-bottom: 20px;">🏢 Company Information</h3>
-            <p style="color: #666; margin-bottom: 20px;">
-                Fetch and save detailed information about your company. This helps provide more accurate insights and recommendations.
+        <div style="margin-bottom: 32px;">
+            <h2 style="
+                color: #1E88E5;
+                font-size: 1.5rem;
+                font-weight: 600;
+                margin-bottom: 8px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            ">
+                🏢 Company Information
+            </h2>
+            <p style="
+                color: #666;
+                margin-bottom: 24px;
+                font-size: 0.95rem;
+            ">
+                Help us understand your company context to provide better insights for your professional outreach 
+                and strategic connections.
             </p>
         </div>
     """, unsafe_allow_html=True)
 
-    # Method selection with better explanation
-    st.markdown("""
-        <p style="color: #666; margin-bottom: 10px;">
-            Choose how you want to fetch your company data:
-        </p>
-    """, unsafe_allow_html=True)
-    
-    search_method = st.radio(
-        "Select data fetch method:",
-        options=["By URL", "By Name and Industry"],
-        help="Choose the most convenient way to fetch your company information",
-        index=0
+    # Simplified company data input
+    company_url = st.text_input(
+        "Company Website",
+        placeholder="Enter your company's website (e.g., https://company.com)",
+        help="We'll use this to fetch detailed information about your company"
     )
 
-    if search_method == "By URL":
-        company_url = st.text_input(
-            "Company URL", 
-            placeholder="Enter the company URL (e.g., https://company.com)",
-            help="Enter your company's website URL to fetch detailed information"
-        )
-    else:
-        company_name = st.text_input(
-            "Company Name",
-            placeholder="Enter the company's full name",
-            help="Enter your company's official name"
-        )
-        company_industry = st.text_input(
-            "Industry",
-            placeholder="Enter the company's primary industry",
-            help="Enter the main industry your company operates in"
-        )
-
-    # Fetch and Save Company Data
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        if st.button("🔄 Fetch Company Data", key="fetch_company_data_button"):
-            insight_service = InsightService(api_client)
-            try:
-                with st.spinner('Fetching company data...'):
-                    if search_method == "By URL" and company_url:
-                        company_result = run_async(
-                            insight_service.get_company_analysis_by_url(company_url=company_url)
-                        )
-                    elif search_method == "By Name and Industry" and company_name and company_industry:
-                        company_result = run_async(
-                            insight_service.get_company_analysis(
-                                company_name=company_name,
-                                industry=company_industry
-                            )
-                        )
-                    else:
-                        st.warning("Please provide the required information based on the selected method.")
-                        return
-
+    # Single button for fetch and save
+    if st.button(
+        "Update Company Information",
+        key="update_company_data",
+        use_container_width=True,
+        help="Fetch and save your company information"
+    ):
+        try:
+            with st.spinner('Analyzing company data...'):
+                api_client = InsightApiClient(
+                    base_url=os.getenv('API_BASE_URL'),
+                    api_key=os.getenv('API_KEY'),
+                    openai_api_key=os.getenv('OPENAI_API_KEY'),
+                    verify_ssl=False
+                )
+                insight_service = InsightService(api_client=api_client)
+                company_result = run_async(
+                    insight_service.get_company_analysis_by_url(company_url=company_url)
+                )
+                
+                if company_result and company_result.company:
+                    save_user_company_info(email, company_result.company)
                     st.session_state.company_result = company_result
-                    st.success("✅ Company data fetched successfully!")
-            except Exception as e:
-                st.error(f"❌ An error occurred: {str(e)}")
+                    st.success("✅ Company information updated successfully!")
+                else:
+                    st.error("❌ Couldn't fetch company information. Please check the URL and try again.")
+        except Exception as e:
+            st.error(f"❌ An error occurred: {str(e)}")
 
-    with col2:
-        if st.button("💾 Save Company Data", 
-                    key="save_company_data_button",
-                    help="Save the fetched company information to your profile"):
-            if 'company_result' in st.session_state:
-                save_user_company_info(email, st.session_state.company_result.company)
-                st.success("✅ Company data saved successfully!")
-            else:
-                st.warning("ℹ️ No company data to save. Please fetch company data first.")
-
-    # Display existing company data if available
+    # Display current company information if available
     if user_company is not None or 'company_result' in st.session_state:
-        st.markdown("""
-            <div style="padding: 20px; background-color: white; border-radius: 10px; border: 1px solid #eee; margin: 30px 0;">
-                <h3 style="color: #1E88E5;">📋 Current Company Information</h3>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown("<div style='margin-top: 2rem;'></div>", unsafe_allow_html=True)
         
         if 'company_result' in st.session_state:
             display_company_data(st.session_state.company_result.company)
         elif user_company is not None:
             display_company_data(user_company)
+
+    api_client = InsightApiClient(
+        base_url=os.getenv("API_BASE_URL"),
+        api_key=os.getenv("API_KEY"),
+        openai_api_key=os.getenv("OPENAI_API_KEY"),
+        verify_ssl=False
+    )

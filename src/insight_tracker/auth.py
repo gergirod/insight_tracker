@@ -3,7 +3,6 @@ import streamlit as st
 from authlib.integrations.requests_client import OAuth2Session
 from dotenv import load_dotenv
 import jwt
-from streamlit_cookies_controller import CookieController
 from insight_tracker.db import create_user_if_not_exists, get_user_company_info
 
 # Load environment variables
@@ -22,24 +21,7 @@ auth0 = OAuth2Session(
     redirect_uri=AUTH0_CALLBACK_URL
 )
 
-def get_cookie():
-    try:
-        return CookieController().get("id_token")
-    except Exception as e:
-        print(f"Error getting cookie: {e}")
-        return None
 
-def set_cookie(token):
-    try:
-        CookieController().set("id_token", token)
-    except Exception as e:
-        print(f"Error setting cookie: {e}")
-
-def remove_cookie():
-    try:
-        CookieController().remove("id_token")
-    except Exception as e:
-        print(f"Error removing cookie: {e}")
 
 def validate_token_and_get_user(token):
     try:
@@ -120,21 +102,23 @@ def handle_callback():
 
             access_token = token.get('access_token')
             id_token = token.get('id_token')
-            set_cookie(id_token)
             user_info = auth0.get(
                 f"https://{AUTH0_DOMAIN}/userinfo", 
                 headers={"Authorization": f"Bearer {access_token}"}
             ).json()
             
             # Create or update user in database
-            created = create_user_if_not_exists(
+            success, is_new_user = create_user_if_not_exists(
                 full_name=user_info.get('name', ''),
                 email=user_info.get('email', ''),
                 company="",  # Empty initially
                 role=""      # Empty initially
             )
             
-            if created:
+            # Store whether user is new in session state
+            st.session_state.is_new_user = is_new_user
+            
+            if success:
                 print(f"Created new user: {user_info.get('email')}")
             else:
                 print(f"User already exists: {user_info.get('email')}")
@@ -160,6 +144,5 @@ def handle_callback():
 def logout():
     st.session_state.user = None
     st.session_state.authentication_status = 'unauthenticated'
-    remove_cookie()
     st.success("You have been logged out successfully.")
     st.rerun()
