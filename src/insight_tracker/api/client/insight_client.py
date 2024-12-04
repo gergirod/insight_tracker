@@ -157,8 +157,9 @@ class InsightApiClient:
     async def _make_strategy_request(
         self,
         action: str,
-        profile: Dict[str, Any],
-        company: Dict[str, Any],
+        profile: Optional[Dict[str, Any]] = None,
+        company: Optional[Dict[str, Any]] = None,
+        targetCompany: Optional[Dict[str, Any]] = None,
         language: str = "en",
         sender_info: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
@@ -169,6 +170,7 @@ class InsightApiClient:
             "action": action,
             "profile": profile,
             "myCompany": company,
+            "target_company": targetCompany,
             "language": language
         }
         
@@ -214,16 +216,18 @@ class InsightApiClient:
 
     async def evaluate_profile_fit(
         self,
-        profile: Dict[str, Any],
-        company: Dict[str, Any],
+        profile: Optional[Dict[str, Any]] = None,
+        company: Optional[Dict[str, Any]] = None,
+        targetCompany: Optional[Dict[str, Any]] = None,
         language: str = "en"
     ) -> ProfileCompanyFitResponse:
-        """Evaluate profile fit for company"""
+        print(f"Debug - Sending target company data: {targetCompany}")
         try:
             response = await self._make_strategy_request(
                 action="evaluation",
                 profile=profile,
                 company=company,
+                targetCompany=targetCompany,
                 language=language
             )
             

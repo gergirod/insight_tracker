@@ -69,7 +69,7 @@ def init_recent_searches_db():
     conn.commit()
     conn.close()
 
-def save_profile_search(user_email: str, profile: ProfessionalProfile, company: str) -> None:
+def save_profile_search(user_email: str, profile: ProfessionalProfile) -> None:
     """Save profile search to database"""
     conn = sqlite3.connect('recent_searches.db')
     cursor = conn.cursor()

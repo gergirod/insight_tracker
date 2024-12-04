@@ -8,6 +8,10 @@ from insight_tracker.api.exceptions.api_exceptions import ApiError
 from insight_tracker.api.models.responses import Company
 import asyncio
 import os
+from insight_tracker.api.models.responses import Company
+from insight_tracker.db import get_user_company_info
+
+research_company = None
 
 def inject_css():
     st.markdown("""
@@ -217,11 +221,9 @@ def company_insight_section():
                         st.success("Company research completed!")
                         st.session_state.search_completed = True  # Set flag when search is successful
 
+                        research_company = company_result.company
                         # Store company data in session state
                         st.session_state.company_data = company_result.company
-
-                        # Display results
-                        display_company_data(company_result.company)
 
                     except ApiError as e:
                         st.error(f"API Error: {e.error_message}")
@@ -254,12 +256,9 @@ def company_insight_section():
                         st.session_state.company_insight_result = company_result
                         st.success("Company research completed!")
                         st.session_state.search_completed = True  # Set flag when search is successful
-
+                        research_company = company_result.company
                         # Store company data in session state
                         st.session_state.company_data = company_result.company
-
-                        # Display results
-                        display_company_data(company_result.company)
 
                     except ApiError as e:
                         st.error(f"API Error: {e.error_message}")
@@ -272,6 +271,32 @@ def company_insight_section():
 
     # Save Company Search Button - Only show after successful search
     if st.session_state.get('search_completed', False):
+        if st.session_state.company_data:
+            company = st.session_state.company_data
+            st.markdown("<h2>🏢 Company Information</h2>", unsafe_allow_html=True)
+            # Store company data in session state
+            st.session_state.company_data = company
+
+            cols = st.columns(2)  # Create two columns for layout
+
+            with cols[0]:
+                st.markdown(f"**🏷️ Company Name:** {company.company_name}")
+                st.markdown(f"**🌐 Website:** {company.company_website or 'N/A'}")
+                st.markdown(f"**🔗 LinkedIn:** [{company.company_linkedin}]({company.company_linkedin})" if company.company_linkedin else "N/A")
+                st.markdown(f"**📝 Summary:** {company.company_summary or 'N/A'}")
+                st.markdown(f"**🏭 Industry:** {company.company_industry or 'N/A'}")
+                st.markdown(f"**👥 Size:** {company.company_size or 'N/A'}")
+
+            with cols[1]:
+                st.markdown(f"**🛠️ Services:** {', '.join(company.company_services) if company.company_services else 'N/A'}")
+                st.markdown(f"**🏢 Industries:** {', '.join(company.company_industries) if company.company_industries else 'N/A'}")
+                st.markdown(f"**🏆 Awards:** {', '.join(company.company_awards_recognitions) if company.company_awards_recognitions else 'N/A'}")
+                st.markdown(f"**🤝 Clients:** {', '.join(company.company_clients_partners) if company.company_clients_partners else 'N/A'}")
+                st.markdown(f"**📍 Headquarters:** {company.company_headquarters or 'N/A'}")
+                st.markdown(f"**📅 Founded:** {company.company_founded_year or 'N/A'}")
+                st.markdown(f"**🌱 Culture:** {', '.join(company.company_culture) if company.company_culture else 'N/A'}")
+                st.markdown(f"**📰 Recent Updates:** {', '.join(company.company_recent_updates) if company.company_recent_updates else 'N/A'}")
+
         if st.button("💾 Save Company Search"):
             if st.session_state.company_data:  # Ensure company data exists
                 save_company_search(user_email, st.session_state.company_data)
@@ -279,32 +304,125 @@ def company_insight_section():
             else:
                 st.warning("No company data to save.")
 
+        # Add Evaluate Fit Button
+        evaluate_fit = st.button("Evaluate Fit", type="primary")
+        if evaluate_fit:
+            # Get latest company data
+            research_company = st.session_state.company_data
+            user_company = get_user_company_info(user_email)
+            
+            print(f"Debug - Research company: {research_company}")
+            print(f"Debug - User company: {user_company}")
+            if not user_company:
+                st.warning("""
+                    ⚠️ Company information required
+                    
+                    To evaluate company fit, we need your company context. Please complete your company information in the Settings section first.
+                    
+                    This helps us provide more accurate and meaningful insights.
+                """)
+                
+                if st.button("Complete Company Settings →", type="primary"):
+                    st.session_state.nav_bar_option_selected = "Settings"
+                    st.rerun()
+            else:
+                try:
+                    with st.spinner('Evaluating fit...'):
+                        fit_result = run_async(
+                            insight_service.evaluate_profile_fit(
+                                targetCompany=research_company.__dict__,
+                                company=user_company.__dict__
+                            )
+                        )
+                        st.session_state.fit_evaluation_result = fit_result
+                        st.success("Fit evaluation completed!")
+                except Exception as e:
+                    st.error(f"Failed to evaluate fit: {str(e)}")
 
-def display_company_data(company: Company):
-    inject_css()
-    st.markdown("<h2>🏢 Company Information</h2>", unsafe_allow_html=True)
-    # Store company data in session state
-    st.session_state.company_data = company
+            if 'fit_evaluation_result' in st.session_state:
+                with st.expander("🔍 Fit Evaluation Results", expanded=False):
+                    fit_result = st.session_state.fit_evaluation_result.evaluation
 
-    cols = st.columns(2)  # Create two columns for layout
+                    # Fit Score and Summary
+                    st.markdown('<div class="meeting-header">📊 Overall Fit Assessment</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="meeting-item"><strong>Fit Score:</strong> {fit_result.fit_score if fit_result.fit_score is not None else "N/A"}</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="meeting-item"><strong>Summary:</strong> {fit_result.fit_summary if fit_result.fit_summary is not None else "N/A"}</div>', unsafe_allow_html=True)
 
-    with cols[0]:
-        st.markdown(f"**🏷️ Company Name:** {company.company_name}")
-        st.markdown(f"**🌐 Website:** {company.company_website or 'N/A'}")
-        st.markdown(f"**🔗 LinkedIn:** [{company.company_linkedin}]({company.company_linkedin})" if company.company_linkedin else "N/A")
-        st.markdown(f"**📝 Summary:** {company.company_summary or 'N/A'}")
-        st.markdown(f"**🏭 Industry:** {company.company_industry or 'N/A'}")
-        st.markdown(f"**👥 Size:** {company.company_size or 'N/A'}")
+                    # Key Insights
+                    st.markdown('<div class="meeting-header">💡 Key Insights</div>', unsafe_allow_html=True)
+                    for insight in fit_result.key_insights:
+                        st.markdown(f'<div class="meeting-item">• {insight}</div>', unsafe_allow_html=True)
 
-    with cols[1]:
-        st.markdown(f"**🛠️ Services:** {', '.join(company.company_services) if company.company_services else 'N/A'}")
-        st.markdown(f"**🏢 Industries:** {', '.join(company.company_industries) if company.company_industries else 'N/A'}")
-        st.markdown(f"**🏆 Awards:** {', '.join(company.company_awards_recognitions) if company.company_awards_recognitions else 'N/A'}")
-        st.markdown(f"**🤝 Clients:** {', '.join(company.company_clients_partners) if company.company_clients_partners else 'N/A'}")
-        st.markdown(f"**📍 Headquarters:** {company.company_headquarters or 'N/A'}")
-        st.markdown(f"**📅 Founded:** {company.company_founded_year or 'N/A'}")
-        st.markdown(f"**🌱 Culture:** {', '.join(company.company_culture) if company.company_culture else 'N/A'}")
-        st.markdown(f"**📰 Recent Updates:** {', '.join(company.company_recent_updates) if company.company_recent_updates else 'N/A'}")
+                    # Expertise Matches
+                    if fit_result.expertise_matches:
+                        st.markdown('<div class="meeting-header">🎯 Expertise Matches</div>', unsafe_allow_html=True)
+                        for match in fit_result.expertise_matches:
+                            st.markdown(f"""
+                                <div class="agenda-item">
+                                    <div class="agenda-title">{match.area if match.area is not None else 'N/A'}</div>
+                                    <div class="meeting-item">• Relevance Score: {match.relevance_score if match.relevance_score is not None else 'N/A'}</div>
+                                    <div class="meeting-item">• {match.description if match.description is not None else 'N/A'}</div>
+                                    <div class="meeting-item">• Evidence: {', '.join(match.evidence) if match.evidence else 'N/A'}</div>
+                                </div>
+                            """, unsafe_allow_html=True)
+
+                    # Decision Maker Analysis
+                    st.markdown('<div class="meeting-header">👔 Decision Maker Analysis</div>', unsafe_allow_html=True)
+                    decision_maker_analysis = fit_result.decision_maker_analysis
+                    if decision_maker_analysis:
+                        st.markdown(f'<div class="meeting-item"><strong>Influence Level:</strong> {decision_maker_analysis.influence_level if decision_maker_analysis.influence_level is not None else "N/A"}</div>', unsafe_allow_html=True)
+                        for evidence in decision_maker_analysis.influence_evidence:
+                            st.markdown(f'<div class="meeting-item">• {evidence}</div>', unsafe_allow_html=True)
+
+                    # Business Model & Market Synergy
+                    st.markdown('<div class="meeting-header">💼 Business Alignment</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="meeting-item"><strong>Business Model Fit:</strong> {fit_result.business_model_fit if fit_result.business_model_fit is not None else "N/A"}</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="meeting-item">{fit_result.business_model_analysis if fit_result.business_model_analysis is not None else "N/A"}</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="meeting-item"><strong>Market Synergy:</strong> {fit_result.market_synergy if fit_result.market_synergy is not None else "N/A"}</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="meeting-item">{fit_result.market_synergy_explanation if fit_result.market_synergy_explanation is not None else "N/A"}</div>', unsafe_allow_html=True)
+
+                    # Engagement Opportunities
+                    st.markdown('<div class="meeting-header">🚀 Engagement Opportunities</div>', unsafe_allow_html=True)
+                    for opportunity in fit_result.engagement_opportunities:
+                        st.markdown(f"""
+                            <div class="agenda-item">
+                                <div class="agenda-title">{opportunity.opportunity_description if opportunity.opportunity_description is not None else 'N/A'}</div>
+                                <div class="meeting-item">• {opportunity.rationale if opportunity.rationale is not None else 'N/A'}</div>
+                            </div>
+                        """, unsafe_allow_html=True)
+
+                    # Potential Challenges
+                    st.markdown('<div class="meeting-header">⚠️ Potential Challenges</div>', unsafe_allow_html=True)
+                    for challenge in fit_result.potential_challenges:
+                        st.markdown(f"""
+                            <div class="agenda-item risk-item">
+                                <div class="agenda-title">{challenge.challenge_description if challenge.challenge_description is not None else 'N/A'}</div>
+                                <div class="meeting-item">• Impact: {challenge.impact_assessment if challenge.impact_assessment is not None else 'N/A'}</div>
+                                <div class="meeting-item">• Mitigation: {challenge.mitigation_strategy if challenge.mitigation_strategy is not None else 'N/A'}</div>
+                            </div>
+                        """, unsafe_allow_html=True)
+
+                    # Recommended Approach
+                    st.markdown('<div class="meeting-header">🎯 Recommended Approach</div>', unsafe_allow_html=True)
+                    recommended_approach = fit_result.recommended_approach
+                    if recommended_approach:
+                        st.markdown(f"""
+                            <div class="agenda-item success-item">
+                                <div class="agenda-title">{recommended_approach.approach_description if recommended_approach.approach_description is not None else 'N/A'}</div>
+                                <div class="meeting-item">• Rationale: {recommended_approach.rationale if recommended_approach.rationale is not None else 'N/A'}</div>
+                                <div class="meeting-item">• Expected Outcomes: {', '.join(recommended_approach.expected_outcomes) if recommended_approach.expected_outcomes else 'N/A'}</div>
+                                <div class="meeting-item">• Resources Required: {', '.join(recommended_approach.resources_required) if recommended_approach.resources_required else 'N/A'}</div>
+                            </div>
+                        """, unsafe_allow_html=True)
+
+                    # Next Steps
+                    st.markdown('<div class="meeting-header">➡️ Next Steps</div>', unsafe_allow_html=True)
+                    for step in fit_result.next_steps:
+                        st.markdown(f"""
+                            <div class="meeting-item next-step-item">• {step.step_description if step.step_description is not None else 'N/A'}
+                                <div class="meeting-item" style="margin-left: 1rem;">Rationale: {step.rationale if step.rationale is not None else 'N/A'}</div>
+                            </div>
+                        """, unsafe_allow_html=True)
 
 
 def display_people_data():

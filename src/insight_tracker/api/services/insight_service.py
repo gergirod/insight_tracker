@@ -131,8 +131,9 @@ class InsightService:
 
     async def evaluate_profile_fit(
         self,
-        profile: Dict[str, Any],
-        company: Dict[str, Any],
+        profile: Optional[Dict[str, Any]] = None,
+        company: Optional[Dict[str, Any]] = None,
+        targetCompany: Optional[Dict[str, Any]] = None,
         language: str = "en"
     ) -> ProfileCompanyFitResponse:
         """Evaluate profile fit"""
@@ -140,10 +141,12 @@ class InsightService:
             # Add debug logging
             print("Debug - Sending profile data:", profile)
             print("Debug - Sending company data:", company)
+            print("Debug - Sending target company data:", targetCompany)
             
             response = await self.api_client.evaluate_profile_fit(
                 profile=profile,
                 company=company,
+                targetCompany=targetCompany,
                 language=language
             )
             return response
