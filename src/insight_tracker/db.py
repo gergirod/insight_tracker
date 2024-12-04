@@ -69,7 +69,7 @@ def init_recent_searches_db():
     conn.commit()
     conn.close()
 
-def save_profile_search(user_email: str, profile: ProfessionalProfile, company: str) -> None:
+def save_profile_search(user_email: str, profile: ProfessionalProfile) -> None:
     """Save profile search to database"""
     conn = sqlite3.connect('recent_searches.db')
     cursor = conn.cursor()
@@ -247,19 +247,33 @@ def update_user_info(company: str, role: str, email: str) -> None:
     conn.commit()
     conn.close()
 
-def create_user_if_not_exists(full_name: str, email: str, company: str, role: str) -> bool:
-    user = getUserByEmail(email)
-    
-    if user:
-        update_user_info(company, role, email)
-        return False
-    else:
-        try:
-            save_user_info(full_name, email, company, role)
-            return True
-        except sqlite3.IntegrityError as e:
-            print(f"Error: {e}")
-            return False
+def create_user_if_not_exists(full_name, email, company="", role=""):
+    """
+    Creates a user if they don't exist.
+    Returns: (bool, bool) - (success, is_new_user)
+    """
+    conn = sqlite3.connect('user_data.db')
+    c = conn.cursor()
+    try:
+        # Check if user exists
+        c.execute('SELECT * FROM users WHERE email = ?', (email,))
+        existing_user = c.fetchone()
+        
+        if existing_user:
+            return True, False  # User exists, not new
+        
+        # Create new user
+        c.execute('''
+            INSERT INTO users (name, email, role, company)
+            VALUES (?, ?, ?, ?)
+        ''', (full_name, email, role, company))
+        conn.commit()
+        return True, True  # User created, is new
+    except Exception as e:
+        print(f"Error creating user: {e}")
+        return False, False
+    finally:
+        conn.close()
 
 def alter_profile_searches_table():
     conn = sqlite3.connect('recent_searches.db')

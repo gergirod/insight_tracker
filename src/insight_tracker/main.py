@@ -1,6 +1,6 @@
 import sqlite3
 import streamlit as st
-from insight_tracker.auth import handle_callback, get_cookie, logout, validate_token_and_get_user
+from insight_tracker.auth import handle_callback, logout
 from insight_tracker.db import getUserByEmail, init_db, init_recent_searches_db, alter_profile_searches_table, init_user_company_db, get_user_company_info
 from insight_tracker.ui.profile_insight_section import profile_insight_section
 from insight_tracker.ui.company_insight_section import company_insight_section
@@ -9,6 +9,8 @@ from insight_tracker.ui.login_section import auth_section
 from insight_tracker.ui.settings_section import settings_section
 from insight_tracker.ui.side_bar import display_side_bar
 from insight_tracker.ui.session_state import initialize_session_state
+from insight_tracker.ui.onboarding_section import onboarding_section
+from insight_tracker.ui.components.loading_dialog import show_loading_dialog
 
 def check_and_alter_table():
     """Check if the table needs alteration and perform it if necessary."""
@@ -46,43 +48,12 @@ check_and_alter_table()  # Check and alter the table if necessary
 init_user_company_db()
 
 def show_loading_screen():
-    st.markdown("""
-    <style>
-    .loading-message {
-        font-size: 24px;
-        font-weight: bold;
-        text-align: center;
-        color: #3498db;
-        margin-bottom: 20px;
-    }
-    .loader {
-        border: 8px solid #f3f3f3;
-        border-top: 8px solid #3498db;
-        border-radius: 50%;
-        width: 50px;
-        height: 50px;
-        animation: spin 1s linear infinite;
-        margin: 20px auto;
-    }
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-    .loading-container {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-    }
-    </style>
-    
-    <div class="loading-container">
-        <div class="loading-message">Preparing Your Insights...</div>
-        <div class="loader"></div>
-        <div>Please wait while we set up your personalized dashboard.</div>
-    </div>
-    """, unsafe_allow_html=True)
+    loading_container = show_loading_dialog(
+        title="Preparing Your Insights",
+        description="Please wait while we set up your personalized dashboard with AI-powered recommendations and insights.",
+        loading_message="Loading your workspace..."
+    )
+    return loading_container
 
 def handle_auth():
     """Handle authentication process"""
@@ -93,14 +64,6 @@ def handle_auth():
         if handle_callback():
             return True
     
-    if st.session_state.user is None:
-        token = get_cookie()
-        if token:
-            user_info = validate_token_and_get_user(token)
-            if user_info:
-                st.session_state.user = user_info
-                st.session_state.authentication_status = 'authenticated'
-                return True
     
     return st.session_state.user is not None
 
@@ -112,8 +75,8 @@ def check_user_setup_complete(user, user_company) -> bool:
     if not user:
         return False
     
-    # Check if user has role and company set
-    if not user[3] or not user[4]:  # user[3] is company, user[4] is role
+    # Check if user has basic data
+    if not user[1] or not user[3] or not user[4]:  # name, role, company
         return False
     
     # Check if user has company data saved
@@ -124,19 +87,18 @@ def check_user_setup_complete(user, user_company) -> bool:
 
 def display_main_content(user):
     """Display main content based on selected navigation option"""
-    user_company = get_user_company_info(user[2])  # user[2] is email
-    setup_complete = check_user_setup_complete(user, user_company)
+    saved_user = getUserByEmail(user[2])
+    user_company = get_user_company_info(user[2])
     
-    # Set initial navigation based on setup status
-    if 'nav_bar_option_selected' not in st.session_state:
-        if not setup_complete:
-            st.session_state.nav_bar_option_selected = "Settings"
-        else:
-            st.session_state.nav_bar_option_selected = "Profile Insight"
+    # Show onboarding only for new users who haven't completed setup
+    if st.session_state.get('is_new_user', False) and not user_company:
+        onboarding_section(user[2])
+        return
     
-    # Display sidebar and content
+    # For existing users or after onboarding completion, show main content
     display_side_bar()
     
+    # Handle navigation
     if st.session_state.nav_bar_option_selected == "Recent Searches":
         recent_searches_section()
     elif st.session_state.nav_bar_option_selected == "Profile Insight":
@@ -144,15 +106,15 @@ def display_main_content(user):
     elif st.session_state.nav_bar_option_selected == "Company Insight":
         company_insight_section()
     elif st.session_state.nav_bar_option_selected == "Settings":
-        settings_section(user, user_company, setup_complete)
+        settings_section(user, user_company, setup_complete=True)
     elif st.session_state.nav_bar_option_selected == "Logout":
         logout()
     else:
-        st.write("Please select an option from the sidebar.")
+        profile_insight_section()  # Default to Profile Insight if no selection
 
 def main():
     if st.session_state.authentication_status == 'checking':
-        show_loading_screen()
+        loading_container = show_loading_screen()
         if handle_auth():
             st.session_state.authentication_status = 'authenticated'
             st.rerun()

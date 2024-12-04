@@ -1,12 +1,13 @@
 import streamlit as st
 import os
 import asyncio
-import warnings
 import urllib3
 from insight_tracker.db import getUserByEmail, save_profile_search, get_recent_profile_searches, get_user_company_info
 from insight_tracker.api.client.insight_client import InsightApiClient
 from insight_tracker.api.services.insight_service import InsightService
 from insight_tracker.api.exceptions.api_exceptions import ApiError
+import re
+
 
 # Disable SSL verification warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -162,87 +163,158 @@ def profile_insight_section():
             with st.expander("🏆 Key Achievements"):
                 st.markdown(profile.key_achievements)
 
+            if st.button("💾 Save Research", key="save_button"):
+                save_profile_search(user_email, profile)
+                st.success("Research saved successfully!")
+
             # Action buttons in horizontal layout
             col1, col2, col3 = st.columns(3)
-            
+            user_company = get_user_company_info(user_email)
+            user = getUserByEmail(user_email)
+
             with col1:
-                generate_email = st.button("Generate Outreach Email")
+                user = getUserByEmail(user_email)
+                user_company = get_user_company_info(user_email)
+                
+                generate_email = st.button("Generate Email", type="primary")
                 if generate_email:
-                    try:
-                        with st.spinner('Generating outreach email...'):
-                            user = getUserByEmail(user_email)
-                            sender_info = {
-                                "full_name": user[1] if user else "[Your Name]",
-                                "company": user[4] if user else "[Company]",
-                                "role": user[3] if user else "[Company title]"
-                            }
-                            profile_data = profile.__dict__
+                    # Get latest user and company data
+                    user = getUserByEmail(user_email)
+                    user_company = get_user_company_info(user_email)
+                    
+                    # Check if we have all required information
+                    missing_user_info = not user or not all([user[1]])  # name, role, company
+                    missing_company_info = not user_company
+                    
+                    if missing_user_info or missing_company_info:
+                        warning_message = []
+                        if missing_user_info:
+                            warning_message.append("• Complete your personal information (name, role, company)")
+                        if missing_company_info:
+                            warning_message.append("• Add your company information")
+                        
+                        st.warning(f"""
+                            ⚠️ Additional information required
                             
-                            email_content = run_async(
-                                insight_service.generate_outreach_email(
-                                    profile=profile_data,
-                                    company=get_user_company_info(user_email).__dict__,
-                                    sender_info=sender_info
+                            To generate a personalized outreach email, please first:
+                            {chr(10).join(warning_message)}
+                            
+                            This helps us create more effective and contextual communications.
+                        """)
+                        
+                        if st.button("Complete Profile Settings →", type="primary"):
+                            st.session_state.nav_bar_option_selected = "Settings"
+                            st.rerun()
+                    else:
+                        try:
+                            with st.spinner('Generating outreach email...'):
+                                sender_info = {
+                                    "full_name": user[1],
+                                    "company": user[4],
+                                    "role": user[3]
+                                }
+                                profile_data = profile.__dict__
+                                
+                                email_content = run_async(
+                                    insight_service.generate_outreach_email(
+                                        profile=profile_data,
+                                        company=user_company.__dict__,
+                                        sender_info=sender_info
+                                    )
                                 )
-                            )
-                            st.session_state.email_content = email_content
-                            st.success("Email generated successfully!")
-                    except Exception as e:
-                        st.error(f"Failed to generate email: {str(e)}")
+                                st.session_state.email_content = email_content
+                                st.success("Email generated successfully!")
+                        except Exception as e:
+                            st.error(f"Failed to generate email: {str(e)}")
 
             with col2:
-                prepare_meeting = st.button("Prepare for Meeting")
+                
+                prepare_meeting = st.button("Prepare for Meeting", type="primary")
                 if prepare_meeting:
-                    try:
-                        with st.spinner('Preparing meeting strategy...'):
-                            meeting_result = run_async(
-                                insight_service.prepare_meeting(
-                                    profile=profile.__dict__,
-                                    company=get_user_company_info(user_email).__dict__
+                    # Get latest user and company data
+                    user_company = get_user_company_info(user_email)
+                    # Check if we have all required information
+                    missing_company_info = not user_company
+                    
+                    if missing_company_info:
+                        warning_message = []
+                        if missing_user_info:
+                            warning_message.append("• Complete your personal information (name, role, company)")
+                        if missing_company_info:
+                            warning_message.append("• Add your company information")
+                        
+                        st.warning(f"""
+                            ⚠️ Context Required for Meeting Preparation
+                            
+                            To create a personalized meeting strategy, please first:
+                            {chr(10).join(warning_message)}
+                            
+                            This helps us provide more targeted talking points and strategic recommendations.
+                        """)
+                        
+                        if st.button("Complete Profile Settings →", type="primary"):
+                            st.session_state.nav_bar_option_selected = "Settings"
+                            st.rerun()
+                    else:
+                        try:
+                            with st.spinner('Preparing meeting strategy...'):
+                                meeting_result = run_async(
+                                    insight_service.prepare_meeting(
+                                        profile=profile.__dict__,
+                                        company=user_company.__dict__
+                                    )
                                 )
-                            )
-                            st.session_state.meeting_result = meeting_result
-                            st.success("Meeting preparation completed!")
-                    except Exception as e:
-                        st.error(f"Failed to prepare meeting: {str(e)}")
+                                st.session_state.meeting_result = meeting_result
+                                st.success("Meeting preparation completed!")
+                        except Exception as e:
+                            st.error(f"Failed to prepare meeting: {str(e)}")
 
             with col3:
-                evaluate_fit = st.button("Evaluate Fit")
+                
+                evaluate_fit = st.button("Evaluate Fit", type="primary")
                 if evaluate_fit:
-                    try:
-                        with st.spinner('Evaluating fit...'):
-                            fit_result = run_async(
-                                insight_service.evaluate_profile_fit(
-                                    profile=profile.__dict__,
-                                    company=get_user_company_info(user_email).__dict__
+                    # Get latest company data
+                    user_company = get_user_company_info(user_email)
+                    
+                    if not user_company:
+                        st.warning("""
+                            ⚠️ Company information required
+                            
+                            To evaluate profile fit, we need your company context. Please complete your company information in the Settings section first.
+                            
+                            This helps us provide more accurate and meaningful insights.
+                        """)
+                        
+                        if st.button("Complete Company Settings →", type="primary"):
+                            st.session_state.nav_bar_option_selected = "Settings"
+                            st.rerun()
+                    else:
+                        try:
+                            with st.spinner('Evaluating fit...'):
+                                fit_result = run_async(
+                                    insight_service.evaluate_profile_fit(
+                                        profile=profile.__dict__,
+                                        company=user_company.__dict__
+                                    )
                                 )
-                            )
-                            st.session_state.fit_evaluation_result = fit_result
-                            st.success("Fit evaluation completed!")
-                    except Exception as e:
-                        st.error(f"Failed to evaluate fit: {str(e)}")
+                                st.session_state.fit_evaluation_result = fit_result
+                                st.success("Fit evaluation completed!")
+                        except Exception as e:
+                            st.error(f"Failed to evaluate fit: {str(e)}")
 
             # Display sections based on results
             
             # Email section
             if 'email_content' in st.session_state:
                 with st.expander("✉️ Outreach Email", expanded=False):
-                    st.markdown('<div class="meeting-header">📧 Draft Email</div>', unsafe_allow_html=True)
+                    clean_email = re.sub(r'<[^>]+>', '', st.session_state.email_content)
+
                     st.markdown(f"""
-                        <div class="agenda-item">
                             <div style="font-family: monospace; white-space: pre-wrap; padding: 1rem; font-size: 0.9rem; line-height: 1.5;">
-                                {st.session_state.email_content}
+                                {clean_email}
                             </div>
-                        </div>
-                    """, unsafe_allow_html=True)
+                    """, unsafe_allow_html=False)
                     
-                    # Optional: Add some context or tips
-                    st.markdown('<div class="meeting-header">💡 Email Tips</div>', unsafe_allow_html=True)
-                    st.markdown("""
-                        <div class="meeting-item">• Review and personalize the email before sending</div>
-                        <div class="meeting-item">• Double-check all names and company references</div>
-                        <div class="meeting-item">• Adjust the tone based on your relationship level</div>
-                    """, unsafe_allow_html=True)
 
             # Meeting Preparation section
             if 'meeting_result' in st.session_state:
@@ -372,7 +444,4 @@ def profile_insight_section():
                             </div>
                         """, unsafe_allow_html=True)
 
-        if st.button("💾 Save Research", key="save_button"):
-            save_profile_search(user_email, profile, person_company)
-            st.success("Research saved successfully!")
             
