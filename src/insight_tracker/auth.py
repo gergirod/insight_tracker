@@ -4,6 +4,8 @@ from authlib.integrations.requests_client import OAuth2Session
 from dotenv import load_dotenv
 import jwt
 from insight_tracker.db import create_user_if_not_exists, get_user_company_info
+from datetime import datetime, timedelta
+import extra_streamlit_components as stx
 
 # Load environment variables
 load_dotenv()
@@ -21,14 +23,92 @@ auth0 = OAuth2Session(
     redirect_uri=AUTH0_CALLBACK_URL
 )
 
+# Initialize cookie manager at module level without caching
+cookie_manager = stx.CookieManager()
 
+def save_auth_cookie(token, expiry_days=1):
+    """
+    Save authentication token to cookies
+    
+    Args:
+        token (str): The authentication token to save
+        expiry_days (int): Number of days until cookie expires
+    """
+    try:
+    
+        
+        # Save token with secure settings
+        cookie_manager.set("auth_token", token)
+        return True
+    except Exception as e:
+        print(f"Error saving auth cookie: {e}")
+        return False
+
+def get_auth_cookie():
+    """
+    Retrieve authentication token from cookies
+    
+    Returns:
+        str: The authentication token if found, None otherwise
+    """
+    try:
+        return cookie_manager.get('auth_token')
+    except Exception as e:
+        print(f"Error retrieving auth cookie: {e}")
+        return None
+
+def is_token_expired(token):
+    """Check if the token is expired"""
+    try:
+        decoded = jwt.decode(token, options={"verify_signature": False})
+        exp_timestamp = decoded.get('exp')
+        if not exp_timestamp:
+            return True
+            
+        # Add some buffer (5 minutes) to prevent edge cases
+        current_timestamp = datetime.now().timestamp() - 300
+        return exp_timestamp < current_timestamp
+    except Exception as e:
+        print(f"Error checking token expiration: {e}")
+        return True
+
+def try_silent_login():
+    """Attempt silent login using stored token"""
+    try:
+        token = get_auth_cookie()
+        if not token:
+            return None
+            
+        if is_token_expired(token):
+            # Token expired, clear it
+            cookie_manager.delete('auth_token')
+            return None
+            
+        # Token is valid, get user info
+        user_info = validate_token_and_get_user(token)
+        if user_info:
+            # Update session state
+            st.session_state.user = user_info
+            st.session_state.authentication_status = 'authenticated'
+            
+            # Get user company info
+            user_company = get_user_company_info(user_info.get('email'))
+            st.session_state.user_company = user_company
+            
+            return user_info
+            
+        return None
+    except Exception as e:
+        print(f"Error during silent login: {e}")
+        return None
 
 def validate_token_and_get_user(token):
     try:
-        # Decode the token
-        decoded = jwt.decode(token, options={"verify_signature": False})
-        
-        # Get user info from Auth0
+        # First check if token is expired
+        if is_token_expired(token):
+            return None
+            
+        # Token is valid, get user info
         user_info = auth0.get(
             f"https://{AUTH0_DOMAIN}/userinfo", 
             headers={"Authorization": f"Bearer {token}"}
@@ -114,7 +194,10 @@ def handle_callback():
                 company="",  # Empty initially
                 role=""      # Empty initially
             )
-            
+
+            save_auth_cookie(id_token)
+            cookie = get_auth_cookie()
+            print(f"Cookie: {cookie}")
             # Store whether user is new in session state
             st.session_state.is_new_user = is_new_user
             

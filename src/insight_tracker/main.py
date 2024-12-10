@@ -1,6 +1,6 @@
 import sqlite3
 import streamlit as st
-from insight_tracker.auth import handle_callback, logout
+from insight_tracker.auth import handle_callback, logout, try_silent_login
 from insight_tracker.db import getUserByEmail, init_db, init_recent_searches_db, alter_profile_searches_table, init_user_company_db, get_user_company_info
 from insight_tracker.ui.profile_insight_section import profile_insight_section
 from insight_tracker.ui.company_insight_section import company_insight_section
@@ -11,7 +11,7 @@ from insight_tracker.ui.side_bar import display_side_bar
 from insight_tracker.ui.session_state import initialize_session_state
 from insight_tracker.ui.onboarding_section import onboarding_section
 from insight_tracker.ui.components.loading_dialog import show_loading_dialog
-
+from insight_tracker.auth import get_auth_cookie
 def check_and_alter_table():
     """Check if the table needs alteration and perform it if necessary."""
     conn = sqlite3.connect('recent_searches.db')
@@ -59,11 +59,16 @@ def handle_auth():
     """Handle authentication process"""
     print("Handling authentication")
     
+    # First try silent login with stored token
+    user_info = try_silent_login()
+    if user_info:
+        return True
+    
+    # If silent login failed, check for auth callback
     if 'code' in st.query_params and st.session_state.user is None:
         print("Handling callback")
         if handle_callback():
             return True
-    
     
     return st.session_state.user is not None
 
@@ -113,6 +118,12 @@ def display_main_content(user):
         profile_insight_section()  # Default to Profile Insight if no selection
 
 def main():
+    # Try silent login first if user is not authenticated
+    if st.session_state.authentication_status != 'authenticated':
+        user_info = try_silent_login()
+        if user_info:
+            st.rerun()
+    
     if st.session_state.authentication_status == 'checking':
         loading_container = show_loading_screen()
         if handle_auth():
@@ -123,8 +134,10 @@ def main():
             st.rerun()
     elif st.session_state.authentication_status == 'authenticated':
         if st.session_state.user is None:
-            # If user is None but status is authenticated, something went wrong
-            st.session_state.authentication_status = 'unauthenticated'
+            # If user is None but status is authenticated, try silent login
+            user_info = try_silent_login()
+            if not user_info:
+                st.session_state.authentication_status = 'unauthenticated'
             st.rerun()
         else:
             user_email = st.session_state.user.get('email')
