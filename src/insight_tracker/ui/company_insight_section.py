@@ -9,7 +9,7 @@ from insight_tracker.api.models.responses import Company
 import asyncio
 import os
 from insight_tracker.api.models.responses import Company
-from insight_tracker.db import get_user_company_info
+from insight_tracker.db import get_user_company_info, decrease_user_usage_limit
 
 research_company = None
 
@@ -308,11 +308,21 @@ def company_insight_section():
         evaluate_fit = st.button("Evaluate Fit", type="primary")
         if evaluate_fit:
             # Get latest company data
+            user_info = getUserByEmail(user_email)
+
+            if user_info and user_info[5] <= 0:  # Assuming free_usage_limit is at index 5
+                st.error("""
+                    ⚠️ Usage Limit Reached
+                    
+                    You have reached your free usage limit for evaluations. 
+                    Please contact support for more information about upgrading your account.
+                """)
+                return
+
+            decrease_user_usage_limit(user_email)
+
             research_company = st.session_state.company_data
             user_company = get_user_company_info(user_email)
-            
-            print(f"Debug - Research company: {research_company}")
-            print(f"Debug - User company: {user_company}")
             if not user_company:
                 st.warning("""
                     ⚠️ Company information required

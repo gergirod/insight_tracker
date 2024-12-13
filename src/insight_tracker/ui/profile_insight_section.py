@@ -2,7 +2,7 @@ import streamlit as st
 import os
 import asyncio
 import urllib3
-from insight_tracker.db import getUserByEmail, save_profile_search, get_recent_profile_searches, get_user_company_info
+from insight_tracker.db import getUserByEmail, save_profile_search, get_user_company_info, decrease_user_usage_limit
 from insight_tracker.api.client.insight_client import InsightApiClient
 from insight_tracker.api.services.insight_service import InsightService
 from insight_tracker.api.exceptions.api_exceptions import ApiError
@@ -178,6 +178,19 @@ def profile_insight_section():
                 
                 generate_email = st.button("Generate Email", type="primary")
                 if generate_email:
+
+                    user_info = getUserByEmail(user_email)
+
+                    if user_info and user_info[5] <= 0:  # Assuming free_usage_limit is at index 5
+                        st.error("""
+                            ⚠️ Usage Limit Reached
+                            
+                            You have reached your free usage limit for evaluations. 
+                            Please contact support for more information about upgrading your account.
+                        """)
+                        return
+
+                    decrease_user_usage_limit(user_email)
                     # Get latest user and company data
                     user = getUserByEmail(user_email)
                     user_company = get_user_company_info(user_email)
@@ -231,6 +244,19 @@ def profile_insight_section():
                 
                 prepare_meeting = st.button("Prepare for Meeting", type="primary")
                 if prepare_meeting:
+
+                    user_info = getUserByEmail(user_email)
+
+                    if user_info and user_info[5] <= 0:  # Assuming free_usage_limit is at index 5
+                        st.error("""
+                            ⚠️ Usage Limit Reached
+                            
+                            You have reached your free usage limit for evaluations. 
+                            Please contact support for more information about upgrading your account.
+                        """)
+                        return
+
+                    decrease_user_usage_limit(user_email)
                     # Get latest user and company data
                     user_company = get_user_company_info(user_email)
                     # Check if we have all required information
@@ -273,6 +299,19 @@ def profile_insight_section():
                 
                 evaluate_fit = st.button("Evaluate Fit", type="primary")
                 if evaluate_fit:
+
+                    user_info = getUserByEmail(user_email)
+
+                    if user_info and user_info[5] <= 0:  # Assuming free_usage_limit is at index 5
+                        st.error("""
+                            ⚠️ Usage Limit Reached
+                            
+                            You have reached your free usage limit for evaluations. 
+                            Please contact support for more information about upgrading your account.
+                        """)
+                        return
+
+                    decrease_user_usage_limit(user_email)
                     # Get latest company data
                     user_company = get_user_company_info(user_email)
                     

@@ -4,7 +4,7 @@ from authlib.integrations.requests_client import OAuth2Session
 from dotenv import load_dotenv
 import jwt
 from insight_tracker.db import create_user_if_not_exists, get_user_company_info
-from datetime import datetime, timedelta
+from datetime import datetime
 import extra_streamlit_components as stx
 
 # Load environment variables
@@ -35,8 +35,6 @@ def save_auth_cookie(token, expiry_days=1):
         expiry_days (int): Number of days until cookie expires
     """
     try:
-    
-        
         # Save token with secure settings
         cookie_manager.set("auth_token", token)
         return True
@@ -56,6 +54,17 @@ def get_auth_cookie():
     except Exception as e:
         print(f"Error retrieving auth cookie: {e}")
         return None
+    
+def delete_auth_cookie():
+    """
+    Delete authentication token from cookies
+    """
+    try:
+        cookie_manager.delete('auth_token')
+        return True
+    except Exception as e:
+        print(f"Error deleting auth cookie: {e}")
+        return False
 
 def is_token_expired(token):
     """Check if the token is expired"""
@@ -195,6 +204,7 @@ def handle_callback():
                 role=""      # Empty initially
             )
 
+            print(f"Success: {success}")
             save_auth_cookie(id_token)
             cookie = get_auth_cookie()
             print(f"Cookie: {cookie}")

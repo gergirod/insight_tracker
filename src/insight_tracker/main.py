@@ -92,7 +92,7 @@ def check_user_setup_complete(user, user_company) -> bool:
 
 def display_main_content(user):
     """Display main content based on selected navigation option"""
-    saved_user = getUserByEmail(user[2])
+
     user_company = get_user_company_info(user[2])
     
     # Show onboarding only for new users who haven't completed setup
@@ -142,6 +142,7 @@ def main():
         else:
             user_email = st.session_state.user.get('email')
             user = getUserByEmail(user_email)
+            print(f"Debug - User: {user}")
             display_main_content(user)
     else:  # unauthenticated
         auth_section()

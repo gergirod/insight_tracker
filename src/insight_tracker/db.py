@@ -12,7 +12,8 @@ def init_db():
             full_name TEXT,
             email TEXT UNIQUE,
             company TEXT,
-            role TEXT
+            role TEXT,
+            free_usage_limit INTEGER DEFAULT 6
         )
     ''')
     conn.commit()
@@ -32,8 +33,6 @@ def init_recent_searches_db():
             current_company TEXT,
             current_company_url TEXT,
             current_job_title TEXT,
-            current_company TEXT,
-            current_company_url TEXT,
             professional_background TEXT,
             past_jobs TEXT,
             key_achievements TEXT,
@@ -264,7 +263,7 @@ def create_user_if_not_exists(full_name, email, company="", role=""):
         
         # Create new user
         c.execute('''
-            INSERT INTO users (name, email, role, company)
+            INSERT INTO users (full_name, email, role, company)
             VALUES (?, ?, ?, ?)
         ''', (full_name, email, role, company))
         conn.commit()
@@ -410,3 +409,43 @@ def get_user_company_info(user_email: str) -> Optional[Company]:
             company_recent_updates=row[13].split(',') if row[13] else None
         )
     return None
+
+def decrease_user_usage_limit(email: str) -> tuple[bool, int]:
+    """
+    Decrease the free_usage_limit by 1 for the specified user.
+    
+    Args:
+        email (str): User's email
+        
+    Returns:
+        tuple[bool, int]: (success, remaining_limit)
+        - success: True if update was successful
+        - remaining_limit: Current usage limit after decrease
+    """
+    conn = sqlite3.connect('user_data.db')
+    c = conn.cursor()
+    
+    try:
+        # First get current limit
+        c.execute('SELECT free_usage_limit FROM users WHERE email = ?', (email,))
+        current_limit = c.fetchone()
+        
+        if not current_limit or current_limit[0] <= 0:
+            return False, 0
+            
+        # Decrease limit by 1
+        new_limit = current_limit[0] - 1
+        c.execute('''
+            UPDATE users 
+            SET free_usage_limit = ?
+            WHERE email = ?
+        ''', (new_limit, email))
+        
+        conn.commit()
+        return True, new_limit
+        
+    except Exception as e:
+        print(f"Error updating usage limit: {e}")
+        return False, 0
+    finally:
+        conn.close()
