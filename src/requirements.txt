@@ -34,6 +34,8 @@ click==8.1.7
 cloudpickle==2.2.1
 cohere==5.11.0
 coloredlogs==15.0.1
+# Editable install with no version control (conference_crew==0.1.0)
+-e /Users/germangirod/Documents/conference_scrapping/conference_crew
 contourpy==1.3.0
 crashtest==0.4.1
 crewai==0.76.9
@@ -59,6 +61,7 @@ email_validator==2.2.0
 embedchain==0.1.125
 eval_type_backport==0.2.0
 executing==2.1.0
+extra-streamlit-components==0.1.71
 fastapi==0.115.0
 fastapi-cli==0.0.4
 fastavro==1.9.7
@@ -110,6 +113,7 @@ idna==3.10
 importlib-metadata==6.11.0
 importlib_resources==6.4.5
 iniconfig==2.0.0
+-e git+ssh://git@insight.github.com/gergirod/insight_tracker.git@90786cdbbb36bcbc8bc1389ffce7cefe245d0ca6#egg=insight_tracker
 installer==0.7.0
 instructor==1.3.3
 ipython==8.28.0
