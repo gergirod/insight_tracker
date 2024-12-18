@@ -263,9 +263,9 @@ def create_user_if_not_exists(full_name, email, company="", role=""):
         
         # Create new user
         c.execute('''
-            INSERT INTO users (full_name, email, role, company)
-            VALUES (?, ?, ?, ?)
-        ''', (full_name, email, role, company))
+            INSERT INTO users (full_name, email, company, role, free_usage_limit)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (full_name, email, company, role, 6))
         conn.commit()
         return True, True  # User created, is new
     except Exception as e:
