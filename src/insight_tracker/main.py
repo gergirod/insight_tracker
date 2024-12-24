@@ -142,8 +142,11 @@ def main():
         else:
             user_email = st.session_state.user.get('email')
             user = getUserByEmail(user_email)
-            print(f"Debug - User: {user}")
-            display_main_content(user)
+            if user is None:
+                st.session_state.authentication_status = 'unauthenticated'
+                st.rerun()
+            else:
+                display_main_content(user)
     else:  # unauthenticated
         auth_section()
 
