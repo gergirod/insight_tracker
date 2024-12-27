@@ -147,7 +147,6 @@ def main():
             else:
                 display_main_content(user)
     else:  # unauthenticated
-        st.write("Authentication status is unauthenticated")
         auth_section()
 
 if __name__ == "__main__":
