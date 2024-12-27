@@ -125,35 +125,26 @@ def main():
             st.rerun()
     
     if st.session_state.authentication_status == 'checking':
-        st.write("Checking authentication status")
         loading_container = show_loading_screen()
         if handle_auth():
-            st.write("Authentication successful")
             st.session_state.authentication_status = 'authenticated'
             st.rerun()
         else:
-            st.write("Authentication failed")
             st.session_state.authentication_status = 'unauthenticated'
             st.rerun()
     elif st.session_state.authentication_status == 'authenticated':
-        st.write("Authentication status is authenticated")
         if st.session_state.user is None:
-            st.write("User is None")
             # If user is None but status is authenticated, try silent login
             user_info = try_silent_login()
             if not user_info:
-                st.write("User info is None")
                 st.session_state.authentication_status = 'unauthenticated'
             st.rerun()
         else:
-            st.write("User is not None")
             user_email = st.session_state.user.get('email')
             user = getUserByEmail(user_email)
             if user is None:
-                st.write("User is None")   
                 auth_section()
             else:
-                st.write("User is not None")
                 display_main_content(user)
     else:  # unauthenticated
         st.write("Authentication status is unauthenticated")
