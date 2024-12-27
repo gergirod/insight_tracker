@@ -185,24 +185,19 @@ def profile_insight_section():
                 generate_email = st.button("Generate Email", key="generate_email_button")
                 if generate_email:
 
-                    user_info = getUserByEmail(user_email)
-
-                    if user_info and user_info[5] <= 0:  # Assuming free_usage_limit is at index 5
-                        st.session_state.errors.insert(0, "⚠️ Usage Limit Reached: You have reached your free usage limit for evaluations. Please contact support for more information about upgrading your account.")
-                    else:
-                        decrease_user_usage_limit(user_email)
-                        # Get latest user and company data
-                        user = getUserByEmail(user_email)
-                        user_company = get_user_company_info(user_email)
+                    
+                    # Get latest user and company data
+                    user = getUserByEmail(user_email)
+                    user_company = get_user_company_info(user_email)
+                    
+                    # Check if we have all required information
+                    missing_user_info = not user or not all([user[1]])  # name, role, company
+                    missing_company_info = not user_company
                         
-                        # Check if we have all required information
-                        missing_user_info = not user or not all([user[1]])  # name, role, company
-                        missing_company_info = not user_company
-                        
-                        if missing_user_info or missing_company_info:
-                            warning_message = []
-                            if missing_user_info:
-                                warning_message.insert(0, "• Complete your personal information (name, role, company)")
+                    if missing_user_info or missing_company_info:
+                        warning_message = []
+                        if missing_user_info:
+                            warning_message.insert(0, "• Complete your personal information (name, role, company)")
                             if missing_company_info:
                                 warning_message.insert(0, "• Add your company information")
                             
@@ -211,48 +206,43 @@ def profile_insight_section():
                             if st.button("Complete Profile Settings →", type="primary"):
                                 st.session_state.nav_bar_option_selected = "Settings"
                                 st.rerun()
-                        else:
-                            try:
-                                with st.spinner('Generating outreach email...'):
-                                    sender_info = {
-                                        "full_name": user[1],
-                                        "company": user[4],
-                                        "role": user[3]
-                                    }
-                                    profile_data = profile.__dict__
-                                    
-                                    email_content = run_async(
-                                        insight_service.generate_outreach_email(
-                                            profile=profile_data,
-                                            company=user_company.__dict__,
-                                            sender_info=sender_info
-                                        )
+                    else:
+                        try:
+                            with st.spinner('Generating outreach email...'):
+                                sender_info = {
+                                    "full_name": user[1],
+                                    "company": user[4],
+                                    "role": user[3]
+                                }
+                                profile_data = profile.__dict__
+                                
+                                email_content = run_async(
+                                    insight_service.generate_outreach_email(
+                                        profile=profile_data,
+                                        company=user_company.__dict__,
+                                        sender_info=sender_info
                                     )
-                                    st.session_state.email_content = email_content
-                                    st.success("Email generated successfully!")
-                            except Exception as e:
-                                st.session_state.errors.insert(0, f"Failed to generate email: {str(e)}")
+                                )
+                                st.session_state.email_content = email_content
+                                st.success("Email generated successfully!")
+                        except Exception as e:
+                            st.session_state.errors.insert(0, f"Failed to generate email: {str(e)}")
 
             with col2:
                 
                 prepare_meeting = st.button("Prepare for Meeting", key="prepare_meeting_button")
                 if prepare_meeting:
 
-                    user_info = getUserByEmail(user_email)
-
-                    if user_info and user_info[5] <= 0:  # Assuming free_usage_limit is at index 5
-                        st.session_state.errors.insert(0,"⚠️ Usage Limit Reached: You have reached your free usage limit for evaluations. Please contact support for more information about upgrading your account.")
-                    else:
-                        decrease_user_usage_limit(user_email)
-                        # Get latest user and company data
-                        user_company = get_user_company_info(user_email)
-                        # Check if we have all required information
-                        missing_company_info = not user_company
-                        
-                        if missing_company_info:
-                            warning_message = []
-                            if missing_user_info:
-                                warning_message.insert(0, "• Complete your personal information (name, role, company)")
+                    
+                    # Get latest user and company data
+                    user_company = get_user_company_info(user_email)
+                    # Check if we have all required information
+                    missing_company_info = not user_company
+                    
+                    if missing_company_info:
+                        warning_message = []
+                        if missing_user_info:
+                            warning_message.insert(0, "• Complete your personal information (name, role, company)")
                             if missing_company_info:
                                 warning_message.insert(0, "• Add your company information")
                             
@@ -261,43 +251,36 @@ def profile_insight_section():
                             if st.button("Complete Profile Settings →", type="primary"):
                                 st.session_state.nav_bar_option_selected = "Settings"
                                 st.rerun()
-                        else:
-                            try:
-                                with st.spinner('Preparing meeting strategy...'):
-                                    meeting_result = run_async(
-                                        insight_service.prepare_meeting(
-                                            profile=profile.__dict__,
-                                            company=user_company.__dict__
-                                        )
+                    else:
+                        try:
+                            with st.spinner('Preparing meeting strategy...'):
+                                meeting_result = run_async(
+                                    insight_service.prepare_meeting(
+                                        profile=profile.__dict__,
+                                        company=user_company.__dict__
                                     )
-                                    st.session_state.meeting_result = meeting_result
-                                    st.success("Meeting preparation completed!")
-                            except Exception as e:
-                                st.session_state.errors.insert(0, f"Failed to prepare meeting: {str(e)}")
+                                )
+                                st.session_state.meeting_result = meeting_result
+                                st.success("Meeting preparation completed!")
+                        except Exception as e:
+                            st.session_state.errors.insert(0, f"Failed to prepare meeting: {str(e)}")
 
             with col3:
                 
                 evaluate_fit = st.button("Evaluate Fit",  key="evaluate_fit_button")
                 if evaluate_fit:
 
-                    user_info = getUserByEmail(user_email)
-
-                    if user_info and user_info[5] <= 0:  # Assuming free_usage_limit is at index 5
-                        st.session_state.errors.insert(0, "⚠️ Usage Limit Reached: You have reached your free usage limit for evaluations. Please contact support for more information about upgrading your account.")
-                    else:
-                        decrease_user_usage_limit(user_email)
-                        # Get latest company data
-                        user_company = get_user_company_info(user_email)
+                   
+                    user_company = get_user_company_info(user_email)
                         
-                        if not user_company:
-                            st.session_state.warnings.append("⚠️ Company information required: To evaluate profile fit, we need your company context. Please complete your company information in the Settings section first.")
-                            
-                            if st.button("Complete Company Settings →", type="primary"):
-                                st.session_state.nav_bar_option_selected = "Settings"
-                                st.rerun()
-                        else:
-                            try:
-                                with st.spinner('Evaluating fit...'):
+                    if not user_company:
+                        st.session_state.warnings.append("⚠️ Company information required: To evaluate profile fit, we need your company context. Please complete your company information in the Settings section first.")
+                        if st.button("Complete Company Settings →", type="primary"):
+                            st.session_state.nav_bar_option_selected = "Settings"
+                            st.rerun()
+                    else:
+                        try:
+                            with st.spinner('Evaluating fit...'):
                                     fit_result = run_async(
                                         insight_service.evaluate_profile_fit(
                                             profile=profile.__dict__,
@@ -306,8 +289,8 @@ def profile_insight_section():
                                     )
                                     st.session_state.fit_evaluation_result = fit_result
                                     st.success("Fit evaluation completed!")
-                            except Exception as e:
-                                st.session_state.errors.insert(0,f"Failed to evaluate fit: {str(e)}")
+                        except Exception as e:
+                            st.session_state.errors.insert(0,f"Failed to evaluate fit: {str(e)}")
 
             # Display errors and warnings
             if st.session_state.errors:
