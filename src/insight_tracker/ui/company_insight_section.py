@@ -308,19 +308,6 @@ def company_insight_section():
         evaluate_fit = st.button("Evaluate Fit", type="primary")
         if evaluate_fit:
             # Get latest company data
-            user_info = getUserByEmail(user_email)
-
-            if user_info and user_info[5] <= 0:  # Assuming free_usage_limit is at index 5
-                st.error("""
-                    ⚠️ Usage Limit Reached
-                    
-                    You have reached your free usage limit for evaluations. 
-                    Please contact support for more information about upgrading your account.
-                """)
-                return
-
-            decrease_user_usage_limit(user_email)
-
             research_company = st.session_state.company_data
             user_company = get_user_company_info(user_email)
             if not user_company:
