@@ -13,7 +13,7 @@ def init_db():
             email TEXT UNIQUE,
             company TEXT,
             role TEXT,
-            free_usage_limit INTEGER DEFAULT 6
+            free_usage_limit INTEGER DEFAULT 100
         )
     ''')
     conn.commit()
@@ -265,7 +265,7 @@ def create_user_if_not_exists(full_name, email, company="", role=""):
         c.execute('''
             INSERT INTO users (full_name, email, company, role, free_usage_limit)
             VALUES (?, ?, ?, ?, ?)
-        ''', (full_name, email, company, role, 6))
+        ''', (full_name, email, company, role, 100))
         conn.commit()
         return True, True  # User created, is new
     except Exception as e:
