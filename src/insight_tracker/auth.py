@@ -6,6 +6,8 @@ import jwt
 from insight_tracker.db import create_user_if_not_exists, get_user_company_info
 from datetime import datetime
 import extra_streamlit_components as stx
+import logging
+
 
 # Load environment variables
 load_dotenv()
@@ -85,15 +87,18 @@ def try_silent_login():
     """Attempt silent login using stored token"""
     try:
         token = get_auth_cookie()
+        logging.info("Token: silent login " + token)
         if not token:
             return None
             
         if is_token_expired(token):
+            logging.info("Token expired")
             # Token expired, clear it
             cookie_manager.delete('auth_token')
             return None
             
         # Token is valid, get user info
+        logging.info("Token is valid")
         user_info = validate_token_and_get_user(token)
         if user_info:
             # Update session state
@@ -122,10 +127,11 @@ def validate_token_and_get_user(token):
             f"https://{AUTH0_DOMAIN}/userinfo", 
             headers={"Authorization": f"Bearer {token}"}
         ).json()
-        
+        logging.info(f"User info: {user_info}")
         return user_info
     except Exception as e:
         print(f"Error validating token: {e}")
+        logging.info(f"Error validating token: {e}")
         return None
 
 def login():
