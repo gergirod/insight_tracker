@@ -119,34 +119,46 @@ def display_main_content(user):
 
 def main():
     # Try silent login first if user is not authenticated
+    st.text("Authentication status: 1 " + st.session_state.authentication_status)
     if st.session_state.authentication_status != 'authenticated':
+        st.text("Authentication status: 2 " + st.session_state.authentication_status)
         user_info = try_silent_login()
         if user_info:
+            st.text("Authentication status: 3 " + st.session_state.authentication_status)
             st.rerun()
     
     if st.session_state.authentication_status == 'checking':
+        st.text("Authentication status: 4 " + st.session_state.authentication_status)
         loading_container = show_loading_screen()
         if handle_auth():
+            st.text("Authentication status: 5 " + st.session_state.authentication_status)
             st.session_state.authentication_status = 'authenticated'
             st.rerun()
         else:
+            st.text("Authentication status: 6 " + st.session_state.authentication_status)
             st.session_state.authentication_status = 'unauthenticated'
             st.rerun()
     elif st.session_state.authentication_status == 'authenticated':
         if st.session_state.user is None:
+            st.text("Authentication status: 7 " + st.session_state.authentication_status)
             # If user is None but status is authenticated, try silent login
             user_info = try_silent_login()
             if not user_info:
+                st.text("Authentication status: 8 " + st.session_state.authentication_status)
                 st.session_state.authentication_status = 'unauthenticated'
             st.rerun()
         else:
+            st.text("Authentication status: 9 " + st.session_state.authentication_status)
             user_email = st.session_state.user.get('email')
             user = getUserByEmail(user_email)
             if user is None:
+                st.text("Authentication status: 10 " + st.session_state.authentication_status)
                 auth_section()
             else:
+                st.text("Authentication status: 11 " + st.session_state.authentication_status)
                 display_main_content(user)
     else:  # unauthenticated
+        st.text("Authentication status: 12 " + st.session_state.authentication_status)
         auth_section()
 
 if __name__ == "__main__":
