@@ -157,14 +157,15 @@ def main():
             logging.info("Authentication status: 9 " + st.session_state.authentication_status)
             user_email = st.session_state.user.get('email')
             user = getUserByEmail(user_email)
+            logging.info("Authentication status: 10 " + user)
             if user is None:
-                logging.info("Authentication status: 10 " + st.session_state.authentication_status)
+                logging.info("Authentication status: 11 " + st.session_state.authentication_status)
                 auth_section()
             else:
-                logging.info("Authentication status: 11 " + st.session_state.authentication_status)
+                logging.info("Authentication status: 12 " + st.session_state.authentication_status)
                 display_main_content(user)
     else:  # unauthenticated
-        logging.info("Authentication status: 12 " + st.session_state.authentication_status)
+        logging.info("Authentication status: 13 " + st.session_state.authentication_status)
         auth_section()
 
 if __name__ == "__main__":
