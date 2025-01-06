@@ -129,6 +129,7 @@ def main():
     if st.session_state.authentication_status != 'authenticated':
         logging.info("Authentication status: 2 " + st.session_state.authentication_status)
         user_info = try_silent_login()
+        logging.info("Authentication status: 2.1 " + user_info)
         if user_info:
             logging.info("Authentication status: 3 " + st.session_state.authentication_status)
             st.rerun()
