@@ -8,6 +8,8 @@ from datetime import datetime
 import extra_streamlit_components as stx
 import logging
 
+logging.basicConfig(filename='auth.log', level=logging.INFO, 
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Load environment variables
 load_dotenv()
