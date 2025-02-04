@@ -98,7 +98,7 @@ def check_user_setup_complete(user, user_company) -> bool:
 
 def display_main_content(user):
     """Display main content based on selected navigation option"""
-    logging.info("User final : " + user)
+    logging.info("User final : " + str(user))
     user_company = get_user_company_info(user[2])
     
     # Show onboarding only for new users who haven't completed setup
