@@ -131,7 +131,8 @@ def main():
         user_info = try_silent_login()
         if user_info:
             logging.info("Authentication status: 3 " + st.session_state.authentication_status)
-            st.rerun()
+            display_main_content(user_info)
+
     
     if st.session_state.authentication_status == 'checking':
         logging.info("Authentication status: 4 " + st.session_state.authentication_status)
@@ -139,7 +140,9 @@ def main():
         if handle_auth():
             logging.info("Authentication status: 5 " + st.session_state.authentication_status)
             st.session_state.authentication_status = 'authenticated'
-            st.rerun()
+            user_email = st.session_state.user.get('email')
+            user = getUserByEmail(user_email)
+            display_main_content(user)
         else:
             logging.info("Authentication status: 6 " + st.session_state.authentication_status)
             st.session_state.authentication_status = 'unauthenticated'
