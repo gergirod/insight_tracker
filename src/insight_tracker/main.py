@@ -161,7 +161,7 @@ def main():
             user_email = st.session_state.user.get('email')
             user = getUserByEmail(user_email)
             logging.info("Authentication status: 10 " + user_email)
-            logging.info("User final 1 : " + user)
+            logging.info("User final 1 : " + str(user))
             if user is None:
                 logging.info("Authentication status: 12.1 " + st.session_state.authentication_status)
                 auth_section()
