@@ -246,4 +246,5 @@ def logout():
     st.session_state.user = None
     st.session_state.authentication_status = 'unauthenticated'
     st.success("You have been logged out successfully.")
+    delete_auth_cookie()
     st.rerun()
