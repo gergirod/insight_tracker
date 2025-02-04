@@ -132,7 +132,7 @@ def main():
         if user_info:
             logging.info("Authentication status: 3 " + st.session_state.authentication_status)
             user = getUserByEmail(user_info.get('email'))
-            display_main_content(user)
+            st.rerun()
 
     
     if st.session_state.authentication_status == 'checking':
