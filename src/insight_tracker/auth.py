@@ -102,6 +102,7 @@ def try_silent_login():
         # Token is valid, get user info
         logging.info("Token is valid")
         user_info = validate_token_and_get_user(token)
+        st.text(user_info)
         if user_info:
             # Update session state
             st.session_state.user = user_info
