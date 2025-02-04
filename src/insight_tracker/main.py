@@ -131,7 +131,8 @@ def main():
         user_info = try_silent_login()
         if user_info:
             logging.info("Authentication status: 3 " + st.session_state.authentication_status)
-            display_main_content(user_info)
+            user = getUserByEmail(user_info.get('email'))
+            display_main_content(user)
 
     
     if st.session_state.authentication_status == 'checking':
