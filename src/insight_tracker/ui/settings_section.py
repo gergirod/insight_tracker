@@ -43,10 +43,11 @@ def inject_settings_css():
         
         /* Company Information Card Styling */
         .company-card {
-            background: white;
-            border-radius: 10px;
+            background: #ffffff;
+            border-radius: 12px;
             padding: 24px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             margin: 20px 0;
         }
         
@@ -55,71 +56,101 @@ def inject_settings_css():
             align-items: center;
             margin-bottom: 24px;
             padding-bottom: 16px;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid #e0e0e0;
         }
         
         .company-name {
-            font-size: 1.5rem;
+            font-size: 1.8rem;
             font-weight: 600;
             color: #1E88E5;
+            margin-bottom: 8px;
         }
         
         .company-website {
             color: #666;
-            font-size: 0.9rem;
+            font-size: 1rem;
             margin-top: 4px;
         }
         
         .info-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
+            gap: 16px;
             margin-bottom: 24px;
         }
         
         .info-item {
-            padding: 12px;
+            padding: 16px;
             background: #f8f9fa;
             border-radius: 8px;
-            border-left: 4px solid #1E88E5;
+            border: 1px solid #e0e0e0;
+            transition: all 0.2s ease;
+        }
+        
+        .info-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
         
         .info-label {
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             color: #666;
-            margin-bottom: 4px;
+            margin-bottom: 8px;
+            font-weight: 500;
         }
         
         .info-value {
-            font-size: 1rem;
+            font-size: 1.1rem;
             color: #2c3e50;
-            font-weight: 500;
+            font-weight: 600;
         }
         
         .company-summary {
             background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
+            padding: 24px;
+            border-radius: 12px;
             margin-top: 24px;
+            border: 1px solid #e0e0e0;
         }
         
         .summary-header {
-            font-size: 1.1rem;
+            font-size: 1.2rem;
             font-weight: 600;
             color: #1E88E5;
-            margin-bottom: 12px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         
         .badge {
             display: inline-block;
-            padding: 4px 12px;
+            padding: 6px 14px;
             border-radius: 20px;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             font-weight: 500;
-            margin-right: 8px;
-            margin-bottom: 8px;
+            margin: 4px;
             background: #e3f2fd;
             color: #1E88E5;
+            border: 1px solid #bbdefb;
+            text-align: center;
+        }
+        
+        /* Make headers blue */
+        h3 {
+            color: #1E88E5 !important;
+            margin-bottom: 1rem !important;
+        }
+        
+        h5 {
+            color: #666 !important;
+            font-weight: 500 !important;
+            margin-bottom: 0.5rem !important;
+        }
+        
+        /* Add spacing between sections */
+        .stMarkdown {
+            margin-bottom: 1rem;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -128,70 +159,57 @@ def display_company_data(company):
     # Helper function to handle services display
     def format_services(services):
         if not services:
-            return ""
+            return []
         if isinstance(services, str):
             service_list = services.split(',')
         elif isinstance(services, list):
             service_list = services
         else:
-            return ""
-        
-        return "".join([f'<span class="badge">{service.strip()}</span>' 
-                       for service in service_list])
+            return []
+        return [service.strip() for service in service_list]
 
-    st.markdown("""
-        <div class="company-card">
-            <div class="company-header">
-                <div>
-                    <div class="company-name">🏢 {}</div>
-                    <div class="company-website">🌐 {}</div>
-                </div>
-            </div>
+    # Company Header
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.markdown(f"### 🏢 {company.company_name or 'N/A'}")
+    with col2:
+        if company.company_website:
+            st.markdown(f"[🌐 Website]({company.company_website})")
+
+    # Company Info Grid
+    col1, col2 = st.columns(2)
+    with col1:
+        with st.container():
+            st.markdown("##### 🏭 Industry")
+            st.markdown(f"**{company.company_industry or 'N/A'}**")
             
-            <div class="info-grid">
-                <div class="info-item">
-                    <div class="info-label">Industry</div>
-                    <div class="info-value">🏭 {}</div>
-                </div>
-                
-                <div class="info-item">
-                    <div class="info-label">Company Size</div>
-                    <div class="info-value">👥 {}</div>
-                </div>
-                
-                <div class="info-item">
-                    <div class="info-label">Headquarters</div>
-                    <div class="info-value">📍 {}</div>
-                </div>
-                
-                <div class="info-item">
-                    <div class="info-label">Founded</div>
-                    <div class="info-value">📅 {}</div>
-                </div>
-            </div>
+            st.markdown("##### 📍 Headquarters")
+            st.markdown(f"**{company.company_headquarters or 'N/A'}**")
+    
+    with col2:
+        with st.container():
+            st.markdown("##### 👥 Company Size")
+            st.markdown(f"**{company.company_size or 'N/A'}**")
             
-            <div class="company-summary">
-                <div class="summary-header">📝 Company Summary</div>
-                <div>{}</div>
-            </div>
-            
-            <div style="margin-top: 20px;">
-                <div class="summary-header">💼 Services</div>
-                <div>
-                    {}
-                </div>
-            </div>
-        </div>
-    """.format(
-        company.company_name or "N/A",
-        company.company_website or "N/A",
-        company.company_industry or "N/A",
-        company.company_size or "N/A",
-        company.company_headquarters or "N/A",
-        company.company_founded_year or "N/A",
-        company.company_summary or "No summary available",
-        format_services(company.company_services)
-    ), unsafe_allow_html=True)
+            st.markdown("##### 📅 Founded")
+            st.markdown(f"**{company.company_founded_year or 'N/A'}**")
+
+    # Company Summary
+    st.markdown("---")
+    st.markdown("### 📝 Company Summary")
+    st.markdown(company.company_summary or "No summary available")
+
+    # Services
+    if services := format_services(company.company_services):
+        st.markdown("### 💼 Services")
+        cols = st.columns(3)
+        for idx, service in enumerate(services):
+            with cols[idx % 3]:
+                st.markdown(f"""
+                    <div class="badge">
+                        {service}
+                    </div>
+                """, unsafe_allow_html=True)
 
 def settings_section(user, user_company, setup_complete=True):
     inject_settings_css()
