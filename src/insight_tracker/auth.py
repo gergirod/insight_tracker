@@ -187,46 +187,47 @@ def handle_callback():
 
     print(f"Query params: {query_params}")
 
-    if 'code' in query_params:
-        code = query_params['code']
-
-        try:
-            token = auth0.fetch_token(
-                f"https://{AUTH0_DOMAIN}/oauth/token",
-                code=code,
-                redirect_uri=AUTH0_CALLBACK_URL
-            )
-
-            access_token = token.get('access_token')
-            id_token = token.get('id_token')
-            user_info = auth0.get(
-                f"https://{AUTH0_DOMAIN}/userinfo", 
-                headers={"Authorization": f"Bearer {access_token}"}
-            ).json()
-            
-            # Create or update user in database
-            success, is_new_user = create_user_if_not_exists(
-                full_name=user_info.get('name', ''),
-                email=user_info.get('email', ''),
-                company="",  # Empty initially
-                role=""      # Empty initially
-            )
-
-            save_auth_cookie(id_token)
-            st.session_state.is_new_user = is_new_user
-            st.session_state.user = user_info
-            st.session_state.authentication_status = 'authenticated'
-            
-            # Redirect to base URL after successful authentication
-            base_url = os.getenv("BASE_URL", "/")
-            st.markdown(f'<meta http-equiv="refresh" content="0;url={base_url}">', unsafe_allow_html=True)
-            st.stop()
-
-        except Exception as e:
-            print(f"Error during callback handling: {e}")
-            return False
-    else:
+    if 'code' not in query_params:
         print("Authorization code not found.")
+        return False
+
+    try:
+        code = query_params['code']
+        token = auth0.fetch_token(
+            f"https://{AUTH0_DOMAIN}/oauth/token",
+            code=code,
+            redirect_uri=AUTH0_CALLBACK_URL
+        )
+
+        access_token = token.get('access_token')
+        id_token = token.get('id_token')
+        user_info = auth0.get(
+            f"https://{AUTH0_DOMAIN}/userinfo", 
+            headers={"Authorization": f"Bearer {access_token}"}
+        ).json()
+        
+        # Create or update user in database
+        success, is_new_user = create_user_if_not_exists(
+            full_name=user_info.get('name', ''),
+            email=user_info.get('email', ''),
+            company="",  # Empty initially
+            role=""      # Empty initially
+        )
+
+        save_auth_cookie(id_token)
+        st.session_state.is_new_user = is_new_user
+        st.session_state.user = user_info
+        st.session_state.authentication_status = 'authenticated'
+        
+        # Clear query parameters and redirect to base URL
+        st.query_params.clear()
+        base_url = os.getenv("BASE_URL", "/")
+        st.markdown(f'<meta http-equiv="refresh" content="0;url={base_url}">', unsafe_allow_html=True)
+        st.stop()
+
+    except Exception as e:
+        print(f"Error during callback handling: {e}")
+        logging.error(f"Auth callback error: {str(e)}")
         return False
 
 def logout():
