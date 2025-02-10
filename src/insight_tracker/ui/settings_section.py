@@ -40,44 +40,145 @@ def inject_settings_css():
         .stButton > button:active {
             transform: translateY(1px);
         }
+        
+        /* Company Information Card Styling */
+        .company-card {
+            background: white;
+            border-radius: 10px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+            margin: 20px 0;
+        }
+        
+        .company-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .company-name {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1E88E5;
+        }
+        
+        .company-website {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 4px;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+        
+        .info-item {
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #1E88E5;
+        }
+        
+        .info-label {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 4px;
+        }
+        
+        .info-value {
+            font-size: 1rem;
+            color: #2c3e50;
+            font-weight: 500;
+        }
+        
+        .company-summary {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 24px;
+        }
+        
+        .summary-header {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1E88E5;
+            margin-bottom: 12px;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-right: 8px;
+            margin-bottom: 8px;
+            background: #e3f2fd;
+            color: #1E88E5;
+        }
         </style>
     """, unsafe_allow_html=True)
 
 def display_company_data(company):
-    st.markdown('<div class="settings-card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">🏢 Company Information</div>', unsafe_allow_html=True)
-    
-    st.markdown('<div class="company-data-grid">', unsafe_allow_html=True)
-    
-    # Company Basic Info
-    data_items = [
-        ("Company Name", company.company_name, "🏷️"),
-        ("Website", company.company_website or "N/A", "🌐"),
-        ("Company Services", company.company_services or "N/A", "💼"),
-        ("Industry", company.company_industry or "N/A", "🏭"),
-        ("Size", company.company_size or "N/A", "👥"),
-        ("Headquarters", company.company_headquarters or "N/A", "📍"),
-        ("Founded", company.company_founded_year or "N/A", "📅")
-    ]
-    
-    for label, value, icon in data_items:
-        st.markdown(f"""
-            <div class="data-item">
-                <div class="data-label">{icon} {label}</div>
-                <div class="data-value">{value}</div>
+    st.markdown("""
+        <div class="company-card">
+            <div class="company-header">
+                <div>
+                    <div class="company-name">🏢 {}</div>
+                    <div class="company-website">🌐 {}</div>
+                </div>
             </div>
-        """, unsafe_allow_html=True)
-    
-    # Company Details
-    if company.company_summary:
-        st.markdown("""
-            <div class="data-item" style="grid-column: 1 / -1;">
-                <div class="data-label">📝 Company Summary</div>
-                <div class="data-value">{}</div>
+            
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Industry</div>
+                    <div class="info-value">🏭 {}</div>
+                </div>
+                
+                <div class="info-item">
+                    <div class="info-label">Company Size</div>
+                    <div class="info-value">👥 {}</div>
+                </div>
+                
+                <div class="info-item">
+                    <div class="info-label">Headquarters</div>
+                    <div class="info-value">📍 {}</div>
+                </div>
+                
+                <div class="info-item">
+                    <div class="info-label">Founded</div>
+                    <div class="info-value">📅 {}</div>
+                </div>
             </div>
-        """.format(company.company_summary), unsafe_allow_html=True)
-    
-    st.markdown('</div></div>', unsafe_allow_html=True)
+            
+            <div class="company-summary">
+                <div class="summary-header">📝 Company Summary</div>
+                <div>{}</div>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <div class="summary-header">💼 Services</div>
+                <div>
+                    {}
+                </div>
+            </div>
+        </div>
+    """.format(
+        company.company_name or "N/A",
+        company.company_website or "N/A",
+        company.company_industry or "N/A",
+        company.company_size or "N/A",
+        company.company_headquarters or "N/A",
+        company.company_founded_year or "N/A",
+        company.company_summary or "No summary available",
+        "".join([f'<span class="badge">{service.strip()}</span>' 
+                for service in (company.company_services.split(',') if company.company_services else [])])
+    ), unsafe_allow_html=True)
 
 def settings_section(user, user_company, setup_complete=True):
     inject_settings_css()
