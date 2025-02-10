@@ -222,13 +222,12 @@ def handle_callback():
             st.markdown(f'<meta http-equiv="refresh" content="0;url={base_url}">', unsafe_allow_html=True)
             st.stop()
 
-            return True
-
         except Exception as e:
             print(f"Error during callback handling: {e}")
+            return False
     else:
         print("Authorization code not found.")
-    return False
+        return False
 
 def logout():
     st.session_state.user = None
