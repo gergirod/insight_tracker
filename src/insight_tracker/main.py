@@ -133,7 +133,7 @@ def main():
             if user:
                 st.session_state.authentication_status = 'authenticated'
                 st.session_state.user = user_info
-                display_main_content(user)
+                st.rerun()
             else:
                 logging.warning("Silent login succeeded but user not found in database")
                 st.session_state.authentication_status = 'unauthenticated'
@@ -146,7 +146,7 @@ def main():
                 user = getUserByEmail(st.session_state.user.get('email'))
                 if user:
                     st.session_state.authentication_status = 'authenticated'
-                    display_main_content(user)
+                    st.rerun()
                 else:
                     logging.warning("Authentication succeeded but user not found in database")
                     st.session_state.authentication_status = 'unauthenticated'
@@ -173,14 +173,15 @@ def main():
                 logging.info(f"Authentication status: authenticated, user lookup result: {user is not None}")
                 if user:
                     display_main_content(user)
+                    return
                 else:
                     logging.warning("User not found in database")
                     st.session_state.authentication_status = 'unauthenticated'
-                    auth_section()
+                    st.rerun()
             else:
                 logging.warning("Authenticated but no user email found")
                 st.session_state.authentication_status = 'unauthenticated'
-                auth_section()
+                st.rerun()
     else:  # unauthenticated
         logging.info("User not authenticated, showing auth section")
         auth_section()
