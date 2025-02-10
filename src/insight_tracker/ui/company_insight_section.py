@@ -154,6 +154,112 @@ def inject_css():
         div[data-testid="stRadio"] input[type="radio"] {
             display: none;
         }
+
+        /* Enhanced Input Container */
+        .search-container {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+        
+        /* Input Group Styling */
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .input-label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #2c3e50;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .input-description {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 4px;
+            margin-bottom: 8px;
+        }
+        
+        /* Enhanced Input Styling */
+        .stTextInput > div > div {
+            padding: 8px;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            transition: all 0.2s ease;
+        }
+        
+        .stTextInput > div > div:focus-within {
+            border-color: #1E88E5;
+            box-shadow: 0 0 0 3px rgba(30,136,229,0.1);
+        }
+        
+        /* Search Method Selector */
+        .search-method {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        /* Checkbox styling */
+        .stCheckbox {
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        /* Button styling */
+        .stButton > button {
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(45deg, #1E88E5, #1976D2);
+            border: none;
+            color: white;
+            font-weight: 500;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.2s ease;
+        }
+        
+        .stButton > button:hover {
+            background: linear-gradient(45deg, #1976D2, #1565C0);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            transform: translateY(-1px);
+        }
+        
+        /* Radio button enhancement */
+        .stRadio > div {
+            gap: 1rem;
+        }
+        
+        .stRadio > div > div {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            transition: all 0.2s ease;
+        }
+        
+        .stRadio > div > div:hover {
+            border-color: #1E88E5;
+            background: #f8f9fa;
+        }
+        
+        .stRadio > div > div[data-value="true"] {
+            background: #e3f2fd;
+            border-color: #1E88E5;
+            color: #1E88E5;
+        }
         </style>
     """, unsafe_allow_html=True)
 
@@ -186,88 +292,75 @@ def company_insight_section():
     def on_search_method_change():
         st.session_state.search_method = st.session_state.search_method_radio
 
-    # Search method selection    
+    # Search method selection with enhanced UI
+    st.markdown("""
+        <div class="search-method">
+            <div class="input-label">🔍 Search Method</div>
+            <div class="input-description">Choose how you want to search for company information</div>
+        </div>
+    """, unsafe_allow_html=True)
+    
     search_options = ["Search by Name and Industry", "Search by Company URL"]
     st.radio(
         "",
         options=search_options,
         key="search_method_radio",
-        index=search_options.index(st.session_state.search_method),
-        on_change=on_search_method_change
+        index=search_options.index(st.session_state.get('search_method', 'Search by Name and Industry')),
+        on_change=on_search_method_change,
+        label_visibility="collapsed"
     )
 
     # Display input fields based on the selected search method
-    if st.session_state.search_method == "Search by Name and Industry":
-        company_name = st.text_input("Company Name", key="company_name_input")
-        industry = st.text_input("Industry", key="industry_input")
-
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            research_button = st.button("Research Company", key="company_research_button")
-        with col2:
-            research_employees = st.checkbox('Research Employees', value=False)
-
-        if research_button:
-            if company_name and industry:
-                with st.spinner('Researching company...'):
-                    try:
-                        company_result = run_async(insight_service.get_company_analysis(
-                            company_name=company_name,
-                            industry=industry,
-                            scrape_employees=research_employees
-                        ))
-                        
-                        st.session_state.company_insight_result = company_result
-                        st.success("Company research completed!")
-                        st.session_state.search_completed = True  # Set flag when search is successful
-
-                        research_company = company_result.company
-                        # Store company data in session state
-                        st.session_state.company_data = company_result.company
-
-                    except ApiError as e:
-                        st.error(f"API Error: {e.error_message}")
-                        st.session_state.search_completed = False
-                    except Exception as e:
-                        st.error(f"An error occurred: {str(e)}")
-                        st.session_state.search_completed = False
-            else:
-                st.warning("Please provide both Company Name and Industry.")
-
-    elif st.session_state.search_method == "Search by Company URL":
-        company_url = st.text_input("Company URL", key="company_url_input")
+    st.markdown('<div class="search-container">', unsafe_allow_html=True)
+    
+    if st.session_state.get('search_method') == "Search by Name and Industry":
+        # Company Name Input
+        st.markdown("""
+            <div class="input-group">
+                <div class="input-label">🏢 Company Name</div>
+                <div class="input-description">Enter the name of the company you want to research</div>
+            </div>
+        """, unsafe_allow_html=True)
+        company_name = st.text_input("", key="company_name_input", label_visibility="collapsed")
         
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            url_research_button = st.button("Research Company by URL")
-        with col2:
-            research_employees = st.checkbox('Research Employees', value=False)
+        # Industry Input
+        st.markdown("""
+            <div class="input-group">
+                <div class="input-label">🏭 Industry</div>
+                <div class="input-description">Specify the company's primary industry</div>
+            </div>
+        """, unsafe_allow_html=True)
+        industry = st.text_input("", key="industry_input", label_visibility="collapsed")
+        
+    else:
+        # Company URL Input
+        st.markdown("""
+            <div class="input-group">
+                <div class="input-label">🌐 Company URL</div>
+                <div class="input-description">Enter the company's website URL (e.g., https://company.com)</div>
+            </div>
+        """, unsafe_allow_html=True)
+        company_url = st.text_input("", key="company_url_input", label_visibility="collapsed")
 
-        # Move the research logic outside of the columns
-        if url_research_button:
-            if company_url:
-                with st.spinner('Researching company by URL...'):
-                    try:
-                        company_result = run_async(insight_service.get_company_analysis_by_url(
-                            company_url=company_url,
-                            scrape_employees=st.session_state.get('research_employees', False)
-                        ))
-                        
-                        st.session_state.company_insight_result = company_result
-                        st.success("Company research completed!")
-                        st.session_state.search_completed = True  # Set flag when search is successful
-                        research_company = company_result.company
-                        # Store company data in session state
-                        st.session_state.company_data = company_result.company
+    # Research Options
+    st.markdown("""
+        <div class="input-group">
+            <div class="input-label">🎯 Research Options</div>
+            <div class="input-description">Additional research parameters</div>
+        </div>
+    """, unsafe_allow_html=True)
+    research_employees = st.checkbox('Research Employees', value=False)
 
-                    except ApiError as e:
-                        st.error(f"API Error: {e.error_message}")
-                        st.session_state.search_completed = False
-                    except Exception as e:
-                        st.error(f"An error occurred: {str(e)}")
-                        st.session_state.search_completed = False
-            else:
-                st.warning("Please provide a Company URL.")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # Action Buttons
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        if st.button("🔍 Research Company", use_container_width=True):
+            handle_research()
+    with col2:
+        if st.button("💾 Save Results", use_container_width=True):
+            handle_save()
 
     # Save Company Search Button - Only show after successful search
     if st.session_state.get('search_completed', False):
