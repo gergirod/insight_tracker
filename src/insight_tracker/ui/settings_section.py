@@ -125,6 +125,20 @@ def inject_settings_css():
     """, unsafe_allow_html=True)
 
 def display_company_data(company):
+    # Helper function to handle services display
+    def format_services(services):
+        if not services:
+            return ""
+        if isinstance(services, str):
+            service_list = services.split(',')
+        elif isinstance(services, list):
+            service_list = services
+        else:
+            return ""
+        
+        return "".join([f'<span class="badge">{service.strip()}</span>' 
+                       for service in service_list])
+
     st.markdown("""
         <div class="company-card">
             <div class="company-header">
@@ -176,8 +190,7 @@ def display_company_data(company):
         company.company_headquarters or "N/A",
         company.company_founded_year or "N/A",
         company.company_summary or "No summary available",
-        "".join([f'<span class="badge">{service.strip()}</span>' 
-                for service in (company.company_services.split(',') if company.company_services else [])])
+        format_services(company.company_services)
     ), unsafe_allow_html=True)
 
 def settings_section(user, user_company, setup_complete=True):
