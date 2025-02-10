@@ -173,99 +173,110 @@ def profile_insight_section():
             if 'warnings' not in st.session_state:
                 st.session_state.warnings = []
 
-            # Action buttons in horizontal layout
-            col1, col2, col3 = st.columns(3)
-            user_company = get_user_company_info(user_email)
-            user = getUserByEmail(user_email)
+            # Action buttons in horizontal layout - wrap in a container to prevent duplication
+            with st.container():
+                col1, col2, col3 = st.columns(3)
+                user_company = get_user_company_info(user_email)
+                user = getUserByEmail(user_email)
 
-            with col1:
-                if st.button("Generate Email", key="generate_email_button", use_container_width=True):
-                    if not user or not user_company:
-                        warning_message = []
-                        if not user:
-                            warning_message.append("• Complete your personal information (name, role, company)")
+                # Store button states in session state to prevent re-renders
+                if 'button_clicked' not in st.session_state:
+                    st.session_state.button_clicked = False
+
+                with col1:
+                    if not st.session_state.button_clicked and st.button("Generate Email", key="generate_email_button", use_container_width=True):
+                        st.session_state.button_clicked = True
+                        if not user or not user_company:
+                            warning_message = []
+                            if not user:
+                                warning_message.append("• Complete your personal information (name, role, company)")
+                            if not user_company:
+                                warning_message.append("• Add your company information")
+                            st.session_state.warnings.insert(0, f"⚠️ Additional information required:\n{chr(10).join(warning_message)}")
+                            st.session_state.nav_bar_option_selected = "Settings"
+                            st.rerun()
+                        else:
+                            try:
+                                with st.spinner('Generating outreach email...'):
+                                    sender_info = {
+                                        "full_name": user[1],
+                                        "company": user[4],
+                                        "role": user[3]
+                                    }
+                                    profile_data = profile.__dict__
+                                    email_content = run_async(
+                                        insight_service.generate_outreach_email(
+                                            profile=profile_data,
+                                            company=user_company.__dict__,
+                                            sender_info=sender_info
+                                        )
+                                    )
+                                    st.session_state.email_content = email_content
+                                    st.success("Email generated successfully!")
+                            except Exception as e:
+                                st.session_state.errors.insert(0, f"Failed to generate email: {str(e)}")
+                            st.session_state.button_clicked = False
+
+                with col2:
+                    if not st.session_state.button_clicked and st.button("Prepare for Meeting", key="prepare_meeting_button", use_container_width=True):
+                        st.session_state.button_clicked = True
                         if not user_company:
-                            warning_message.append("• Add your company information")
-                        st.session_state.warnings.insert(0, f"⚠️ Additional information required:\n{chr(10).join(warning_message)}")
-                        st.session_state.nav_bar_option_selected = "Settings"
-                        st.rerun()
-                    else:
-                        try:
-                            with st.spinner('Generating outreach email...'):
-                                sender_info = {
-                                    "full_name": user[1],
-                                    "company": user[4],
-                                    "role": user[3]
-                                }
-                                profile_data = profile.__dict__
-                                email_content = run_async(
-                                    insight_service.generate_outreach_email(
-                                        profile=profile_data,
-                                        company=user_company.__dict__,
-                                        sender_info=sender_info
+                            st.session_state.warnings.insert(0, "⚠️ Company information required for meeting preparation")
+                            st.session_state.nav_bar_option_selected = "Settings"
+                            st.rerun()
+                        else:
+                            try:
+                                with st.spinner('Preparing meeting strategy...'):
+                                    meeting_result = run_async(
+                                        insight_service.prepare_meeting(
+                                            profile=profile.__dict__,
+                                            company=user_company.__dict__
+                                        )
                                     )
-                                )
-                                st.session_state.email_content = email_content
-                                st.success("Email generated successfully!")
-                        except Exception as e:
-                            st.session_state.errors.insert(0, f"Failed to generate email: {str(e)}")
+                                    st.session_state.meeting_result = meeting_result
+                                    st.success("Meeting preparation completed!")
+                            except Exception as e:
+                                st.session_state.errors.insert(0, f"Failed to prepare meeting: {str(e)}")
+                        st.session_state.button_clicked = False
 
-            with col2:
-                if st.button("Prepare for Meeting", key="prepare_meeting_button", use_container_width=True):
-                    if not user_company:
-                        st.session_state.warnings.insert(0, "⚠️ Company information required for meeting preparation")
-                        st.session_state.nav_bar_option_selected = "Settings"
-                        st.rerun()
-                    else:
-                        try:
-                            with st.spinner('Preparing meeting strategy...'):
-                                meeting_result = run_async(
-                                    insight_service.prepare_meeting(
-                                        profile=profile.__dict__,
-                                        company=user_company.__dict__
+                with col3:
+                    if not st.session_state.button_clicked and st.button("Evaluate Fit", key="evaluate_fit_button", use_container_width=True):
+                        st.session_state.button_clicked = True
+                        if not user_company:
+                            st.session_state.warnings.append("⚠️ Company information required for fit evaluation")
+                            st.session_state.nav_bar_option_selected = "Settings"
+                            st.rerun()
+                        else:
+                            try:
+                                with st.spinner('Evaluating fit...'):
+                                    fit_result = run_async(
+                                        insight_service.evaluate_profile_fit(
+                                            profile=profile.__dict__,
+                                            company=user_company.__dict__
+                                        )
                                     )
-                                )
-                                st.session_state.meeting_result = meeting_result
-                                st.success("Meeting preparation completed!")
-                        except Exception as e:
-                            st.session_state.errors.insert(0, f"Failed to prepare meeting: {str(e)}")
+                                    st.session_state.fit_evaluation_result = fit_result
+                                    st.success("Fit evaluation completed!")
+                            except Exception as e:
+                                st.session_state.errors.insert(0, f"Failed to evaluate fit: {str(e)}")
+                        st.session_state.button_clicked = False
 
-            with col3:
-                if st.button("Evaluate Fit", key="evaluate_fit_button", use_container_width=True):
-                    if not user_company:
-                        st.session_state.warnings.append("⚠️ Company information required for fit evaluation")
-                        st.session_state.nav_bar_option_selected = "Settings"
-                        st.rerun()
-                    else:
-                        try:
-                            with st.spinner('Evaluating fit...'):
-                                fit_result = run_async(
-                                    insight_service.evaluate_profile_fit(
-                                        profile=profile.__dict__,
-                                        company=user_company.__dict__
-                                    )
-                                )
-                                st.session_state.fit_evaluation_result = fit_result
-                                st.success("Fit evaluation completed!")
-                        except Exception as e:
-                            st.session_state.errors.insert(0, f"Failed to evaluate fit: {str(e)}")
+            # Display results section
+            with st.container():
+                # Display errors and warnings
+                if st.session_state.errors:
+                    for error in st.session_state.errors:
+                        st.error(error)
 
-            # Display errors and warnings
-            if st.session_state.errors:
-                for error in st.session_state.errors:
-                    st.error(error)
+                if st.session_state.warnings:
+                    for warning in st.session_state.warnings:
+                        st.warning(warning)
 
-            if st.session_state.warnings:
-                for warning in st.session_state.warnings:
-                    st.warning(warning)
-
-            # Email section
-            if 'email_content' in st.session_state:
-                with st.expander("✉️ Outreach Email", expanded=False):
-                    clean_email = re.sub(r'<[^>]+>', '', st.session_state.email_content)
-
-                    st.markdown(clean_email, unsafe_allow_html=True)
-                    
+                # Email section
+                if 'email_content' in st.session_state:
+                    with st.expander("✉️ Outreach Email", expanded=False):
+                        clean_email = re.sub(r'<[^>]+>', '', st.session_state.email_content)
+                        st.markdown(clean_email, unsafe_allow_html=True)
 
             # Meeting Preparation section
             if 'meeting_result' in st.session_state:
