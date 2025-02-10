@@ -144,20 +144,12 @@ def main():
 
     if st.session_state.authentication_status == 'checking':
         loading_container = show_loading_screen()
-        if handle_auth():
-            if st.session_state.user and st.session_state.user.get('email'):
-                user = getUserByEmail(st.session_state.user.get('email'))
-                if user:
-                    st.session_state.authentication_status = 'authenticated'
-                    st.rerun()
-                else:
-                    logging.warning("Authentication succeeded but user not found in database")
-                    st.session_state.authentication_status = 'unauthenticated'
-                    st.rerun()
-            else:
-                logging.warning("Authentication succeeded but user email not found")
-                st.session_state.authentication_status = 'unauthenticated'
-                st.rerun()
+        auth_result = handle_auth()
+        if not auth_result:
+            # If auth failed, update status and rerun
+            st.session_state.authentication_status = 'unauthenticated'
+            st.rerun()
+        # If auth succeeded, handle_auth will redirect, so we don't need additional logic here
     elif st.session_state.authentication_status == 'authenticated':
         if st.session_state.user is None:
             # If user is None but status is authenticated, try silent login
