@@ -53,6 +53,7 @@ def display_company_data(company):
     data_items = [
         ("Company Name", company.company_name, "🏷️"),
         ("Website", company.company_website or "N/A", "🌐"),
+        ("Company Services", company.company_services or "N/A", "💼"),
         ("Industry", company.company_industry or "N/A", "🏭"),
         ("Size", company.company_size or "N/A", "👥"),
         ("Headquarters", company.company_headquarters or "N/A", "📍"),
@@ -206,10 +207,8 @@ def settings_section(user, user_company, setup_complete=True):
     # Display current company information if available
     if user_company is not None or 'company_result' in st.session_state:
         st.markdown("<div style='margin-top: 2rem;'></div>", unsafe_allow_html=True)
-        
-        if 'company_result' in st.session_state:
-            display_company_data(st.session_state.company_result.company)
-        elif user_company is not None:
+        print(user_company)
+        if user_company is not None:
             display_company_data(user_company)
 
     api_client = InsightApiClient(

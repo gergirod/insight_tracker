@@ -125,52 +125,64 @@ def display_main_content(user):
 
 def main():
     # Try silent login first if user is not authenticated
-    logging.info("Authentication status: 1 " + st.session_state.authentication_status)
+    logging.info(f"Current authentication status: {st.session_state.authentication_status}")
     if st.session_state.authentication_status != 'authenticated':
-        logging.info("Authentication status: 2 " + st.session_state.authentication_status)
         user_info = try_silent_login()
-        if user_info:
-            logging.info("Authentication status: 3 " + st.session_state.authentication_status)
+        if user_info and user_info.get('email'):
             user = getUserByEmail(user_info.get('email'))
-            st.rerun()
+            if user:
+                st.session_state.authentication_status = 'authenticated'
+                st.session_state.user = user_info
+                display_main_content(user)
+            else:
+                logging.warning("Silent login succeeded but user not found in database")
+                st.session_state.authentication_status = 'unauthenticated'
+                st.rerun()
 
-    
     if st.session_state.authentication_status == 'checking':
-        logging.info("Authentication status: 4 " + st.session_state.authentication_status)
         loading_container = show_loading_screen()
         if handle_auth():
-            logging.info("Authentication status: 5 " + st.session_state.authentication_status)
-            st.session_state.authentication_status = 'authenticated'
-            user_email = st.session_state.user.get('email')
-            user = getUserByEmail(user_email)
-            display_main_content(user)
+            if st.session_state.user and st.session_state.user.get('email'):
+                user = getUserByEmail(st.session_state.user.get('email'))
+                if user:
+                    st.session_state.authentication_status = 'authenticated'
+                    display_main_content(user)
+                else:
+                    logging.warning("Authentication succeeded but user not found in database")
+                    st.session_state.authentication_status = 'unauthenticated'
+                    st.rerun()
+            else:
+                logging.warning("Authentication succeeded but user email not found")
+                st.session_state.authentication_status = 'unauthenticated'
+                st.rerun()
         else:
-            logging.info("Authentication status: 6 " + st.session_state.authentication_status)
+            logging.info("Authentication failed")
             st.session_state.authentication_status = 'unauthenticated'
             st.rerun()
     elif st.session_state.authentication_status == 'authenticated':
         if st.session_state.user is None:
-            logging.info("Authentication status: 7 " + st.session_state.authentication_status)
             # If user is None but status is authenticated, try silent login
             user_info = try_silent_login()
             if not user_info:
-                logging.info("Authentication status: 8 " + st.session_state.authentication_status)
+                logging.info("Silent login failed for authenticated session")
                 st.session_state.authentication_status = 'unauthenticated'
-            st.rerun()
+                st.rerun()
         else:
-            logging.info("Authentication status: 9 " + st.session_state.authentication_status)
-            user_email = st.session_state.user.get('email')
-            user = getUserByEmail(user_email)
-            logging.info("Authentication status: 10 " + user_email)
-            logging.info("User final 1 : " + str(user))
-            if user is None:
-                logging.info("Authentication status: 12.1 " + st.session_state.authentication_status)
-                auth_section()
+            if st.session_state.user.get('email'):
+                user = getUserByEmail(st.session_state.user.get('email'))
+                logging.info(f"Authentication status: authenticated, user lookup result: {user is not None}")
+                if user:
+                    display_main_content(user)
+                else:
+                    logging.warning("User not found in database")
+                    st.session_state.authentication_status = 'unauthenticated'
+                    auth_section()
             else:
-                logging.info("Authentication status: 12.2 " + st.session_state.authentication_status)
-                display_main_content(user)
+                logging.warning("Authenticated but no user email found")
+                st.session_state.authentication_status = 'unauthenticated'
+                auth_section()
     else:  # unauthenticated
-        logging.info("Authentication status: 13 " + st.session_state.authentication_status)
+        logging.info("User not authenticated, showing auth section")
         auth_section()
 
 if __name__ == "__main__":
