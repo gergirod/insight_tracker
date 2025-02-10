@@ -13,6 +13,7 @@ from insight_tracker.ui.onboarding_section import onboarding_section
 from insight_tracker.ui.components.loading_dialog import show_loading_dialog
 from insight_tracker.auth import get_auth_cookie
 import logging
+import os
 
 # Configure logging
 logging.basicConfig(filename='authentication.log', level=logging.INFO, 
@@ -146,7 +147,10 @@ def main():
                 user = getUserByEmail(st.session_state.user.get('email'))
                 if user:
                     st.session_state.authentication_status = 'authenticated'
-                    st.rerun()
+                    # Redirect to main URL without port
+                    st.markdown(f'<meta http-equiv="refresh" content="0;url={os.getenv("BASE_URL", "/")}">',
+                              unsafe_allow_html=True)
+                    st.stop()
                 else:
                     logging.warning("Authentication succeeded but user not found in database")
                     st.session_state.authentication_status = 'unauthenticated'
