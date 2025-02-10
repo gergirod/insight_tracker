@@ -134,6 +134,8 @@ def main():
             if user:
                 st.session_state.authentication_status = 'authenticated'
                 st.session_state.user = user_info
+                # Clear any query parameters
+                st.query_params.clear()
                 st.rerun()
             else:
                 logging.warning("Silent login succeeded but user not found in database")
@@ -147,10 +149,7 @@ def main():
                 user = getUserByEmail(st.session_state.user.get('email'))
                 if user:
                     st.session_state.authentication_status = 'authenticated'
-                    # Redirect to main URL without port
-                    st.markdown(f'<meta http-equiv="refresh" content="0;url={os.getenv("BASE_URL", "/")}">',
-                              unsafe_allow_html=True)
-                    st.stop()
+                    st.rerun()
                 else:
                     logging.warning("Authentication succeeded but user not found in database")
                     st.session_state.authentication_status = 'unauthenticated'
@@ -159,10 +158,6 @@ def main():
                 logging.warning("Authentication succeeded but user email not found")
                 st.session_state.authentication_status = 'unauthenticated'
                 st.rerun()
-        else:
-            logging.info("Authentication failed")
-            st.session_state.authentication_status = 'unauthenticated'
-            st.rerun()
     elif st.session_state.authentication_status == 'authenticated':
         if st.session_state.user is None:
             # If user is None but status is authenticated, try silent login

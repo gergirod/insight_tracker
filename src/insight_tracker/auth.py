@@ -212,28 +212,16 @@ def handle_callback():
                 role=""      # Empty initially
             )
 
-            print(f"Success: {success}")
             save_auth_cookie(id_token)
-            cookie = get_auth_cookie()
-            print(f"Cookie: {cookie}")
-            # Store whether user is new in session state
             st.session_state.is_new_user = is_new_user
-            
-            if success:
-                print(f"Created new user: {user_info.get('email')}")
-            else:
-                print(f"User already exists: {user_info.get('email')}")
-
-            print(f"User info company check: {user_info}")
-            # Retrieve and set user company info
-            user_company = get_user_company_info(user_info.get('email'))
-            print(f"Retrieved user company: {user_company}")
-            st.session_state.user_company = user_company
-
-            print(f"User info: {user_info}")
             st.session_state.user = user_info
             st.session_state.authentication_status = 'authenticated'
-            st.query_params.clear()
+            
+            # Redirect to base URL after successful authentication
+            base_url = os.getenv("BASE_URL", "/")
+            st.markdown(f'<meta http-equiv="refresh" content="0;url={base_url}">', unsafe_allow_html=True)
+            st.stop()
+
             return True
 
         except Exception as e:
