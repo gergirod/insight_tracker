@@ -7,6 +7,7 @@ from insight_tracker.db import create_user_if_not_exists, get_user_company_info
 from datetime import datetime
 import extra_streamlit_components as stx
 import logging
+from time import time
 
 logging.basicConfig(filename='auth.log', level=logging.INFO, 
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -29,6 +30,10 @@ auth0 = OAuth2Session(
 
 # Initialize cookie manager at module level without caching
 cookie_manager = stx.CookieManager()
+
+# Add at the top of the file
+_last_auth_attempt = 0
+MIN_AUTH_INTERVAL = 2  # minimum seconds between auth attempts
 
 def save_auth_cookie(token, expiry_days=1):
     """
@@ -87,53 +92,64 @@ def is_token_expired(token):
 
 def try_silent_login():
     """Attempt silent login using stored token"""
+    global _last_auth_attempt
+    
     try:
+        # Rate limiting check
+        current_time = time()
+        if current_time - _last_auth_attempt < MIN_AUTH_INTERVAL:
+            logging.info("Rate limit: Skipping auth attempt")
+            return None
+        
+        _last_auth_attempt = current_time
+        
         token = get_auth_cookie()
-        logging.info("Token: silent login " + token)
         if not token:
             return None
             
         if is_token_expired(token):
-            logging.info("Token expired")
-            # Token expired, clear it
             cookie_manager.delete('auth_token')
             return None
             
-        # Token is valid, get user info
-        logging.info("Token is valid")
+        # Only make API call if absolutely necessary
+        if 'user_info' in st.session_state and st.session_state.user:
+            return st.session_state.user
+            
         user_info = validate_token_and_get_user(token)
         if user_info:
-            # Update session state
             st.session_state.user = user_info
-            st.session_state.authentication_status = 'authenticated'
-            
-            # Get user company info
-            user_company = get_user_company_info(user_info.get('email'))
-            st.session_state.user_company = user_company
-            
+            st.session_state.user_info = user_info  # Cache the user info
             return user_info
             
         return None
     except Exception as e:
-        print(f"Error during silent login: {e}")
+        logging.error(f"Error during silent login: {e}")
         return None
 
+@st.cache_data(ttl=300)  # Cache for 5 minutes
 def validate_token_and_get_user(token):
     try:
-        # First check if token is expired
         if is_token_expired(token):
             return None
             
-        # Token is valid, get user info
+        # Check cache first
+        if 'user_info' in st.session_state:
+            return st.session_state.user_info
+            
         user_info = auth0.get(
             f"https://{AUTH0_DOMAIN}/userinfo", 
             headers={"Authorization": f"Bearer {token}"}
         ).json()
-        logging.info(f"User info: {user_info}")
+        
+        if 'error' in user_info:
+            if user_info['error'] == 'access_denied' and 'Too Many Requests' in user_info.get('error_description', ''):
+                logging.warning("Rate limit hit, using cached data if available")
+                return st.session_state.get('user_info')
+        
+        st.session_state.user_info = user_info
         return user_info
     except Exception as e:
-        print(f"Error validating token: {e}")
-        logging.info(f"Error validating token: {e}")
+        logging.error(f"Error validating token: {e}")
         return None
 
 def login():

@@ -14,6 +14,8 @@ from insight_tracker.ui.components.loading_dialog import show_loading_dialog
 from insight_tracker.auth import get_auth_cookie
 import logging
 import os
+from time import time
+import time
 
 # Configure logging
 logging.basicConfig(filename='authentication.log', level=logging.INFO, 
@@ -126,30 +128,31 @@ def display_main_content(user):
 
 def main():
     # Try silent login first if user is not authenticated
-    logging.info(f"Current authentication status: {st.session_state.authentication_status}")
     if st.session_state.authentication_status != 'authenticated':
-        user_info = try_silent_login()
-        if user_info and user_info.get('email'):
-            user = getUserByEmail(user_info.get('email'))
-            if user:
-                st.session_state.authentication_status = 'authenticated'
-                st.session_state.user = user_info
-                # Clear any query parameters
-                st.query_params.clear()
-                st.rerun()
-            else:
-                logging.warning("Silent login succeeded but user not found in database")
-                st.session_state.authentication_status = 'unauthenticated'
-                st.rerun()
-
-    if st.session_state.authentication_status == 'checking':
-        loading_container = show_loading_screen()
-        auth_result = handle_auth()
-        if not auth_result:
-            # If auth failed, update status and rerun
-            st.session_state.authentication_status = 'unauthenticated'
-            st.rerun()
-        # If auth succeeded, handle_auth will redirect, so we don't need additional logic here
+        if 'last_auth_check' not in st.session_state or time() - st.session_state.last_auth_check > 2:
+            st.session_state.last_auth_check = time()
+            
+            # Add this check to prevent unnecessary auth attempts
+            if not st.session_state.get('auth_attempt_count'):
+                st.session_state.auth_attempt_count = 0
+            if st.session_state.auth_attempt_count > 3:
+                logging.warning("Too many auth attempts, waiting 5 seconds")
+                time.sleep(5)
+                st.session_state.auth_attempt_count = 0
+                return
+                
+            st.session_state.auth_attempt_count += 1
+            user_info = try_silent_login()
+            if user_info and user_info.get('email'):
+                user = getUserByEmail(user_info.get('email'))
+                if user:
+                    st.session_state.authentication_status = 'authenticated'
+                    st.session_state.user = user_info
+                    st.session_state.auth_attempt_count = 0  # Reset counter on success
+                    st.query_params.clear()
+                    st.rerun()
+                else:
+                    st.session_state.authentication_status = 'unauthenticated'
     elif st.session_state.authentication_status == 'authenticated':
         if st.session_state.user is None:
             # If user is None but status is authenticated, try silent login
