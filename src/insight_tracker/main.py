@@ -14,8 +14,7 @@ from insight_tracker.ui.components.loading_dialog import show_loading_dialog
 from insight_tracker.auth import get_auth_cookie
 import logging
 import os
-from time import time
-import time
+import time  # Import just the module
 
 # Configure logging
 logging.basicConfig(filename='authentication.log', level=logging.INFO, 
@@ -129,8 +128,9 @@ def display_main_content(user):
 def main():
     # Try silent login first if user is not authenticated
     if st.session_state.authentication_status != 'authenticated':
-        if 'last_auth_check' not in st.session_state or time() - st.session_state.last_auth_check > 2:
-            st.session_state.last_auth_check = time()
+        current_time = time.time()  # Use time.time() instead of time()
+        if 'last_auth_check' not in st.session_state or current_time - st.session_state.last_auth_check > 2:
+            st.session_state.last_auth_check = current_time
             
             # Add this check to prevent unnecessary auth attempts
             if not st.session_state.get('auth_attempt_count'):
