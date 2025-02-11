@@ -126,59 +126,70 @@ def display_main_content(user):
         profile_insight_section()  # Default to Profile Insight if no selection
 
 def main():
-    # Try silent login first if user is not authenticated
-    if st.session_state.authentication_status != 'authenticated':
-        current_time = time.time()  # Use time.time() instead of time()
-        if 'last_auth_check' not in st.session_state or current_time - st.session_state.last_auth_check > 2:
-            st.session_state.last_auth_check = current_time
-            
-            # Add this check to prevent unnecessary auth attempts
-            if not st.session_state.get('auth_attempt_count'):
-                st.session_state.auth_attempt_count = 0
-            if st.session_state.auth_attempt_count > 3:
-                logging.warning("Too many auth attempts, waiting 5 seconds")
-                time.sleep(5)
-                st.session_state.auth_attempt_count = 0
-                return
+    try:
+        # Try silent login first if user is not authenticated
+        if st.session_state.authentication_status != 'authenticated':
+            current_time = time.time()
+            if 'last_auth_check' not in st.session_state or current_time - st.session_state.last_auth_check > 2:
+                st.session_state.last_auth_check = current_time
                 
-            st.session_state.auth_attempt_count += 1
-            user_info = try_silent_login()
-            if user_info and user_info.get('email'):
-                user = getUserByEmail(user_info.get('email'))
-                if user:
-                    st.session_state.authentication_status = 'authenticated'
-                    st.session_state.user = user_info
-                    st.session_state.auth_attempt_count = 0  # Reset counter on success
-                    st.query_params.clear()
-                    st.rerun()
-                else:
+                # Add this check to prevent unnecessary auth attempts
+                if not st.session_state.get('auth_attempt_count'):
+                    st.session_state.auth_attempt_count = 0
+                if st.session_state.auth_attempt_count > 3:
+                    logging.warning("Too many auth attempts, waiting 5 seconds")
+                    time.sleep(5)
+                    st.session_state.auth_attempt_count = 0
                     st.session_state.authentication_status = 'unauthenticated'
-    elif st.session_state.authentication_status == 'authenticated':
-        if st.session_state.user is None:
-            # If user is None but status is authenticated, try silent login
-            user_info = try_silent_login()
-            if not user_info:
-                logging.info("Silent login failed for authenticated session")
+                    st.rerun()
+                    
+                st.session_state.auth_attempt_count += 1
+                user_info = try_silent_login()
+                if user_info and user_info.get('email'):
+                    user = getUserByEmail(user_info.get('email'))
+                    if user:
+                        st.session_state.authentication_status = 'authenticated'
+                        st.session_state.user = user_info
+                        st.session_state.auth_attempt_count = 0
+                        st.query_params.clear()
+                        st.rerun()
+                    else:
+                        st.session_state.authentication_status = 'unauthenticated'
+
+        # Handle the checking state
+        if st.session_state.authentication_status == 'checking':
+            loading_container = show_loading_screen()
+            auth_result = handle_auth()
+            if not auth_result:
                 st.session_state.authentication_status = 'unauthenticated'
                 st.rerun()
-        else:
-            if st.session_state.user.get('email'):
-                user = getUserByEmail(st.session_state.user.get('email'))
-                logging.info(f"Authentication status: authenticated, user lookup result: {user is not None}")
-                if user:
-                    display_main_content(user)
-                    return
-                else:
-                    logging.warning("User not found in database")
+        # Handle authenticated state
+        elif st.session_state.authentication_status == 'authenticated':
+            if st.session_state.user is None:
+                user_info = try_silent_login()
+                if not user_info:
                     st.session_state.authentication_status = 'unauthenticated'
                     st.rerun()
             else:
-                logging.warning("Authenticated but no user email found")
-                st.session_state.authentication_status = 'unauthenticated'
-                st.rerun()
-    else:  # unauthenticated
-        logging.info("User not authenticated, showing auth section")
-        auth_section()
+                if st.session_state.user.get('email'):
+                    user = getUserByEmail(st.session_state.user.get('email'))
+                    if user:
+                        display_main_content(user)
+                        return
+                    else:
+                        st.session_state.authentication_status = 'unauthenticated'
+                        st.rerun()
+                else:
+                    st.session_state.authentication_status = 'unauthenticated'
+                    st.rerun()
+        # Handle unauthenticated state
+        else:
+            auth_section()
+            
+    except Exception as e:
+        logging.error(f"Error in main: {str(e)}", exc_info=True)
+        st.error("An error occurred. Please try refreshing the page.")
+        st.session_state.authentication_status = 'unauthenticated'
 
 if __name__ == "__main__":
     main()
