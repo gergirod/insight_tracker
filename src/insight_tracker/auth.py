@@ -169,18 +169,42 @@ def validate_token_and_get_user(token):
         if 'error' in user_info:
             if user_info['error'] == 'access_denied' and 'Too Many Requests' in user_info.get('error_description', ''):
                 logging.warning("Auth0 rate limit hit")
-                # If we have cached data, use it
+                
+                # Get reset time from headers if available
+                reset_time = None
+                if hasattr(user_info, 'headers'):
+                    reset_time = user_info.headers.get('X-RateLimit-Reset')
+                
+                if reset_time:
+                    reset_seconds = int(reset_time) - int(time())
+                    st.warning(f"Rate limit reached. Will reset in {reset_seconds} seconds.")
+                else:
+                    st.warning("Rate limit reached. Please wait a few seconds before trying again.")
+                
+                # If we have cached data, use it and redirect
                 if 'user_info' in st.session_state:
+                    # Redirect to base URL after using cached data
+                    base_url = os.getenv("BASE_URL", "/")
+                    st.markdown(f'<meta http-equiv="refresh" content="0;url={base_url}">', unsafe_allow_html=True)
                     return st.session_state.user_info
-                # Otherwise, force a reauth
+                    
+                # Otherwise, force a reauth after a short delay
+                time.sleep(2)  # Add a small delay
                 st.session_state.authentication_status = 'unauthenticated'
                 return None
                 
+        # Successfully got user info, redirect
         st.session_state.user_info = user_info
+        base_url = os.getenv("BASE_URL", "/")
+        st.markdown(f'<meta http-equiv="refresh" content="0;url={base_url}">', unsafe_allow_html=True)
         return user_info
+        
     except Exception as e:
         logging.error(f"Error validating token: {e}")
         if 'user_info' in st.session_state:
+            # Redirect even when using cached data from error
+            base_url = os.getenv("BASE_URL", "/")
+            st.markdown(f'<meta http-equiv="refresh" content="0;url={base_url}">', unsafe_allow_html=True)
             return st.session_state.user_info
         return None
 
@@ -264,8 +288,13 @@ def handle_callback():
         st.session_state.user = user_info
         st.session_state.authentication_status = 'authenticated'
         
+        # Clear query parameters
         st.query_params.clear()
-        return True
+        
+        # Redirect to base URL
+        base_url = os.getenv("BASE_URL", "/")
+        st.markdown(f'<meta http-equiv="refresh" content="0;url={base_url}">', unsafe_allow_html=True)
+        st.stop()  # Stop execution after redirect
 
     except Exception as e:
         logging.error(f"Auth callback error: {str(e)}")
