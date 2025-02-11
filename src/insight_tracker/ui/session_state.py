@@ -32,7 +32,10 @@ def initialize_session_state():
         'company_data': None,
         'profile_data': None,
         'search_method': 'Search by Name and Industry',
-        'fit_result': None
+        'fit_result': None,
+        'last_auth_check': 0,
+        'user_info': None,
+        'auth_attempt_count': 0,
     }
 
     for key, value in default_values.items():
