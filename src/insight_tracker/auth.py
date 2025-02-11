@@ -4,7 +4,7 @@ from authlib.integrations.requests_client import OAuth2Session
 from dotenv import load_dotenv
 import jwt
 from insight_tracker.db import create_user_if_not_exists, get_user_company_info
-from datetime import datetime
+from datetime import datetime, timedelta
 import extra_streamlit_components as stx
 import logging
 from time import time
@@ -24,7 +24,7 @@ AUTH0_CALLBACK_URL = os.getenv("AUTH0_CALLBACK_URL")
 auth0 = OAuth2Session(
     client_id=AUTH0_CLIENT_ID,
     client_secret=AUTH0_CLIENT_SECRET,
-    scope="openid profile email",
+    scope="openid profile email offline_access",
     redirect_uri=AUTH0_CALLBACK_URL
 )
 
@@ -33,9 +33,9 @@ cookie_manager = stx.CookieManager()
 
 # Add at the top of the file
 _last_auth_attempt = 0
-MIN_AUTH_INTERVAL = 2  # minimum seconds between auth attempts
+MIN_AUTH_INTERVAL = 0.5  # Reduce from 2 to 0.5 seconds
 
-def save_auth_cookie(token, expiry_days=1):
+def save_auth_cookie(token, expiry_days=7):
     """
     Save authentication token to cookies
     
@@ -45,7 +45,7 @@ def save_auth_cookie(token, expiry_days=1):
     """
     try:
         # Save token with secure settings
-        cookie_manager.set("auth_token", token)
+        cookie_manager.set("auth_token", token, expires_at=datetime.now() + timedelta(days=expiry_days))
         return True
     except Exception as e:
         print(f"Error saving auth cookie: {e}")
@@ -95,15 +95,21 @@ def try_silent_login():
     global _last_auth_attempt
     
     try:
-        # Rate limiting check
+        # Rate limiting check with more lenient timing
         current_time = time()
         if current_time - _last_auth_attempt < MIN_AUTH_INTERVAL:
-            logging.info("Rate limit: Skipping auth attempt")
+            # Only log at debug level to reduce noise
+            logging.debug("Rate limit: Skipping auth attempt")
+            # Don't set rate_limited flag for such short intervals
             return None
         
         _last_auth_attempt = current_time
-        
         token = get_auth_cookie()
+        
+        # If we have valid cached user info, return it immediately
+        if 'user_info' in st.session_state and st.session_state.user:
+            return st.session_state.user
+            
         if not token:
             return None
             
@@ -111,14 +117,10 @@ def try_silent_login():
             cookie_manager.delete('auth_token')
             return None
             
-        # Only make API call if absolutely necessary
-        if 'user_info' in st.session_state and st.session_state.user:
-            return st.session_state.user
-            
         user_info = validate_token_and_get_user(token)
         if user_info:
             st.session_state.user = user_info
-            st.session_state.user_info = user_info  # Cache the user info
+            st.session_state.user_info = user_info
             return user_info
             
         return None
@@ -126,14 +128,37 @@ def try_silent_login():
         logging.error(f"Error during silent login: {e}")
         return None
 
-@st.cache_data(ttl=300)  # Cache for 5 minutes
-def validate_token_and_get_user(token):
+def refresh_token():
+    """Attempt to refresh the access token"""
     try:
-        if is_token_expired(token):
+        if 'refresh_token' not in st.session_state:
             return None
             
-        # Check cache first
-        if 'user_info' in st.session_state:
+        token = auth0.refresh_token(
+            f"https://{AUTH0_DOMAIN}/oauth/token",
+            refresh_token=st.session_state.refresh_token,
+        )
+        
+        if token:
+            access_token = token.get('access_token')
+            id_token = token.get('id_token')
+            refresh_token = token.get('refresh_token')
+            
+            save_auth_cookie(id_token)
+            st.session_state.access_token = access_token
+            st.session_state.refresh_token = refresh_token
+            return access_token
+            
+        return None
+    except Exception as e:
+        logging.error(f"Error refreshing token: {e}")
+        return None
+
+@st.cache_data(ttl=60)  # Reduce cache time to 1 minute
+def validate_token_and_get_user(token):
+    try:
+        # If we have cached user info and it's a rate limit situation, use it
+        if st.session_state.get('rate_limited') and 'user_info' in st.session_state:
             return st.session_state.user_info
             
         user_info = auth0.get(
@@ -143,13 +168,20 @@ def validate_token_and_get_user(token):
         
         if 'error' in user_info:
             if user_info['error'] == 'access_denied' and 'Too Many Requests' in user_info.get('error_description', ''):
-                logging.warning("Rate limit hit, using cached data if available")
-                return st.session_state.get('user_info')
-        
+                logging.warning("Auth0 rate limit hit")
+                # If we have cached data, use it
+                if 'user_info' in st.session_state:
+                    return st.session_state.user_info
+                # Otherwise, force a reauth
+                st.session_state.authentication_status = 'unauthenticated'
+                return None
+                
         st.session_state.user_info = user_info
         return user_info
     except Exception as e:
         logging.error(f"Error validating token: {e}")
+        if 'user_info' in st.session_state:
+            return st.session_state.user_info
         return None
 
 def login():
@@ -199,16 +231,8 @@ def signup():
         st.markdown(f'<meta http-equiv="refresh" content="0;url={signup_url}">', unsafe_allow_html=True)
 
 def handle_callback():
-    query_params = st.query_params
-
-    print(f"Query params: {query_params}")
-
-    if 'code' not in query_params:
-        print("Authorization code not found.")
-        return False
-
     try:
-        code = query_params['code']
+        code = st.query_params['code']
         token = auth0.fetch_token(
             f"https://{AUTH0_DOMAIN}/oauth/token",
             code=code,
@@ -217,32 +241,33 @@ def handle_callback():
 
         access_token = token.get('access_token')
         id_token = token.get('id_token')
+        
+        # Get user info once and store it
         user_info = auth0.get(
             f"https://{AUTH0_DOMAIN}/userinfo", 
             headers={"Authorization": f"Bearer {access_token}"}
         ).json()
         
-        # Create or update user in database
+        # Store both tokens and user info
+        save_auth_cookie(id_token, expiry_days=7)
+        st.session_state.user_info = user_info
+        st.session_state.access_token = access_token
+        
         success, is_new_user = create_user_if_not_exists(
             full_name=user_info.get('name', ''),
             email=user_info.get('email', ''),
-            company="",  # Empty initially
-            role=""      # Empty initially
+            company="",
+            role=""
         )
 
-        save_auth_cookie(id_token)
         st.session_state.is_new_user = is_new_user
         st.session_state.user = user_info
         st.session_state.authentication_status = 'authenticated'
         
-        # Clear query parameters and redirect to base URL
         st.query_params.clear()
-        base_url = os.getenv("BASE_URL", "/")
-        st.markdown(f'<meta http-equiv="refresh" content="0;url={base_url}">', unsafe_allow_html=True)
-        st.stop()
+        return True
 
     except Exception as e:
-        print(f"Error during callback handling: {e}")
         logging.error(f"Auth callback error: {str(e)}")
         return False
 
@@ -252,3 +277,29 @@ def logout():
     st.success("You have been logged out successfully.")
     delete_auth_cookie()
     st.rerun()
+
+def clear_auth_cache():
+    """Clear all authentication-related cache and state"""
+    try:
+        # Clear session state
+        keys_to_clear = [
+            'user_info', 
+            'auth_attempt_count',
+            'rate_limited',
+            'last_auth_check',
+            'access_token',
+            'refresh_token'
+        ]
+        for key in keys_to_clear:
+            if key in st.session_state:
+                del st.session_state[key]
+        
+        # Clear cookie
+        delete_auth_cookie()
+        
+        # Clear cache
+        validate_token_and_get_user.clear()
+        return True
+    except Exception as e:
+        logging.error(f"Error clearing auth cache: {e}")
+        return False
