@@ -1,6 +1,6 @@
 import sqlite3
 import streamlit as st
-from insight_tracker.auth import handle_callback, logout, try_silent_login
+from insight_tracker.auth import handle_callback, logout, try_silent_login, delete_auth_cookie
 from insight_tracker.db import getUserByEmail, init_db, init_recent_searches_db, alter_profile_searches_table, init_user_company_db, get_user_company_info
 from insight_tracker.ui.profile_insight_section import profile_insight_section
 from insight_tracker.ui.company_insight_section import company_insight_section
@@ -127,6 +127,20 @@ def display_main_content(user):
 
 def main():
     try:
+        # Add a force login button if we detect repeated rate limiting
+        if st.session_state.get('auth_attempt_count', 0) > 3:
+            st.warning("Having trouble logging in? Try clicking the button below.")
+            if st.button("Force Login"):
+                # Clear all auth-related state
+                for key in ['auth_attempt_count', 'rate_limited', 'last_auth_check']:
+                    if key in st.session_state:
+                        del st.session_state[key]
+                # Clear cookies
+                delete_auth_cookie()
+                # Redirect to login
+                st.session_state.authentication_status = 'unauthenticated'
+                st.rerun()
+
         # Try silent login first if user is not authenticated
         if st.session_state.authentication_status != 'authenticated':
             current_time = time.time()
@@ -138,6 +152,7 @@ def main():
                     st.session_state.auth_attempt_count = 0
                 if st.session_state.auth_attempt_count > 3:
                     logging.warning("Too many auth attempts, waiting 5 seconds")
+                    st.warning("Please wait a moment before trying again...")
                     time.sleep(5)
                     st.session_state.auth_attempt_count = 0
                     st.session_state.authentication_status = 'unauthenticated'
@@ -145,6 +160,14 @@ def main():
                     
                 st.session_state.auth_attempt_count += 1
                 user_info = try_silent_login()
+                
+                # Handle rate limiting explicitly
+                if user_info is None and st.session_state.get('rate_limited'):
+                    st.warning("Taking a short break to respect rate limits. Please wait...")
+                    time.sleep(2)
+                    st.session_state.rate_limited = False
+                    st.rerun()
+                
                 if user_info and user_info.get('email'):
                     user = getUserByEmail(user_info.get('email'))
                     if user:

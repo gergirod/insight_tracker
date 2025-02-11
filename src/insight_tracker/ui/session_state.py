@@ -36,6 +36,7 @@ def initialize_session_state():
         'last_auth_check': 0,
         'user_info': None,
         'auth_attempt_count': 0,
+        'rate_limited': False,
     }
 
     for key, value in default_values.items():
