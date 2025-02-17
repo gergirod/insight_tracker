@@ -126,51 +126,36 @@ def display_main_content(user):
         profile_insight_section()  # Default to Profile Insight if no selection
 
 def main():
-    try:
-        # First check if we're handling a callback
-        if 'code' in st.query_params:
-            logging.info("Detected auth code in URL, handling callback")
-            if not handle_callback():
-                # If callback fails, clean up and show login
-                cleanup_auth_state()
-                st.session_state.authentication_status = 'unauthenticated'
+    # Try silent login if not authenticated
+    if st.session_state.authentication_status != 'authenticated':
+        user_info = try_silent_login()
+        if user_info and user_info.get('email'):
+            user = getUserByEmail(user_info.get('email'))
+            if user:
+                st.session_state.authentication_status = 'authenticated'
+                st.session_state.user = user_info
                 st.rerun()
-            return
-        
-        # Try silent login if not authenticated
-        if st.session_state.authentication_status != 'authenticated':
-            user_info = try_silent_login()
-            if user_info and user_info.get('email'):
-                user = getUserByEmail(user_info.get('email'))
-                if user:
-                    st.session_state.authentication_status = 'authenticated'
-                    st.session_state.user = user_info
-                    display_main_content(user)
-                    return
-                else:
-                    st.session_state.authentication_status = 'unauthenticated'
-        
-        # Show main content or login
-        if st.session_state.authentication_status == 'authenticated':
-            if st.session_state.user and st.session_state.user.get('email'):
-                user = getUserByEmail(st.session_state.user.get('email'))
-                if user:
-                    display_main_content(user)
-                else:
-                    st.session_state.authentication_status = 'unauthenticated'
-                    from insight_tracker.ui.login_section import auth_section
-                    auth_section()
             else:
                 st.session_state.authentication_status = 'unauthenticated'
-                from insight_tracker.ui.login_section import auth_section
+    
+    # Handle callback if code present
+    if 'code' in st.query_params:
+        handle_callback()
+        
+    # Show main content or login
+    if st.session_state.authentication_status == 'authenticated':
+        if st.session_state.user and st.session_state.user.get('email'):
+            user = getUserByEmail(st.session_state.user.get('email'))
+            if user:
+                display_main_content(user)
+            else:
+                st.session_state.authentication_status = 'unauthenticated'
                 auth_section()
         else:
-            from insight_tracker.ui.login_section import auth_section
+            st.session_state.authentication_status = 'unauthenticated'
             auth_section()
-            
-    except Exception as e:
-        logging.error(f"Error in main: {str(e)}", exc_info=True)
-        st.error("An error occurred. Please try refreshing the page.")
+    else:
+        auth_section()
 
 if __name__ == "__main__":
     main()

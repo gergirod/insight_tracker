@@ -209,45 +209,12 @@ def signup():
 
 def handle_callback():
     try:
-        logging.info("Starting callback handling")
-        
-        # Check for error in callback
-        if 'error' in st.query_params:
-            error = st.query_params['error']
-            error_description = st.query_params.get('error_description', '')
-            logging.error(f"Auth0 error: {error} - {error_description}")
-            return False
-            
-        if 'code' not in st.query_params:
-            logging.error("No code in query params")
-            return False
-            
-        # Verify state to prevent CSRF
-        state = st.query_params.get('state')
-        stored_state = st.session_state.get('oauth_state') or cookie_manager.get('oauth_state')
-        
-        if not state or not stored_state:
-            logging.error("Missing state parameter")
-            return False
-            
-        if state != stored_state:
-            logging.error(f"State mismatch. Got {state}, expected {stored_state}")
-            return False
-            
-        # Clear state after use
-        if 'oauth_state' in st.session_state:
-            del st.session_state.oauth_state
-        cookie_manager.delete('oauth_state')
-        
         code = st.query_params['code']
-        logging.info(f"Got auth code: {code[:10]}...")
-        
         token = auth0.fetch_token(
             f"https://{AUTH0_DOMAIN}/oauth/token",
             code=code,
             redirect_uri=AUTH0_CALLBACK_URL
         )
-        logging.info("Successfully fetched token")
 
         access_token = token.get('access_token')
         id_token = token.get('id_token')
@@ -257,8 +224,8 @@ def handle_callback():
             headers={"Authorization": f"Bearer {access_token}"}
         ).json()
         
-        # Store everything
-        save_auth_cookie(id_token, expiry_days=7)
+        # Store tokens and user info
+        save_auth_cookie(id_token)
         st.session_state.user_info = user_info
         st.session_state.user = user_info
         st.session_state.authentication_status = 'authenticated'
@@ -272,35 +239,14 @@ def handle_callback():
         )
         st.session_state.is_new_user = is_new_user
         
-        # Clear query parameters
+        # Clear query parameters and redirect
         st.query_params.clear()
-        
-        # Redirect to base URL
         base_url = os.getenv("BASE_URL", "/")
-        logging.info(f"Redirecting to: {base_url}")
-        
-        # Use both JavaScript methods for more reliable redirect
-        js_code = f"""
-        <script>
-            try {{
-                window.top.location.href = "{base_url}";
-            }} catch (e) {{
-                window.parent.location.href = "{base_url}";
-            }}
-        </script>
-        <noscript>
-            <meta http-equiv="refresh" content="0;url={base_url}">
-        </noscript>
-        """
-        st.markdown(js_code, unsafe_allow_html=True)
-        
-        # Add a visible message in case redirect is delayed
-        st.success("Login successful! Redirecting...")
-        time.sleep(1)  # Now this will work
+        st.markdown(f'<meta http-equiv="refresh" content="0;url={base_url}">', unsafe_allow_html=True)
         st.stop()
-        
+
     except Exception as e:
-        logging.error(f"Auth callback error: {str(e)}", exc_info=True)
+        logging.error(f"Auth callback error: {str(e)}")
         return False
 
 def logout():
