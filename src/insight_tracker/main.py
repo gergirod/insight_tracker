@@ -11,10 +11,7 @@ from insight_tracker.ui.side_bar import display_side_bar
 from insight_tracker.ui.session_state import initialize_session_state
 from insight_tracker.ui.onboarding_section import onboarding_section
 from insight_tracker.ui.components.loading_dialog import show_loading_dialog
-from insight_tracker.auth import get_auth_cookie
-import logging
-import os
-import time  # Import just the module
+import logging # Import just the module
 
 # Configure logging
 logging.basicConfig(filename='authentication.log', level=logging.INFO, 
