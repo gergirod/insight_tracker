@@ -206,12 +206,20 @@ def signup():
 
 def handle_callback():
     try:
+        logging.info("Starting callback handling")
+        if 'code' not in st.query_params:
+            logging.error("No code in query params")
+            return
+            
         code = st.query_params['code']
+        logging.info(f"Got auth code: {code[:10]}...")
+        
         token = auth0.fetch_token(
             f"https://{AUTH0_DOMAIN}/oauth/token",
             code=code,
             redirect_uri=AUTH0_CALLBACK_URL
         )
+        logging.info("Successfully fetched token")
 
         access_token = token.get('access_token')
         id_token = token.get('id_token')
@@ -220,8 +228,9 @@ def handle_callback():
             f"https://{AUTH0_DOMAIN}/userinfo", 
             headers={"Authorization": f"Bearer {access_token}"}
         ).json()
+        logging.info(f"Got user info for email: {user_info.get('email')}")
         
-        # Store both tokens and user info
+        # Store everything
         save_auth_cookie(id_token, expiry_days=7)
         st.session_state.user_info = user_info
         st.session_state.user = user_info
@@ -235,15 +244,29 @@ def handle_callback():
             role=""
         )
         st.session_state.is_new_user = is_new_user
+        logging.info("User created/updated in database")
         
-        # Clear query parameters and redirect to base URL
+        # Clear query parameters
         st.query_params.clear()
+        
+        # Redirect to base URL
         base_url = os.getenv("BASE_URL", "/")
+        logging.info(f"Redirecting to: {base_url}")
+        
+        # Try different redirect methods
+        js_code = f"""
+        <script>
+            window.parent.location.href = "{base_url}";
+        </script>
+        """
+        st.markdown(js_code, unsafe_allow_html=True)
+        
+        # Fallback redirect
         st.markdown(f'<meta http-equiv="refresh" content="0;url={base_url}">', unsafe_allow_html=True)
         st.stop()
-
+        
     except Exception as e:
-        logging.error(f"Auth callback error: {str(e)}")
+        logging.error(f"Auth callback error: {str(e)}", exc_info=True)
         return False
 
 def logout():
