@@ -278,20 +278,28 @@ def handle_callback():
         base_url = os.getenv("BASE_URL", "/")
         logging.info(f"Redirecting to: {base_url}")
         
-        # Use window.top for redirect
+        # Use both JavaScript methods for more reliable redirect
         js_code = f"""
         <script>
-            window.top.location.href = "{base_url}";
+            try {{
+                window.top.location.href = "{base_url}";
+            }} catch (e) {{
+                window.parent.location.href = "{base_url}";
+            }}
         </script>
+        <noscript>
+            <meta http-equiv="refresh" content="0;url={base_url}">
+        </noscript>
         """
         st.markdown(js_code, unsafe_allow_html=True)
+        
+        # Add a visible message in case redirect is delayed
+        st.success("Login successful! Redirecting...")
+        time.sleep(1)  # Small delay to ensure redirect happens
         st.stop()
         
     except Exception as e:
         logging.error(f"Auth callback error: {str(e)}", exc_info=True)
-        # Clear any partial auth state
-        if 'oauth_state' in st.session_state:
-            del st.session_state.oauth_state
         return False
 
 def logout():
