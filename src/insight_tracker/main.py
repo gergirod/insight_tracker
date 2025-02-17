@@ -124,20 +124,27 @@ def display_main_content(user):
         profile_insight_section()  # Default to Profile Insight if no selection
 
 def main():
+    # Initialize authentication status if not set
+    if 'authentication_status' not in st.session_state:
+        st.session_state.authentication_status = 'unauthenticated'
+        
+    # Handle callback if code present
     if 'code' in st.query_params:
         handle_callback()
         return
         
-    if st.session_state.get('authentication_status') == 'authenticated' and st.session_state.get('user'):
+    # Show main content or login based on authentication status
+    if st.session_state.authentication_status == 'authenticated' and st.session_state.user:
         user = getUserByEmail(st.session_state.user.get('email'))
         if user:
             display_main_content(user)
         else:
             st.session_state.authentication_status = 'unauthenticated'
+            st.session_state.user = None
             auth_section()
     else:
         auth_section()
-    
+
     # Log session state for debugging
     logging.info(f"Session state in main: {st.session_state}")
 

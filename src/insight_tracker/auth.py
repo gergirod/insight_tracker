@@ -80,10 +80,11 @@ def handle_callback():
         )
         st.session_state.is_new_user = is_new_user
         
-        # Redirect to base URL
-        base_url = os.getenv("BASE_URL", "/")
-        st.markdown(f'<meta http-equiv="refresh" content="0;url={base_url}">', unsafe_allow_html=True)
-        st.stop()
+        # Clear query parameters
+        st.query_params.clear()
+        
+        # Rerun the app to show authenticated content
+        st.rerun()
 
     except Exception as e:
         logging.error(f"Auth callback error: {str(e)}")
