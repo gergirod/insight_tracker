@@ -12,6 +12,7 @@ from insight_tracker.ui.session_state import initialize_session_state
 from insight_tracker.ui.onboarding_section import onboarding_section
 from insight_tracker.ui.components.loading_dialog import show_loading_dialog
 import logging # Import just the module
+import os
 
 # Configure logging
 logging.basicConfig(filename='authentication.log', level=logging.INFO, 
@@ -123,12 +124,10 @@ def display_main_content(user):
         profile_insight_section()  # Default to Profile Insight if no selection
 
 def main():
-    # Handle callback if code present
     if 'code' in st.query_params:
         handle_callback()
         return
         
-    # Show main content or login
     if st.session_state.get('authentication_status') == 'authenticated' and st.session_state.get('user'):
         user = getUserByEmail(st.session_state.user.get('email'))
         if user:
@@ -138,6 +137,9 @@ def main():
             auth_section()
     else:
         auth_section()
+    
+    # Log session state for debugging
+    logging.info(f"Session state in main: {st.session_state}")
 
 if __name__ == "__main__":
     main()
