@@ -68,9 +68,9 @@ def handle_auth():
     print("Handling authentication")
     
     # First try silent login with stored token
-    user_info = try_silent_login()
-    if user_info:
-        return True
+    # user_info = try_silent_login()
+    # if user_info:
+    #     return True
     
     # If silent login failed, check for auth callback
     if 'code' in st.query_params and st.session_state.user is None:
