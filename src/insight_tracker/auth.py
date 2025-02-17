@@ -7,7 +7,7 @@ from insight_tracker.db import create_user_if_not_exists, get_user_company_info
 from datetime import datetime, timedelta
 import extra_streamlit_components as stx
 import logging
-from time import time
+import time
 
 logging.basicConfig(filename='auth.log', level=logging.INFO, 
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -44,11 +44,12 @@ def save_auth_cookie(token, expiry_days=7):
         expiry_days (int): Number of days until cookie expires
     """
     try:
-        # Save token with secure settings
-        cookie_manager.set("auth_token", token, expires_at=datetime.now() + timedelta(days=expiry_days))
+        cookie_manager.set("auth_token", token, 
+                          expires_at=datetime.now() + timedelta(days=expiry_days),
+                          key='save_auth_token')
         return True
     except Exception as e:
-        print(f"Error saving auth cookie: {e}")
+        logging.error(f"Error saving auth cookie: {e}")
         return False
 
 def get_auth_cookie():
@@ -69,10 +70,10 @@ def delete_auth_cookie():
     Delete authentication token from cookies
     """
     try:
-        cookie_manager.delete('auth_token')
+        cookie_manager.delete('auth_token', key='delete_auth_token')
         return True
     except Exception as e:
-        print(f"Error deleting auth cookie: {e}")
+        logging.error(f"Error deleting auth cookie: {e}")
         return False
 
 def is_token_expired(token):
@@ -160,12 +161,12 @@ def validate_token_and_get_user(token):
 
 def login():
     try:
-        # Generate state parameter to prevent CSRF
         if 'oauth_state' not in st.session_state:
             state = os.urandom(16).hex()
             st.session_state.oauth_state = state
-            # Also store in cookie for persistence
-            cookie_manager.set('oauth_state', state, expires_at=datetime.now() + timedelta(minutes=5))
+            cookie_manager.set('oauth_state', state, 
+                             expires_at=datetime.now() + timedelta(minutes=5),
+                             key='set_oauth_state')
         else:
             state = st.session_state.oauth_state
         
@@ -295,7 +296,7 @@ def handle_callback():
         
         # Add a visible message in case redirect is delayed
         st.success("Login successful! Redirecting...")
-        time.sleep(1)  # Small delay to ensure redirect happens
+        time.sleep(1)  # Now this will work
         st.stop()
         
     except Exception as e:
@@ -339,4 +340,4 @@ def cleanup_auth_state():
     """Clean up authentication state"""
     if 'oauth_state' in st.session_state:
         del st.session_state.oauth_state
-    cookie_manager.delete('oauth_state')
+    cookie_manager.delete('oauth_state', key='cleanup_oauth_state')
