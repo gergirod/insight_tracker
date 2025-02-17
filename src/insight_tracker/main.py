@@ -126,93 +126,36 @@ def display_main_content(user):
         profile_insight_section()  # Default to Profile Insight if no selection
 
 def main():
-    try:
-        # Add a force login button if we detect repeated rate limiting
-        if st.session_state.get('auth_attempt_count', 0) > 3:
-            st.warning("Having trouble logging in? Try clicking the button below.")
-            if st.button("Force Login"):
-                # Clear all auth-related state
-                for key in ['auth_attempt_count', 'rate_limited', 'last_auth_check']:
-                    if key in st.session_state:
-                        del st.session_state[key]
-                # Clear cookies
-                delete_auth_cookie()
-                # Redirect to login
-                st.session_state.authentication_status = 'unauthenticated'
+    # Try silent login if not authenticated
+    if st.session_state.authentication_status != 'authenticated':
+        user_info = try_silent_login()
+        if user_info and user_info.get('email'):
+            user = getUserByEmail(user_info.get('email'))
+            if user:
+                st.session_state.authentication_status = 'authenticated'
+                st.session_state.user = user_info
                 st.rerun()
-
-        # Try silent login first if user is not authenticated
-        if st.session_state.authentication_status != 'authenticated':
-            current_time = time.time()
-            if 'last_auth_check' not in st.session_state or current_time - st.session_state.last_auth_check > 2:
-                st.session_state.last_auth_check = current_time
-                
-                # Add this check to prevent unnecessary auth attempts
-                if not st.session_state.get('auth_attempt_count'):
-                    st.session_state.auth_attempt_count = 0
-                if st.session_state.auth_attempt_count > 3:
-                    logging.warning("Too many auth attempts, waiting 5 seconds")
-                    st.warning("Please wait a moment before trying again...")
-                    time.sleep(5)
-                    st.session_state.auth_attempt_count = 0
-                    st.session_state.authentication_status = 'unauthenticated'
-                    st.rerun()
-                    
-                st.session_state.auth_attempt_count += 1
-                user_info = try_silent_login()
-                
-                # Handle rate limiting explicitly
-                if user_info is None and st.session_state.get('rate_limited'):
-                    st.warning("Taking a short break to respect rate limits. Please wait...")
-                    time.sleep(2)
-                    st.session_state.rate_limited = False
-                    st.rerun()
-                
-                if user_info and user_info.get('email'):
-                    user = getUserByEmail(user_info.get('email'))
-                    if user:
-                        st.session_state.authentication_status = 'authenticated'
-                        st.session_state.user = user_info
-                        st.session_state.auth_attempt_count = 0
-                        st.query_params.clear()
-                        st.rerun()
-                    else:
-                        st.session_state.authentication_status = 'unauthenticated'
-
-        # Handle the checking state
-        if st.session_state.authentication_status == 'checking':
-            loading_container = show_loading_screen()
-            auth_result = handle_auth()
-            if not auth_result:
-                st.session_state.authentication_status = 'unauthenticated'
-                st.rerun()
-        # Handle authenticated state
-        elif st.session_state.authentication_status == 'authenticated':
-            if st.session_state.user is None:
-                user_info = try_silent_login()
-                if not user_info:
-                    st.session_state.authentication_status = 'unauthenticated'
-                    st.rerun()
             else:
-                if st.session_state.user.get('email'):
-                    user = getUserByEmail(st.session_state.user.get('email'))
-                    if user:
-                        display_main_content(user)
-                        return
-                    else:
-                        st.session_state.authentication_status = 'unauthenticated'
-                        st.rerun()
-                else:
-                    st.session_state.authentication_status = 'unauthenticated'
-                    st.rerun()
-        # Handle unauthenticated state
+                st.session_state.authentication_status = 'unauthenticated'
+    
+    # Handle callback if code present
+    if 'code' in st.query_params:
+        handle_auth()
+        
+    # Show main content or login
+    if st.session_state.authentication_status == 'authenticated':
+        if st.session_state.user and st.session_state.user.get('email'):
+            user = getUserByEmail(st.session_state.user.get('email'))
+            if user:
+                display_main_content(user)
+            else:
+                st.session_state.authentication_status = 'unauthenticated'
+                auth_section()
         else:
+            st.session_state.authentication_status = 'unauthenticated'
             auth_section()
-            
-    except Exception as e:
-        logging.error(f"Error in main: {str(e)}", exc_info=True)
-        st.error("An error occurred. Please try refreshing the page.")
-        st.session_state.authentication_status = 'unauthenticated'
+    else:
+        auth_section()
 
 if __name__ == "__main__":
     main()

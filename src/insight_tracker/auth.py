@@ -92,30 +92,18 @@ def is_token_expired(token):
 
 def try_silent_login():
     """Attempt silent login using stored token"""
-    global _last_auth_attempt
-    
     try:
-        # Rate limiting check with more lenient timing
-        current_time = time()
-        if current_time - _last_auth_attempt < MIN_AUTH_INTERVAL:
-            # Only log at debug level to reduce noise
-            logging.debug("Rate limit: Skipping auth attempt")
-            # Don't set rate_limited flag for such short intervals
-            return None
-        
-        _last_auth_attempt = current_time
         token = get_auth_cookie()
-        
-        # If we have valid cached user info, return it immediately
-        if 'user_info' in st.session_state and st.session_state.user:
-            return st.session_state.user
-            
         if not token:
             return None
             
         if is_token_expired(token):
             cookie_manager.delete('auth_token')
             return None
+            
+        # If we have valid cached user info, return it
+        if 'user_info' in st.session_state and st.session_state.user:
+            return st.session_state.user
             
         user_info = validate_token_and_get_user(token)
         if user_info:
@@ -154,58 +142,20 @@ def refresh_token():
         logging.error(f"Error refreshing token: {e}")
         return None
 
-@st.cache_data(ttl=60)  # Reduce cache time to 1 minute
+@st.cache_data(ttl=300)  # Cache for 5 minutes
 def validate_token_and_get_user(token):
     try:
-        # If we have cached user info and it's a rate limit situation, use it
-        if st.session_state.get('rate_limited') and 'user_info' in st.session_state:
-            return st.session_state.user_info
-            
         user_info = auth0.get(
             f"https://{AUTH0_DOMAIN}/userinfo", 
             headers={"Authorization": f"Bearer {token}"}
         ).json()
         
         if 'error' in user_info:
-            if user_info['error'] == 'access_denied' and 'Too Many Requests' in user_info.get('error_description', ''):
-                logging.warning("Auth0 rate limit hit")
+            return None
                 
-                # Get reset time from headers if available
-                reset_time = None
-                if hasattr(user_info, 'headers'):
-                    reset_time = user_info.headers.get('X-RateLimit-Reset')
-                
-                if reset_time:
-                    reset_seconds = int(reset_time) - int(time())
-                    st.warning(f"Rate limit reached. Will reset in {reset_seconds} seconds.")
-                else:
-                    st.warning("Rate limit reached. Please wait a few seconds before trying again.")
-                
-                # If we have cached data, use it and redirect
-                if 'user_info' in st.session_state:
-                    # Redirect to base URL after using cached data
-                    base_url = os.getenv("BASE_URL", "/")
-                    st.markdown(f'<meta http-equiv="refresh" content="0;url={base_url}">', unsafe_allow_html=True)
-                    return st.session_state.user_info
-                    
-                # Otherwise, force a reauth after a short delay
-                time.sleep(2)  # Add a small delay
-                st.session_state.authentication_status = 'unauthenticated'
-                return None
-                
-        # Successfully got user info, redirect
-        st.session_state.user_info = user_info
-        base_url = os.getenv("BASE_URL", "/")
-        st.markdown(f'<meta http-equiv="refresh" content="0;url={base_url}">', unsafe_allow_html=True)
         return user_info
-        
     except Exception as e:
         logging.error(f"Error validating token: {e}")
-        if 'user_info' in st.session_state:
-            # Redirect even when using cached data from error
-            base_url = os.getenv("BASE_URL", "/")
-            st.markdown(f'<meta http-equiv="refresh" content="0;url={base_url}">', unsafe_allow_html=True)
-            return st.session_state.user_info
         return None
 
 def login():
@@ -266,7 +216,6 @@ def handle_callback():
         access_token = token.get('access_token')
         id_token = token.get('id_token')
         
-        # Get user info once and store it
         user_info = auth0.get(
             f"https://{AUTH0_DOMAIN}/userinfo", 
             headers={"Authorization": f"Bearer {access_token}"}
@@ -275,26 +224,23 @@ def handle_callback():
         # Store both tokens and user info
         save_auth_cookie(id_token, expiry_days=7)
         st.session_state.user_info = user_info
-        st.session_state.access_token = access_token
+        st.session_state.user = user_info
+        st.session_state.authentication_status = 'authenticated'
         
+        # Create user in database
         success, is_new_user = create_user_if_not_exists(
             full_name=user_info.get('name', ''),
             email=user_info.get('email', ''),
             company="",
             role=""
         )
-
         st.session_state.is_new_user = is_new_user
-        st.session_state.user = user_info
-        st.session_state.authentication_status = 'authenticated'
         
-        # Clear query parameters
+        # Clear query parameters and redirect to base URL
         st.query_params.clear()
-        
-        # Redirect to base URL
         base_url = os.getenv("BASE_URL", "/")
         st.markdown(f'<meta http-equiv="refresh" content="0;url={base_url}">', unsafe_allow_html=True)
-        st.stop()  # Stop execution after redirect
+        st.stop()
 
     except Exception as e:
         logging.error(f"Auth callback error: {str(e)}")

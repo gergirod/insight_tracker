@@ -226,6 +226,78 @@ def inject_settings_css():
             background: #e3f2fd;
             border-color: #bbdefb;
         }
+        
+        /* Enhanced Input Styling */
+        .stTextInput > div > div {
+            padding: 8px;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            transition: all 0.2s ease;
+        }
+        
+        .stTextInput > div > div:focus-within {
+            border-color: #1E88E5;
+            box-shadow: 0 0 0 3px rgba(30,136,229,0.1);
+        }
+        
+        /* Input Label Styling */
+        .input-label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #2c3e50;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .input-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            margin-bottom: 1rem;
+        }
+        
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .input-description {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 4px;
+        }
+        
+        /* Disabled Input Styling */
+        .stTextInput > div > div[disabled] {
+            background: #f8f9fa;
+            border-color: #e9ecef;
+            cursor: not-allowed;
+        }
+        
+        /* Save Button Enhancement */
+        .save-button {
+            background: linear-gradient(45deg, #1E88E5, #1976D2);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 500;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.2s ease;
+            width: 100%;
+            margin-top: 1rem;
+        }
+        
+        .save-button:hover {
+            background: linear-gradient(45deg, #1976D2, #1565C0);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            transform: translateY(-1px);
+        }
         </style>
     """, unsafe_allow_html=True)
 
@@ -311,7 +383,7 @@ def display_company_data(company):
 def settings_section(user, user_company, setup_complete=True):
     inject_settings_css()
     
-    # Personal Information Section
+    # Personal Information Section Header
     st.markdown("""
         <div style="margin-bottom: 32px;">
             <h2 style="
@@ -337,37 +409,72 @@ def settings_section(user, user_company, setup_complete=True):
         </div>
     """, unsafe_allow_html=True)
     
-    # Form inputs
-    full_name_value = user[1] if user is not None else ""
-    contact_info = user[2] if user is not None else ""
-    role_position_value = user[3] if user is not None else ""
-    company_value = user[4] if user is not None else ""
+    # Form inputs with enhanced UI
+    with st.container():
+        st.markdown('<div class="input-container">', unsafe_allow_html=True)
+        
+        # Full Name Input
+        st.markdown("""
+            <div class="input-group">
+                <div class="input-label">👤 Full Name</div>
+                <div class="input-description">Your professional name as you'd like it to appear</div>
+            </div>
+        """, unsafe_allow_html=True)
+        full_name = st.text_input("", 
+                                value=user[1] if user is not None else "",
+                                placeholder="Enter your full name",
+                                key="full_name_input",
+                                label_visibility="collapsed")
 
-    full_name = st.text_input("Full Name", placeholder="Enter your full name", value=full_name_value)
-    email = st.text_input("Email", value=contact_info, disabled=True)
-    role_position = st.text_input("Role/Position", placeholder="Enter your role or position", value=role_position_value)
-    company = st.text_input("Company", placeholder="Enter your company name", value=company_value)
+        # Email Input (Disabled)
+        st.markdown("""
+            <div class="input-group">
+                <div class="input-label">📧 Email Address</div>
+                <div class="input-description">Your verified email address</div>
+            </div>
+        """, unsafe_allow_html=True)
+        email = st.text_input("",
+                            value=user[2] if user is not None else "",
+                            disabled=True,
+                            key="email_input",
+                            label_visibility="collapsed")
 
-    # Add some space before the button
-    st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
-    
-    # Personal Information save button
-    st.markdown("""
-        <style>
-        [data-testid="stButton"] > button {
-            background-color: rgb(49, 132, 252);
-            color: white;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-    
-    if st.button("Save", 
-                key="save_button",
-                use_container_width=True,
-                help="Save your personal profile information"):
-        email = st.session_state.user.get('email')
-        create_user_if_not_exists(full_name, email, role_position, company)
-        st.success("✅ Personal information saved successfully!")
+        # Role/Position Input
+        st.markdown("""
+            <div class="input-group">
+                <div class="input-label">💼 Role/Position</div>
+                <div class="input-description">Your current professional role</div>
+            </div>
+        """, unsafe_allow_html=True)
+        role_position = st.text_input("",
+                                    value=user[3] if user is not None else "",
+                                    placeholder="Enter your role or position",
+                                    key="role_input",
+                                    label_visibility="collapsed")
+
+        # Company Input
+        st.markdown("""
+            <div class="input-group">
+                <div class="input-label">🏢 Company</div>
+                <div class="input-description">Your current company name</div>
+            </div>
+        """, unsafe_allow_html=True)
+        company = st.text_input("",
+                              value=user[4] if user is not None else "",
+                              placeholder="Enter your company name",
+                              key="company_input",
+                              label_visibility="collapsed")
+
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        # Save Button
+        if st.button("💾 Save Changes", 
+                    key="save_button",
+                    use_container_width=True,
+                    help="Save your personal profile information"):
+            email = st.session_state.user.get('email')
+            create_user_if_not_exists(full_name, email, role_position, company)
+            st.success("✅ Personal information saved successfully!")
 
     # Add spacing between sections
     st.markdown("<div style='margin-top: 3rem;'></div>", unsafe_allow_html=True)
