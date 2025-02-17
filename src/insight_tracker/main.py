@@ -126,31 +126,16 @@ def display_main_content(user):
         profile_insight_section()  # Default to Profile Insight if no selection
 
 def main():
-    # Try silent login if not authenticated
-    if st.session_state.authentication_status != 'authenticated':
-        user_info = try_silent_login()
-        if user_info and user_info.get('email'):
-            user = getUserByEmail(user_info.get('email'))
-            if user:
-                st.session_state.authentication_status = 'authenticated'
-                st.session_state.user = user_info
-                st.rerun()
-            else:
-                st.session_state.authentication_status = 'unauthenticated'
-    
     # Handle callback if code present
     if 'code' in st.query_params:
         handle_callback()
+        return
         
     # Show main content or login
-    if st.session_state.authentication_status == 'authenticated':
-        if st.session_state.user and st.session_state.user.get('email'):
-            user = getUserByEmail(st.session_state.user.get('email'))
-            if user:
-                display_main_content(user)
-            else:
-                st.session_state.authentication_status = 'unauthenticated'
-                auth_section()
+    if st.session_state.get('authentication_status') == 'authenticated' and st.session_state.get('user'):
+        user = getUserByEmail(st.session_state.user.get('email'))
+        if user:
+            display_main_content(user)
         else:
             st.session_state.authentication_status = 'unauthenticated'
             auth_section()
