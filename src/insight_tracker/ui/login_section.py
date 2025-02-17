@@ -35,4 +35,6 @@ def auth_section():
     """, unsafe_allow_html=True)
 
     # Display the login button
-    login()
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        login()

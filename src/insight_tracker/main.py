@@ -1,6 +1,6 @@
 import sqlite3
 import streamlit as st
-from insight_tracker.auth import handle_callback, logout, try_silent_login, delete_auth_cookie
+from insight_tracker.auth import handle_callback, logout, try_silent_login, delete_auth_cookie, cleanup_auth_state
 from insight_tracker.db import getUserByEmail, init_db, init_recent_searches_db, alter_profile_searches_table, init_user_company_db, get_user_company_info
 from insight_tracker.ui.profile_insight_section import profile_insight_section
 from insight_tracker.ui.company_insight_section import company_insight_section
@@ -130,9 +130,13 @@ def main():
         # First check if we're handling a callback
         if 'code' in st.query_params:
             logging.info("Detected auth code in URL, handling callback")
-            handle_callback()
-            return  # Stop here after handling callback
-            
+            if not handle_callback():
+                # If callback fails, clean up and show login
+                cleanup_auth_state()
+                st.session_state.authentication_status = 'unauthenticated'
+                st.rerun()
+            return
+        
         # Try silent login if not authenticated
         if st.session_state.authentication_status != 'authenticated':
             user_info = try_silent_login()

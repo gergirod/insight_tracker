@@ -159,50 +159,46 @@ def validate_token_and_get_user(token):
         return None
 
 def login():
-    # Generate state parameter to prevent CSRF
-    state = os.urandom(16).hex()
-    st.session_state.oauth_state = state
-    
-    authorization_url, _ = auth0.create_authorization_url(
-        f"https://{AUTH0_DOMAIN}/authorize",
-        audience=f"https://{AUTH0_DOMAIN}/userinfo",
-        state=state
-    )
-    
-    st.markdown(f'''
-    <div style="text-align: center;">
-        <a href="{authorization_url}" target="_self" style="
-            display: inline-block;
-            background-color: #1E88E5;
-            color: white;
-            padding: 14px 48px;
-            font-size: 16px;
-            font-weight: 500;
-            text-decoration: none;
-            border-radius: 50px;
-            border: none;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            transition: all 0.2s ease;
-            margin: 10px 0;
-            letter-spacing: 0.3px;">
-            Continue with Auth0
-        </a>
-        <div style="
-            margin-top: 8px;
-            font-size: 13px;
-            color: #666;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="#666">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
-            </svg>
-            Secure authentication powered by Auth0
+    try:
+        # Generate state parameter to prevent CSRF
+        if 'oauth_state' not in st.session_state:
+            state = os.urandom(16).hex()
+            st.session_state.oauth_state = state
+            # Also store in cookie for persistence
+            cookie_manager.set('oauth_state', state, expires_at=datetime.now() + timedelta(minutes=5))
+        else:
+            state = st.session_state.oauth_state
+        
+        authorization_url, _ = auth0.create_authorization_url(
+            f"https://{AUTH0_DOMAIN}/authorize",
+            audience=f"https://{AUTH0_DOMAIN}/userinfo",
+            state=state
+        )
+        
+        st.markdown(f'''
+        <div style="text-align: center;">
+            <a href="{authorization_url}" target="_self" style="
+                display: inline-block;
+                background-color: #1E88E5;
+                color: white;
+                padding: 14px 48px;
+                font-size: 16px;
+                font-weight: 500;
+                text-decoration: none;
+                border-radius: 50px;
+                border: none;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                transition: all 0.2s ease;
+                margin: 10px 0;
+                letter-spacing: 0.3px;">
+                Continue with Auth0
+            </a>
         </div>
-    </div>
-    ''', unsafe_allow_html=True)
-    return False
+        ''', unsafe_allow_html=True)
+        return False
+    except Exception as e:
+        logging.error(f"Error in login: {str(e)}")
+        return False
 
 def signup():
     signup_url = f"https://{AUTH0_DOMAIN}/authorize?response_type=code&client_id={AUTH0_CLIENT_ID}&redirect_uri={AUTH0_CALLBACK_URL}&scope=openid%20profile%20email&screen_hint=signup"
@@ -227,18 +223,24 @@ def handle_callback():
             
         # Verify state to prevent CSRF
         state = st.query_params.get('state')
-        stored_state = st.session_state.get('oauth_state')
-        if not state or not stored_state or state != stored_state:
-            logging.error("State mismatch")
+        stored_state = st.session_state.get('oauth_state') or cookie_manager.get('oauth_state')
+        
+        if not state or not stored_state:
+            logging.error("Missing state parameter")
             return False
             
-        code = st.query_params['code']
-        logging.info(f"Got auth code: {code[:10]}...")
-        
+        if state != stored_state:
+            logging.error(f"State mismatch. Got {state}, expected {stored_state}")
+            return False
+            
         # Clear state after use
         if 'oauth_state' in st.session_state:
             del st.session_state.oauth_state
-            
+        cookie_manager.delete('oauth_state')
+        
+        code = st.query_params['code']
+        logging.info(f"Got auth code: {code[:10]}...")
+        
         token = auth0.fetch_token(
             f"https://{AUTH0_DOMAIN}/oauth/token",
             code=code,
@@ -324,3 +326,9 @@ def clear_auth_cache():
     except Exception as e:
         logging.error(f"Error clearing auth cache: {e}")
         return False
+
+def cleanup_auth_state():
+    """Clean up authentication state"""
+    if 'oauth_state' in st.session_state:
+        del st.session_state.oauth_state
+    cookie_manager.delete('oauth_state')
