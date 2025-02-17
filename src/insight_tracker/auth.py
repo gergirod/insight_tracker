@@ -159,10 +159,16 @@ def validate_token_and_get_user(token):
         return None
 
 def login():
+    # Generate state parameter to prevent CSRF
+    state = os.urandom(16).hex()
+    st.session_state.oauth_state = state
+    
     authorization_url, _ = auth0.create_authorization_url(
         f"https://{AUTH0_DOMAIN}/authorize",
         audience=f"https://{AUTH0_DOMAIN}/userinfo",
+        state=state
     )
+    
     st.markdown(f'''
     <div style="text-align: center;">
         <a href="{authorization_url}" target="_self" style="
@@ -207,13 +213,32 @@ def signup():
 def handle_callback():
     try:
         logging.info("Starting callback handling")
+        
+        # Check for error in callback
+        if 'error' in st.query_params:
+            error = st.query_params['error']
+            error_description = st.query_params.get('error_description', '')
+            logging.error(f"Auth0 error: {error} - {error_description}")
+            return False
+            
         if 'code' not in st.query_params:
             logging.error("No code in query params")
-            return
+            return False
+            
+        # Verify state to prevent CSRF
+        state = st.query_params.get('state')
+        stored_state = st.session_state.get('oauth_state')
+        if not state or not stored_state or state != stored_state:
+            logging.error("State mismatch")
+            return False
             
         code = st.query_params['code']
         logging.info(f"Got auth code: {code[:10]}...")
         
+        # Clear state after use
+        if 'oauth_state' in st.session_state:
+            del st.session_state.oauth_state
+            
         token = auth0.fetch_token(
             f"https://{AUTH0_DOMAIN}/oauth/token",
             code=code,
@@ -228,7 +253,6 @@ def handle_callback():
             f"https://{AUTH0_DOMAIN}/userinfo", 
             headers={"Authorization": f"Bearer {access_token}"}
         ).json()
-        logging.info(f"Got user info for email: {user_info.get('email')}")
         
         # Store everything
         save_auth_cookie(id_token, expiry_days=7)
@@ -244,7 +268,6 @@ def handle_callback():
             role=""
         )
         st.session_state.is_new_user = is_new_user
-        logging.info("User created/updated in database")
         
         # Clear query parameters
         st.query_params.clear()
@@ -253,20 +276,20 @@ def handle_callback():
         base_url = os.getenv("BASE_URL", "/")
         logging.info(f"Redirecting to: {base_url}")
         
-        # Try different redirect methods
+        # Use window.top for redirect
         js_code = f"""
         <script>
-            window.parent.location.href = "{base_url}";
+            window.top.location.href = "{base_url}";
         </script>
         """
         st.markdown(js_code, unsafe_allow_html=True)
-        
-        # Fallback redirect
-        st.markdown(f'<meta http-equiv="refresh" content="0;url={base_url}">', unsafe_allow_html=True)
         st.stop()
         
     except Exception as e:
         logging.error(f"Auth callback error: {str(e)}", exc_info=True)
+        # Clear any partial auth state
+        if 'oauth_state' in st.session_state:
+            del st.session_state.oauth_state
         return False
 
 def logout():
