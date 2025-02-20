@@ -1,6 +1,6 @@
 import sqlite3
 import streamlit as st
-from insight_tracker.auth import handle_callback, logout, validate_token_and_get_user, silent_sign_in
+from insight_tracker.auth import handle_callback, logout, validate_token_and_get_user, silent_sign_in, load_auth_cookie, clear_auth_cookie
 from insight_tracker.db import getUserByEmail, init_db, init_recent_searches_db, alter_profile_searches_table, init_user_company_db, get_user_company_info
 from insight_tracker.ui.profile_insight_section import profile_insight_section
 from insight_tracker.ui.company_insight_section import company_insight_section
@@ -150,17 +150,21 @@ def display_main_content(user):
 
 def main():
     logging.info("Starting main application")
-    logging.debug(f"Initial session state: {dict(st.session_state)}")
     
-    # First try silent sign-in if we have a token
+    # Try to load from cookies first
+    if not st.session_state.get('access_token') and load_auth_cookie():
+        logging.info("Found auth cookie, attempting silent sign-in")
+        if silent_sign_in():
+            display_main_content(st.session_state.user)
+            return
+    
+    # Rest of the authentication flow
     if st.session_state.get('access_token'):
         if silent_sign_in():
-            logging.info("Silent sign-in successful")
             display_main_content(st.session_state.user)
             return
         else:
-            logging.info("Silent sign-in failed")
-            # Clear invalid session
+            clear_auth_cookie()  # Clear invalid cookie
             st.session_state.access_token = None
             st.session_state.user = None
             st.session_state.authentication_status = 'unauthenticated'

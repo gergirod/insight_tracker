@@ -132,6 +132,27 @@ def signup():
     if st.button("Sign Up with Auth0"):
         st.markdown(f'<meta http-equiv="refresh" content="0;url={signup_url}">', unsafe_allow_html=True)
 
+def store_auth_cookie():
+    """Store authentication data in cookies"""
+    if st.session_state.get('access_token'):
+        st.cookies.set('access_token', st.session_state.access_token, 
+                      expires_at=3600,  # 1 hour expiry
+                      key='auth_cookie',
+                      secure=True,
+                      httponly=True)
+
+def load_auth_cookie():
+    """Load authentication data from cookies"""
+    access_token = st.cookies.get('access_token')
+    if access_token:
+        st.session_state.access_token = access_token
+        return True
+    return False
+
+def clear_auth_cookie():
+    """Clear authentication cookies"""
+    st.cookies.delete('access_token')
+
 def handle_callback():
     logging.info("Starting callback handling")
     query_params = st.query_params
@@ -179,9 +200,17 @@ def handle_callback():
             
             # Store everything in session state
             st.session_state.access_token = access_token
-            st.session_state.id_token = id_token  # Store ID token
+            st.session_state.id_token = id_token
             st.session_state.user = user_info
             st.session_state.authentication_status = 'authenticated'
+            
+            # Store in cookies
+            store_auth_cookie()
+            
+            # Redirect to base domain
+            st.query_params.clear()
+            st.experimental_set_query_params()  # Clear URL parameters
+            st.markdown(f'<meta http-equiv="refresh" content="0;url=/">', unsafe_allow_html=True)
             
             success, is_new_user = create_user_if_not_exists(
                 full_name=user_info.get('name', ''),
@@ -197,7 +226,6 @@ def handle_callback():
 
         except Exception as e:
             logging.error(f"Error during callback handling: {str(e)}", exc_info=True)
-            # Don't clear session state on error, just return False
             return False
     else:
         logging.warning("No authorization code or state found in query params")
@@ -205,13 +233,14 @@ def handle_callback():
 
 def logout():
     logging.info("Initiating logout")
-    logging.debug(f"Session state before logout: {dict(st.session_state)}")
     
-    st.session_state.user = None
-    st.session_state.authentication_status = 'unauthenticated'
+    # Clear cookies
+    clear_auth_cookie()
     
-    logging.info("User logged out successfully")
-    logging.debug(f"Session state after logout: {dict(st.session_state)}")
+    # Clear session state
+    st.session_state.clear()
+    initialize_session_state()
     
-    st.success("You have been logged out successfully.")
+    # Redirect to base URL
+    st.markdown(f'<meta http-equiv="refresh" content="0;url=/">', unsafe_allow_html=True)
     st.rerun()

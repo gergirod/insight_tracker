@@ -2,9 +2,12 @@ import streamlit as st
 
 def initialize_session_state():
     """Initialize session state variables"""
-    # Don't override existing authentication status if it exists
     if 'authentication_status' not in st.session_state:
-        st.session_state.authentication_status = 'unauthenticated'
+        # Try to load from cookie first
+        if load_auth_cookie():
+            st.session_state.authentication_status = 'authenticated'
+        else:
+            st.session_state.authentication_status = 'unauthenticated'
     
     if 'access_token' not in st.session_state:
         st.session_state.access_token = None
