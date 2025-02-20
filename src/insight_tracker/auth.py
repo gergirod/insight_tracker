@@ -184,13 +184,18 @@ def handle_callback():
             st.session_state.user = user_info
             st.session_state.authentication_status = 'authenticated'
             
-            # Store in cookies
+            # Store in session state
             store_auth_cookie(access_token)
             
-            # Redirect to base domain
+            # Clear URL parameters and redirect to base domain
             st.query_params.clear()
-            st.experimental_set_query_params()  # Clear URL parameters
-            st.markdown(f'<meta http-equiv="refresh" content="0;url=/">', unsafe_allow_html=True)
+            base_url = "https://insight-tracker.com"  # Use your domain from config
+            
+            # Perform redirect to base URL
+            st.markdown(
+                f'<meta http-equiv="refresh" content="0; url={base_url}">',
+                unsafe_allow_html=True
+            )
             
             success, is_new_user = create_user_if_not_exists(
                 full_name=user_info.get('name', ''),
@@ -214,13 +219,15 @@ def handle_callback():
 def logout():
     logging.info("Initiating logout")
     
-    # Clear cookies
+    # Clear cookies and session
     clear_auth_cookie()
-    
-    # Clear session state
     st.session_state.clear()
     initialize_session_state()
     
-    # Redirect to base URL
-    st.markdown(f'<meta http-equiv="refresh" content="0;url=/">', unsafe_allow_html=True)
+    # Redirect to base domain
+    base_url = "https://insight-tracker.com"  # Use your domain from config
+    st.markdown(
+        f'<meta http-equiv="refresh" content="0; url={base_url}">',
+        unsafe_allow_html=True
+    )
     st.rerun()
