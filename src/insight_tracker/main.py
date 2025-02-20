@@ -152,7 +152,17 @@ def display_main_content(user):
 def main():
     logging.info("Starting main application")
     
-    # Try to load from cookies first
+    # Check if we're on the IP:port URL and redirect if needed
+    current_url = st.experimental_get_query_params().get('_url', [''])[0]
+    if ':8080' in current_url:
+        base_url = "https://insight-tracker.com"
+        st.markdown(
+            f'<meta http-equiv="refresh" content="0; url={base_url}">',
+            unsafe_allow_html=True
+        )
+        return
+    
+    # Rest of your main function...
     if not st.session_state.get('access_token') and load_auth_cookie():
         logging.info("Found auth cookie, attempting silent sign-in")
         if silent_sign_in():
