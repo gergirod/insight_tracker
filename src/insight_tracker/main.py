@@ -153,7 +153,7 @@ def main():
     logging.info("Starting main application")
     
     # Check if we're on the IP:port URL and redirect if needed
-    current_url = st.experimental_get_query_params().get('_url', [''])[0]
+    current_url = st.query_params.get('_url', [''])[0]
     if ':8080' in current_url:
         base_url = "https://insight-tracker.com"
         st.markdown(
@@ -186,6 +186,7 @@ def main():
         loading_container = show_loading_screen()
         if handle_auth():
             # Successful authentication, rerun without query params
+            st.query_params.clear()
             st.rerun()
         else:
             # Failed authentication, show auth section
