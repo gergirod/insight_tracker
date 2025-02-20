@@ -1,7 +1,24 @@
 import streamlit as st
 
 def initialize_session_state():
-    default_values = {
+    """Initialize session state variables"""
+    # Don't override existing authentication status if it exists
+    if 'authentication_status' not in st.session_state:
+        st.session_state.authentication_status = 'unauthenticated'
+    
+    if 'access_token' not in st.session_state:
+        st.session_state.access_token = None
+        
+    if 'user' not in st.session_state:
+        st.session_state.user = None
+    
+    # Initialize other session state variables if they don't exist
+    defaults = {
+        'is_new_user': False,
+        'nav_bar_option_selected': 'Profile Insight',
+        'user_company': None,
+        'company_data': None,
+        'profile_data': None,
         'person_name': '',
         'person_company': '',
         'company_name': '',
@@ -19,22 +36,16 @@ def initialize_session_state():
         'company_data_frame': None,
         'company_inputs': {},
         'person_inputs': {},
-        'nav_bar_option_selected': 'Profile Insight',
         'profile_research_trigger': False,
         'company_research_trigger': False,
-        'user': None,
-        'user_company': None,
         'name': None,
         'research_employees': False,
         'token': None,
         'handling_callback': False,
-        'authentication_status': 'checking',
-        'company_data': None,
-        'profile_data': None,
         'search_method': 'Search by Name and Industry',
         'fit_result': None
     }
-
-    for key, value in default_values.items():
+    
+    for key, default_value in defaults.items():
         if key not in st.session_state:
-            st.session_state[key] = value
+            st.session_state[key] = default_value

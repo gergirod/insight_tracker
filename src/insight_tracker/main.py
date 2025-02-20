@@ -1,6 +1,6 @@
 import sqlite3
 import streamlit as st
-from insight_tracker.auth import handle_callback, logout
+from insight_tracker.auth import handle_callback, logout, validate_token_and_get_user, silent_sign_in
 from insight_tracker.db import getUserByEmail, init_db, init_recent_searches_db, alter_profile_searches_table, init_user_company_db, get_user_company_info
 from insight_tracker.ui.profile_insight_section import profile_insight_section
 from insight_tracker.ui.company_insight_section import company_insight_section
@@ -11,6 +11,14 @@ from insight_tracker.ui.side_bar import display_side_bar
 from insight_tracker.ui.session_state import initialize_session_state
 from insight_tracker.ui.onboarding_section import onboarding_section
 from insight_tracker.ui.components.loading_dialog import show_loading_dialog
+import logging
+
+# Add at the top of the file after imports
+logging.basicConfig(
+    filename='main.log',
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 def check_and_alter_table():
     """Check if the table needs alteration and perform it if necessary."""
@@ -57,13 +65,37 @@ def show_loading_screen():
 
 def handle_auth():
     """Handle authentication process"""
-    print("Handling authentication")
+    logging.info("Starting authentication handling")
+    logging.debug(f"Current session state: {dict(st.session_state)}")
     
-    if 'code' in st.query_params and st.session_state.user is None:
-        print("Handling callback")
+    # Check if we already have a valid session
+    if st.session_state.get('access_token') and st.session_state.user:
+        try:
+            # Validate the existing token
+            user_info = validate_token_and_get_user(st.session_state.access_token)
+            if user_info:
+                logging.info("Existing session validated successfully")
+                st.session_state.user = user_info
+                st.session_state.authentication_status = 'authenticated'
+                return True
+            else:
+                logging.warning("Existing token validation failed")
+                st.session_state.authentication_status = 'unauthenticated'
+                st.session_state.user = None
+                st.session_state.access_token = None
+        except Exception as e:
+            logging.error(f"Error validating existing token: {str(e)}")
+            st.session_state.authentication_status = 'unauthenticated'
+            st.session_state.user = None
+            st.session_state.access_token = None
+    
+    # Handle new authentication
+    if 'code' in st.query_params:
+        logging.info("Auth code found in query params")
         if handle_callback():
+            logging.info("Callback handled successfully")
             return True
-    
+        logging.warning("Callback handling failed")
     
     return st.session_state.user is not None
 
@@ -87,12 +119,16 @@ def check_user_setup_complete(user, user_company) -> bool:
 
 def display_main_content(user):
     """Display main content based on selected navigation option"""
-    saved_user = getUserByEmail(user[2])
-    user_company = get_user_company_info(user[2])
+    logging.debug(f"Displaying main content for user: {user}")
+    
+    # Get user email from the dictionary
+    user_email = user.get('email')
+    saved_user = getUserByEmail(user_email)
+    user_company = get_user_company_info(user_email)
     
     # Show onboarding only for new users who haven't completed setup
     if st.session_state.get('is_new_user', False) and not user_company:
-        onboarding_section(user[2])
+        onboarding_section(user_email)
         return
     
     # For existing users or after onboarding completion, show main content
@@ -106,35 +142,48 @@ def display_main_content(user):
     elif st.session_state.nav_bar_option_selected == "Company Insight":
         company_insight_section()
     elif st.session_state.nav_bar_option_selected == "Settings":
-        settings_section(user, user_company, setup_complete=True)
+        settings_section(saved_user, user_company, setup_complete=True)
     elif st.session_state.nav_bar_option_selected == "Logout":
         logout()
     else:
         profile_insight_section()  # Default to Profile Insight if no selection
 
 def main():
-    if st.session_state.authentication_status == 'checking':
+    logging.info("Starting main application")
+    logging.debug(f"Initial session state: {dict(st.session_state)}")
+    
+    # First try silent sign-in if we have a token
+    if st.session_state.get('access_token'):
+        if silent_sign_in():
+            logging.info("Silent sign-in successful")
+            display_main_content(st.session_state.user)
+            return
+        else:
+            logging.info("Silent sign-in failed")
+            # Clear invalid session
+            st.session_state.access_token = None
+            st.session_state.user = None
+            st.session_state.authentication_status = 'unauthenticated'
+    
+    # Handle new authentication if we have a code
+    if 'code' in st.query_params:
+        logging.info("Processing new authentication")
         loading_container = show_loading_screen()
         if handle_auth():
-            st.session_state.authentication_status = 'authenticated'
+            # Successful authentication, rerun without query params
             st.rerun()
         else:
+            # Failed authentication, show auth section
             st.session_state.authentication_status = 'unauthenticated'
-            st.rerun()
-    elif st.session_state.authentication_status == 'authenticated':
-        if st.session_state.user is None:
-            # If user is None but status is authenticated, something went wrong
-            st.session_state.authentication_status = 'unauthenticated'
-            st.rerun()
-        else:
-            user_email = st.session_state.user.get('email')
-            user = getUserByEmail(user_email)
-            if user is None:
-                st.session_state.authentication_status = 'unauthenticated'
-                st.rerun()
-            else:
-                display_main_content(user)
-    else:  # unauthenticated
+            auth_section()
+            return
+    
+    # Show appropriate content based on authentication status
+    if st.session_state.authentication_status == 'authenticated' and st.session_state.user:
+        logging.info("Showing main content")
+        display_main_content(st.session_state.user)
+    else:
+        logging.info("Showing auth section")
         auth_section()
 
 if __name__ == "__main__":
