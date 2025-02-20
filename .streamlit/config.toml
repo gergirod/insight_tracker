@@ -1,2 +1,9 @@
 [server]
-port = 8080 
+port = 8080
+baseUrlPath = "/"
+enableXsrfProtection = true
+enableCORS = false
+
+[browser]
+serverAddress = "yourdomain.com"  # Replace with your domain
+serverPort = 443  # Use 443 for HTTPS 

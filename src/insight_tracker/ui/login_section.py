@@ -1,5 +1,5 @@
 import streamlit as st
-from insight_tracker.auth import login
+from insight_tracker.auth import login, auth0, AUTH0_DOMAIN, AUTH0_CALLBACK_URL
 
 def auth_section():
     # Custom CSS for better styling
@@ -130,10 +130,33 @@ def auth_section():
     </div>
     """, unsafe_allow_html=True)
     
-    # Login button
-    login_col1, login_col2, login_col3 = st.columns([1,2,1])
-    with login_col2:
-        login()
+    # Update login button to use base URL
+    login_url = auth0.create_authorization_url(
+        f"https://{AUTH0_DOMAIN}/authorize",
+        redirect_uri=AUTH0_CALLBACK_URL,
+        audience=f"https://{AUTH0_DOMAIN}/userinfo",
+    )[0]
+    
+    st.markdown(f'''
+    <div style="text-align: center;">
+        <a href="{login_url}" target="_self" style="
+            display: inline-block;
+            background-color: #1E88E5;
+            color: white;
+            padding: 14px 48px;
+            font-size: 16px;
+            font-weight: 500;
+            text-decoration: none;
+            border-radius: 50px;
+            border: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.2s ease;
+            margin: 10px 0;
+            letter-spacing: 0.3px;">
+            Continue with Auth0
+        </a>
+    </div>
+    ''', unsafe_allow_html=True)
 
     # Enhanced testimonial
     st.markdown("""
