@@ -189,7 +189,7 @@ def handle_callback():
             
             # Clear URL parameters and redirect to base domain
             st.query_params.clear()
-            base_url = "https://insight-tracker.com"  # Use your domain from config
+            base_url = "https://insight-tracker.com"
             
             # Perform redirect to base URL
             st.markdown(
