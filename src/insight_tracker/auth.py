@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import jwt
 from insight_tracker.db import create_user_if_not_exists, get_user_company_info
 from insight_tracker.ui.session_state import initialize_session_state
+from insight_tracker.utils.cookie_manager import store_auth_cookie, load_auth_cookie, clear_auth_cookie
 import logging
 
 # Load environment variables
@@ -132,27 +133,6 @@ def signup():
     if st.button("Sign Up with Auth0"):
         st.markdown(f'<meta http-equiv="refresh" content="0;url={signup_url}">', unsafe_allow_html=True)
 
-def store_auth_cookie():
-    """Store authentication data in cookies"""
-    if st.session_state.get('access_token'):
-        st.cookies.set('access_token', st.session_state.access_token, 
-                      expires_at=3600,  # 1 hour expiry
-                      key='auth_cookie',
-                      secure=True,
-                      httponly=True)
-
-def load_auth_cookie():
-    """Load authentication data from cookies"""
-    access_token = st.cookies.get('access_token')
-    if access_token:
-        st.session_state.access_token = access_token
-        return True
-    return False
-
-def clear_auth_cookie():
-    """Clear authentication cookies"""
-    st.cookies.delete('access_token')
-
 def handle_callback():
     logging.info("Starting callback handling")
     query_params = st.query_params
@@ -205,7 +185,7 @@ def handle_callback():
             st.session_state.authentication_status = 'authenticated'
             
             # Store in cookies
-            store_auth_cookie()
+            store_auth_cookie(access_token)
             
             # Redirect to base domain
             st.query_params.clear()
