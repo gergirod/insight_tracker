@@ -1,4 +1,5 @@
 import streamlit as st
+from insight_tracker.auth import load_auth_cookie
 
 def initialize_session_state():
     """Initialize session state variables"""
