@@ -164,6 +164,16 @@ def main():
                 st.session_state.authentication_status = 'unauthenticated'
     else:
         logger.info(f"Existing auth status: {st.session_state.get('authentication_status')}")
+        # If authenticated, verify cookie still exists
+        if st.session_state.authentication_status == 'authenticated':
+            if load_auth_cookie():
+                logger.info("Authentication verified with cookie")
+                display_main_content(st.session_state.user)
+                return
+            else:
+                logger.info("Cookie missing for authenticated session, clearing state")
+                clear_auth_cookie()
+                st.session_state.authentication_status = 'unauthenticated'
     
     # Handle new authentication callback if present
     if 'code' in st.query_params:
@@ -176,13 +186,6 @@ def main():
         else:
             logger.warning("Auth failed")
             st.session_state.authentication_status = 'unauthenticated'
-    
-    # Check if already authenticated
-    if st.session_state.get('authentication_status') == 'authenticated' and st.session_state.get('user'):
-        logger.info("User already authenticated, showing main content")
-        logger.info(f"Authenticated user: {st.session_state.get('user')}")
-        display_main_content(st.session_state.user)
-        return
     
     # If we get here, show the initial screen
     logger.info("Showing initial login screen")
