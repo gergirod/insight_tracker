@@ -25,9 +25,9 @@ def store_auth_cookie(access_token):
             current_cookies = cookie_manager.get_all()
             logger.info(f"Existing cookies before setting: {current_cookies}")
             
-            # Set the cookie with 7 days expiry
-            expiry = int((datetime.now() + timedelta(days=7)).timestamp())
-            cookie_manager.set("auth_token", access_token, expires_at=expiry)
+            # Set the cookie - note: extra_streamlit_components doesn't support expiry
+            # so we'll just set the cookie without expiry
+            cookie_manager.set("auth_token", access_token)
             
             # Verify the cookie was set
             new_cookies = cookie_manager.get_all()
@@ -35,6 +35,8 @@ def store_auth_cookie(access_token):
             
             if 'auth_token' in new_cookies:
                 logger.info("Cookie verified as stored successfully")
+                # Store expiry in session state since we can't store it in cookie
+                st.session_state.token_expiry = int((datetime.now() + timedelta(days=7)).timestamp())
                 return True
             else:
                 logger.warning("Cookie was not stored successfully")
