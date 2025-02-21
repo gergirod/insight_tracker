@@ -154,11 +154,12 @@ def display_main_content(user):
 def main():
     logging.info("Starting main application")
     
-    # Check if we're on the IP address or port 8080
-    current_url = st.experimental_get_url()
-    if "157.230.4.197" in current_url or ":8080" in current_url:
-        logging.info(f"Redirecting from {current_url} to {BASE_URL}")
-        base_url = os.getenv("BASE_URL", "/")
+    # Check if we need to redirect based on environment variable
+    current_url = os.getenv("CURRENT_URL")
+    base_url = os.getenv("BASE_URL")
+    
+    if current_url and base_url and (":8080" in current_url or "157.230.4.197" in current_url):
+        logging.info(f"Redirecting from {current_url} to {base_url}")
         st.markdown(f'<meta http-equiv="refresh" content="0;url={base_url}">', unsafe_allow_html=True)
         return
     
