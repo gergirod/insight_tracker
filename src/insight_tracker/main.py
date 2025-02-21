@@ -152,39 +152,31 @@ def display_main_content(user):
         profile_insight_section()  # Default to Profile Insight if no selection
 
 def main():
-    # Simple redirect check at the very start
-    if st.query_params.get('redirect') != 'done':
-        st.query_params['redirect'] = 'done'  # Mark as redirected
-        st.markdown(
-            f'<meta http-equiv="refresh" content="0;url=https://insight-tracker.com">',
-            unsafe_allow_html=True
-        )
-        st.stop()
-        return
-
-    # Rest of your existing main function...
-    if st.session_state.get('access_token'):
+    logging.info("Starting application")
+    
+    # First check for valid cookies and try silent sign-in
+    if load_auth_cookie():
+        logging.info("Found valid auth cookie, attempting silent sign-in")
         if silent_sign_in():
+            logging.info("Silent sign-in successful")
             display_main_content(st.session_state.user)
             return
         else:
-            clear_auth_cookie()
+            logging.info("Silent sign-in failed (expired/invalid token)")
+            clear_auth_cookie()  # Clear invalid/expired cookie
             st.session_state.access_token = None
             st.session_state.user = None
             st.session_state.authentication_status = 'unauthenticated'
     
+    # Handle new authentication callback if present
     if 'code' in st.query_params:
         if handle_auth():
             st.rerun()
-        else:
-            st.session_state.authentication_status = 'unauthenticated'
-            auth_section()
             return
     
-    if st.session_state.authentication_status == 'authenticated' and st.session_state.user:
-        display_main_content(st.session_state.user)
-    else:
-        auth_section()
+    # If we get here, show the initial screen
+    logging.info("Showing initial login screen")
+    auth_section()
 
 if __name__ == "__main__":
     main()
