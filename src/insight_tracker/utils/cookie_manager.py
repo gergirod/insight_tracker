@@ -21,12 +21,9 @@ def store_auth_cookie(access_token):
             cookie_manager = get_cookie_manager()
             # Save token with secure settings
             cookie_manager.set(
-                key="auth_token",
-                value=access_token,
-                expires_at=datetime.now() + timedelta(days=7),  # 7 days expiry
-                secure=True,
-                httponly=True,
-                samesite="Strict"
+                "auth_token",  # key
+                access_token,  # value
+                expires_at=int((datetime.now() + timedelta(days=7)).timestamp()),  # expiry in seconds
             )
             logger.info("Cookie stored successfully")
             cookies = cookie_manager.get_all()
