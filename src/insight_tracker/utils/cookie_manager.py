@@ -1,52 +1,76 @@
 import streamlit as st
 import time
 import logging
+import extra_streamlit_components as stx
+import jwt
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
+# Initialize cookie manager
+cookie_manager = stx.CookieManager()
+
 def store_auth_cookie(access_token):
-    """Store authentication data in session state"""
+    """Store authentication data in browser cookies"""
     logger.info("Storing new auth cookie")
-    if access_token:
-        expiry_time = time.time() + 3600  # 1 hour expiry
-        st.session_state.access_token = access_token
-        st.session_state.token_expiry = expiry_time
-        logger.info(f"Cookie stored with expiry at: {expiry_time}")
-        logger.info(f"Session state after storing: {dict(st.session_state)}")
-    else:
-        logger.warning("Attempted to store empty access token")
+    try:
+        if access_token:
+            # Save token with secure settings
+            cookie_manager.set("auth_token", access_token)
+            logger.info("Cookie stored successfully")
+            logger.info(f"Current cookies: {cookie_manager.get_all()}")
+        else:
+            logger.warning("Attempted to store empty access token")
+    except Exception as e:
+        logger.error(f"Error storing cookie: {e}")
 
 def load_auth_cookie():
-    """Load authentication data from session state"""
-    access_token = st.session_state.get('access_token')
-    token_expiry = st.session_state.get('token_expiry', 0)
-    current_time = time.time()
-    
-    logger.info("Checking auth cookie:")
-    logger.info(f"Access token exists: {bool(access_token)}")
-    logger.info(f"Token expiry: {token_expiry}")
-    logger.info(f"Current time: {current_time}")
-    logger.info(f"Time until expiry: {token_expiry - current_time} seconds")
-    logger.info(f"Full session state: {dict(st.session_state)}")
-    
-    if access_token and current_time < token_expiry:
+    """Load authentication data from browser cookies"""
+    try:
+        token = cookie_manager.get('auth_token')
+        logger.info("Checking auth cookie:")
+        logger.info(f"Token exists: {bool(token)}")
+        
+        if not token:
+            logger.info("No cookie found")
+            return False
+            
+        # Check if token is expired
+        if is_token_expired(token):
+            logger.info("Cookie found but expired, clearing")
+            clear_auth_cookie()
+            return False
+            
         logger.info("Cookie is valid and not expired")
+        st.session_state.access_token = token  # Store in session state for convenience
         return True
-    
-    # Clear expired token
-    if access_token:
-        logger.info("Cookie found but expired, clearing")
-        clear_auth_cookie()
-    else:
-        logger.info("No cookie found")
-    return False
+        
+    except Exception as e:
+        logger.error(f"Error loading cookie: {e}")
+        return False
 
 def clear_auth_cookie():
-    """Clear authentication data from session state"""
+    """Clear authentication data from cookies"""
     logger.info("Clearing auth cookie")
-    logger.info(f"Session state before clearing: {dict(st.session_state)}")
-    if 'access_token' in st.session_state:
-        del st.session_state.access_token
-    if 'token_expiry' in st.session_state:
-        del st.session_state.token_expiry
-    logger.info(f"Session state after clearing: {dict(st.session_state)}") 
+    try:
+        cookie_manager.delete('auth_token')
+        if 'access_token' in st.session_state:
+            del st.session_state.access_token
+        logger.info("Cookie cleared successfully")
+    except Exception as e:
+        logger.error(f"Error clearing cookie: {e}")
+
+def is_token_expired(token):
+    """Check if the token is expired"""
+    try:
+        decoded = jwt.decode(token, options={"verify_signature": False})
+        exp_timestamp = decoded.get('exp')
+        if not exp_timestamp:
+            return True
+
+        # Add some buffer (5 minutes) to prevent edge cases
+        current_timestamp = datetime.now().timestamp() - 300
+        return exp_timestamp < current_timestamp
+    except Exception as e:
+        logger.error(f"Error checking token expiration: {e}")
+        return True 
