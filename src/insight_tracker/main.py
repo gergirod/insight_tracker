@@ -168,7 +168,6 @@ def main():
         if st.session_state.authentication_status == 'authenticated':
             if load_auth_cookie():
                 logger.info("Authentication verified with cookie")
-                display_main_content(st.session_state.user)
                 return
             else:
                 logger.info("Cookie missing for authenticated session, clearing state")
@@ -181,7 +180,6 @@ def main():
         if handle_auth():
             logger.info("Auth successful, displaying main content")
             logger.info(f"Session state after auth: {dict(st.session_state)}")
-            display_main_content(st.session_state.user)
             return
         else:
             logger.warning("Auth failed")
