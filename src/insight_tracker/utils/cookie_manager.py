@@ -7,12 +7,10 @@ from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
+@st.cache_resource(show_spinner=False)
 def get_cookie_manager():
     """Get or create cookie manager in the Streamlit context"""
-    if 'cookie_manager' not in st.session_state:
-        cookie_manager = stx.CookieManager(key="auth_cookie_manager")
-        st.session_state.cookie_manager = cookie_manager
-    return st.session_state.cookie_manager
+    return stx.CookieManager()
 
 def store_auth_cookie(access_token):
     """Store authentication data in browser cookies"""
@@ -21,33 +19,24 @@ def store_auth_cookie(access_token):
         if access_token:
             cookie_manager = get_cookie_manager()
             
-            # First verify we can get existing cookies
-            try:
-                current_cookies = cookie_manager.get_all()
-                logger.info(f"Existing cookies before setting: {current_cookies}")
-            except Exception as e:
-                logger.warning(f"Error getting existing cookies: {e}")
-                current_cookies = {}
+            # Generate a unique key for this cookie
+            cookie_key = "auth_token_" + str(int(time.time()))
             
-            try:
-                # Set the cookie
-                cookie_manager.set("auth_token", access_token)
-                logger.info("Cookie set command executed")
-                
-                # Verify the cookie was set
-                new_cookies = cookie_manager.get_all()
-                logger.info(f"Cookies after setting: {new_cookies}")
-                
-                if 'auth_token' in new_cookies:
-                    logger.info("Cookie verified as stored successfully")
-                    # Store expiry in session state
-                    st.session_state.token_expiry = int((datetime.now() + timedelta(days=7)).timestamp())
-                    return True
-                else:
-                    logger.warning("Cookie was not found after setting")
-                    return False
-            except Exception as e:
-                logger.error(f"Error during cookie set/verify: {e}")
+            # Set the cookie
+            cookie_manager.set(cookie_key, access_token)
+            logger.info(f"Cookie set with key: {cookie_key}")
+            
+            # Store the key in session state
+            st.session_state.auth_cookie_key = cookie_key
+            st.session_state.token_expiry = int((datetime.now() + timedelta(days=7)).timestamp())
+            
+            # Verify the cookie was set
+            stored_token = cookie_manager.get(cookie_key)
+            if stored_token == access_token:
+                logger.info("Cookie verified as stored successfully")
+                return True
+            else:
+                logger.warning("Cookie verification failed")
                 return False
         else:
             logger.warning("Attempted to store empty access token")
@@ -61,7 +50,13 @@ def load_auth_cookie():
     """Load authentication data from browser cookies"""
     try:
         cookie_manager = get_cookie_manager()
-        token = cookie_manager.get('auth_token')
+        cookie_key = st.session_state.get('auth_cookie_key')
+        
+        if not cookie_key:
+            logger.info("No cookie key found in session state")
+            return False
+            
+        token = cookie_manager.get(cookie_key)
         logger.info("Checking auth cookie:")
         logger.info(f"Token exists: {bool(token)}")
         
@@ -76,7 +71,7 @@ def load_auth_cookie():
             return False
             
         logger.info("Cookie is valid and not expired")
-        st.session_state.access_token = token  # Store in session state for convenience
+        st.session_state.access_token = token
         return True
         
     except Exception as e:
@@ -88,9 +83,14 @@ def clear_auth_cookie():
     logger.info("Clearing auth cookie")
     try:
         cookie_manager = get_cookie_manager()
-        cookie_manager.delete('auth_token')
+        cookie_key = st.session_state.get('auth_cookie_key')
+        if cookie_key:
+            cookie_manager.delete(cookie_key)
+            del st.session_state.auth_cookie_key
         if 'access_token' in st.session_state:
             del st.session_state.access_token
+        if 'token_expiry' in st.session_state:
+            del st.session_state.token_expiry
         logger.info("Cookie cleared successfully")
     except Exception as e:
         logger.error(f"Error clearing cookie: {e}")
