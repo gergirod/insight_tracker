@@ -206,11 +206,24 @@ def handle_callback():
             # Store auth cookie
             store_auth_cookie(access_token)
             
+            # Create user in database if needed
+            success, is_new_user = create_user_if_not_exists(
+                full_name=user_info.get('name', ''),
+                email=user_info.get('email', ''),
+                company="",
+                role=""
+            )
+            st.session_state.is_new_user = is_new_user
+            
             # Clear query parameters
             st.query_params.clear()
             
             # Log the session state after setting everything
             logger.info(f"Session state after auth setup: {dict(st.session_state)}")
+            
+            # Redirect to base URL
+            base_url = os.getenv("BASE_URL", "/")
+            st.markdown(f'<meta http-equiv="refresh" content="0;url={base_url}">', unsafe_allow_html=True)
             
             return True
 
