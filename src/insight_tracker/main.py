@@ -152,48 +152,38 @@ def display_main_content(user):
         profile_insight_section()  # Default to Profile Insight if no selection
 
 def main():
-    logging.info("Starting main application")
-    
-    # First try to authenticate silently if we have a token
+    # Simple redirect check at the very start
+    if st.query_params.get('redirect') != 'done':
+        st.query_params['redirect'] = 'done'  # Mark as redirected
+        st.markdown(
+            f'<meta http-equiv="refresh" content="0;url=https://insight-tracker.com">',
+            unsafe_allow_html=True
+        )
+        st.stop()
+        return
+
+    # Rest of your existing main function...
     if st.session_state.get('access_token'):
-        logging.info("Found existing token, attempting silent sign-in")
         if silent_sign_in():
-            logging.info("Silent sign-in successful")
             display_main_content(st.session_state.user)
             return
         else:
-            logging.info("Silent sign-in failed, clearing session")
             clear_auth_cookie()
             st.session_state.access_token = None
             st.session_state.user = None
             st.session_state.authentication_status = 'unauthenticated'
     
-    # Then check if we're handling a new authentication callback
     if 'code' in st.query_params:
-        logging.info("Processing new authentication")
-        loading_container = show_loading_screen()
         if handle_auth():
-            logging.info("Authentication successful")
-            # Redirect to base URL after successful auth
-            base_url = os.getenv("BASE_URL", "/")
-            st.markdown(f'<meta http-equiv="refresh" content="0;url={base_url}">', unsafe_allow_html=True)
-            return
+            st.rerun()
         else:
-            logging.warning("Authentication failed")
             st.session_state.authentication_status = 'unauthenticated'
+            auth_section()
+            return
     
-    # If we're not authenticated, show login page
-    if st.session_state.authentication_status != 'authenticated':
-        logging.info("Showing auth section")
-        auth_section()
-        return
-    
-    # If we get here and we're authenticated, show main content
-    if st.session_state.user:
-        logging.info("Showing main content")
+    if st.session_state.authentication_status == 'authenticated' and st.session_state.user:
         display_main_content(st.session_state.user)
     else:
-        logging.info("No user info found, showing auth section")
         auth_section()
 
 if __name__ == "__main__":
