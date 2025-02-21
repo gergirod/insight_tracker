@@ -7,10 +7,12 @@ from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
-@st.cache_resource
 def get_cookie_manager():
     """Get or create cookie manager in the Streamlit context"""
-    return stx.CookieManager()
+    if 'cookie_manager' not in st.session_state:
+        cookie_manager = stx.CookieManager()
+        st.session_state.cookie_manager = cookie_manager
+    return st.session_state.cookie_manager
 
 def store_auth_cookie(access_token):
     """Store authentication data in browser cookies"""
@@ -18,15 +20,14 @@ def store_auth_cookie(access_token):
     try:
         if access_token:
             cookie_manager = get_cookie_manager()
-            # Save token with secure settings
-            expiry = datetime.now() + timedelta(days=7)  # 7 days from now
             
             # First verify we can get existing cookies
             current_cookies = cookie_manager.get_all()
             logger.info(f"Existing cookies before setting: {current_cookies}")
             
-            # Set the cookie
-            cookie_manager.set("auth_token", access_token)
+            # Set the cookie with 7 days expiry
+            expiry = int((datetime.now() + timedelta(days=7)).timestamp())
+            cookie_manager.set("auth_token", access_token, expires_at=expiry)
             
             # Verify the cookie was set
             new_cookies = cookie_manager.get_all()
