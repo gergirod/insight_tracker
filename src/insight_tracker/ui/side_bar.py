@@ -39,12 +39,16 @@ def display_side_bar():
     # -------------------- Sidebar Navigation -------------------- #
     with st.sidebar:
         if st.session_state.user is not None:
+            # Get current index
+            options = ["Profile Insight", "Company Insight", "Recent Searches", "Settings", "Logout"]
+            current_idx = options.index(st.session_state.nav_bar_option_selected) if st.session_state.nav_bar_option_selected in options else 0
+            
             selected = option_menu(
                 menu_title="Insight Tracker",
-                options=["Profile Insight", "Company Insight", "Recent Searches", "Settings", "Logout"],
-                icons=["person-lines-fill", "building", "clock-history", "gear", "box-arrow-right"],  # Added icons
-                default_index=0,
-                key="sidebar_nav_" + str(id(st.session_state)),  # Dynamic unique key
+                options=options,
+                icons=["person-lines-fill", "building", "clock-history", "gear", "box-arrow-right"],
+                default_index=current_idx,
+                key="navigation",
                 styles={
                     "container": {"padding": "0!important", "background-color": "#ffffff"},
                     "icon": {"color": "#495057", "font-size": "16px"},
