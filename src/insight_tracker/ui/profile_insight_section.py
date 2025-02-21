@@ -26,7 +26,7 @@ def inject_css():
             width: 100%;
             border-radius: 4px;
             padding: 0.5rem 1rem;
-            background-color: #007bff;
+            background-color: #0d6efd;  /* Changed to match app's blue */
             color: white !important;
             border: none;
             transition: all 0.2s ease;
@@ -34,7 +34,7 @@ def inject_css():
         }
         
         .stButton > button:hover {
-            background-color: #0056b3;
+            background-color: #0b5ed7;  /* Darker shade for hover */
             color: white !important;
             border: none;
         }
@@ -53,10 +53,21 @@ def inject_css():
 
         /* Disabled button styling */
         .stButton > button:disabled {
-            background-color: #6c757d !important;
+            background-color: #0d6efd !important;  /* Changed to match blue */
             opacity: 0.65;
             cursor: not-allowed;
             color: white !important;
+        }
+
+        /* Research button specific styling */
+        .stButton > button:has(div:contains("Research")) {
+            background-color: #0d6efd !important;
+            color: white !important;
+            font-weight: 500;
+        }
+
+        .stButton > button:has(div:contains("Research")):hover {
+            background-color: #0b5ed7 !important;
         }
 
         /* Input field styling */
