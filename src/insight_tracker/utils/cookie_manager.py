@@ -7,14 +7,10 @@ from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
+@st.cache_resource
 def get_cookie_manager():
     """Get or create cookie manager in the Streamlit context"""
-    if 'cookie_manager' not in st.session_state:
-        cookie_manager = stx.CookieManager()
-        # Initialize the cookie manager in the page
-        st.markdown(cookie_manager.generate_key())
-        st.session_state.cookie_manager = cookie_manager
-    return st.session_state.cookie_manager
+    return stx.CookieManager()
 
 def store_auth_cookie(access_token):
     """Store authentication data in browser cookies"""
@@ -29,11 +25,8 @@ def store_auth_cookie(access_token):
             current_cookies = cookie_manager.get_all()
             logger.info(f"Existing cookies before setting: {current_cookies}")
             
-            cookie_manager.set(
-                "auth_token",  # key
-                access_token,  # value
-                expires_at=expiry  # expiry as datetime object
-            )
+            # Set the cookie
+            cookie_manager.set("auth_token", access_token)
             
             # Verify the cookie was set
             new_cookies = cookie_manager.get_all()
@@ -51,7 +44,6 @@ def store_auth_cookie(access_token):
     except Exception as e:
         logger.error(f"Error storing cookie: {e}")
         logger.error(f"Cookie value length: {len(access_token) if access_token else 0}")
-        logger.error(f"Cookie expiry: {expiry}")
         return False
 
 def load_auth_cookie():
