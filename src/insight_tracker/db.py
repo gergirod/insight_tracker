@@ -410,3 +410,16 @@ def get_user_company_info(user_email: str) -> Optional[Company]:
             company_recent_updates=row[13].split(',') if row[13] else None
         )
     return None
+
+def check_and_alter_table():
+    """Check if the table needs alteration and perform it if necessary."""
+    conn = sqlite3.connect('recent_searches.db')
+    c = conn.cursor()
+    try:
+        # Check if the column exists
+        c.execute("PRAGMA table_info(profile_searches)")
+        columns = [column[1] for column in c.fetchall()]
+        if 'current_company' not in columns or 'current_company_url' not in columns:
+            alter_profile_searches_table()
+    finally:
+        conn.close()
