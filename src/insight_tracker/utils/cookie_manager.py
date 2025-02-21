@@ -3,30 +3,46 @@ import time
 import logging
 import extra_streamlit_components as stx
 import jwt
-from datetime import datetime
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
-# Initialize cookie manager
-cookie_manager = stx.CookieManager()
+def get_cookie_manager():
+    """Get or create cookie manager in the Streamlit context"""
+    if 'cookie_manager' not in st.session_state:
+        st.session_state.cookie_manager = stx.CookieManager()
+    return st.session_state.cookie_manager
 
 def store_auth_cookie(access_token):
     """Store authentication data in browser cookies"""
     logger.info("Storing new auth cookie")
     try:
         if access_token:
+            cookie_manager = get_cookie_manager()
             # Save token with secure settings
-            cookie_manager.set("auth_token", access_token)
+            cookie_manager.set(
+                key="auth_token",
+                value=access_token,
+                expires_at=datetime.now() + timedelta(days=7),  # 7 days expiry
+                secure=True,
+                httponly=True,
+                samesite="Strict"
+            )
             logger.info("Cookie stored successfully")
-            logger.info(f"Current cookies: {cookie_manager.get_all()}")
+            cookies = cookie_manager.get_all()
+            logger.info(f"Current cookies: {cookies}")
+            return True
         else:
             logger.warning("Attempted to store empty access token")
+            return False
     except Exception as e:
         logger.error(f"Error storing cookie: {e}")
+        return False
 
 def load_auth_cookie():
     """Load authentication data from browser cookies"""
     try:
+        cookie_manager = get_cookie_manager()
         token = cookie_manager.get('auth_token')
         logger.info("Checking auth cookie:")
         logger.info(f"Token exists: {bool(token)}")
@@ -53,6 +69,7 @@ def clear_auth_cookie():
     """Clear authentication data from cookies"""
     logger.info("Clearing auth cookie")
     try:
+        cookie_manager = get_cookie_manager()
         cookie_manager.delete('auth_token')
         if 'access_token' in st.session_state:
             del st.session_state.access_token
