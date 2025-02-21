@@ -7,6 +7,10 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# Initialize cookie manager early
+from insight_tracker.utils.cookie_manager import get_cookie_manager
+_ = get_cookie_manager()  # Initialize the global instance
+
 # Rest of the imports
 from insight_tracker.auth import handle_callback, logout, validate_token_and_get_user, silent_sign_in
 from insight_tracker.utils.cookie_manager import load_auth_cookie, clear_auth_cookie, get_cookie_manager
