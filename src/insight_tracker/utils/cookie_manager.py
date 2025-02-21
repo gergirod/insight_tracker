@@ -25,18 +25,11 @@ def store_auth_cookie(access_token):
             cookie_manager = get_cookie_manager()
             
             # Set the cookie
-            cookie_manager.set(
-                "auth_token", 
-                access_token,
-                key=f"set_cookie_{int(time.time())}"  # Unique key for the set operation
-            )
+            cookie_manager.set("auth_token", access_token)
             logger.info("Cookie set successfully")
             
             # Verify the cookie was set
-            stored_token = cookie_manager.get(
-                "auth_token",
-                key=f"get_cookie_{int(time.time())}"  # Unique key for the get operation
-            )
+            stored_token = cookie_manager.get("auth_token")
             
             if stored_token == access_token:
                 logger.info("Cookie verified as stored successfully")
@@ -56,10 +49,7 @@ def load_auth_cookie():
     """Load authentication data from browser cookies"""
     try:
         cookie_manager = get_cookie_manager()
-        token = cookie_manager.get(
-            "auth_token",
-            key=f"get_auth_{int(time.time())}"  # Unique key for the get operation
-        )
+        token = cookie_manager.get("auth_token")
         
         logger.info("Checking auth cookie:")
         logger.info(f"Token exists: {bool(token)}")
@@ -87,10 +77,7 @@ def clear_auth_cookie():
     logger.info("Clearing auth cookie")
     try:
         cookie_manager = get_cookie_manager()
-        cookie_manager.delete(
-            "auth_token",
-            key=f"delete_cookie_{int(time.time())}"  # Unique key for the delete operation
-        )
+        cookie_manager.delete("auth_token")
         if 'access_token' in st.session_state:
             del st.session_state.access_token
         logger.info("Cookie cleared successfully")
