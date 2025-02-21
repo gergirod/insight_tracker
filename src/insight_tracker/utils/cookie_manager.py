@@ -7,10 +7,15 @@ from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
-@st.cache_resource(show_spinner=False)
+# Global cookie manager instance
+_cookie_manager = None
+
 def get_cookie_manager():
     """Get or create cookie manager in the Streamlit context"""
-    return stx.CookieManager()
+    global _cookie_manager
+    if _cookie_manager is None:
+        _cookie_manager = stx.CookieManager()
+    return _cookie_manager
 
 def store_auth_cookie(access_token):
     """Store authentication data in browser cookies"""
@@ -19,19 +24,20 @@ def store_auth_cookie(access_token):
         if access_token:
             cookie_manager = get_cookie_manager()
             
-            # Generate a unique key for this cookie
-            cookie_key = "auth_token_" + str(int(time.time()))
-            
             # Set the cookie
-            cookie_manager.set(cookie_key, access_token)
-            logger.info(f"Cookie set with key: {cookie_key}")
-            
-            # Store the key in session state
-            st.session_state.auth_cookie_key = cookie_key
-            st.session_state.token_expiry = int((datetime.now() + timedelta(days=7)).timestamp())
+            cookie_manager.set(
+                "auth_token", 
+                access_token,
+                key=f"set_cookie_{int(time.time())}"  # Unique key for the set operation
+            )
+            logger.info("Cookie set successfully")
             
             # Verify the cookie was set
-            stored_token = cookie_manager.get(cookie_key)
+            stored_token = cookie_manager.get(
+                "auth_token",
+                key=f"get_cookie_{int(time.time())}"  # Unique key for the get operation
+            )
+            
             if stored_token == access_token:
                 logger.info("Cookie verified as stored successfully")
                 return True
@@ -50,13 +56,11 @@ def load_auth_cookie():
     """Load authentication data from browser cookies"""
     try:
         cookie_manager = get_cookie_manager()
-        cookie_key = st.session_state.get('auth_cookie_key')
+        token = cookie_manager.get(
+            "auth_token",
+            key=f"get_auth_{int(time.time())}"  # Unique key for the get operation
+        )
         
-        if not cookie_key:
-            logger.info("No cookie key found in session state")
-            return False
-            
-        token = cookie_manager.get(cookie_key)
         logger.info("Checking auth cookie:")
         logger.info(f"Token exists: {bool(token)}")
         
@@ -64,13 +68,13 @@ def load_auth_cookie():
             logger.info("No cookie found")
             return False
             
-        # Check if token is expired
+        # Check if token is expired using JWT expiry
         if is_token_expired(token):
-            logger.info("Cookie found but expired, clearing")
+            logger.info("Token is expired, clearing")
             clear_auth_cookie()
             return False
             
-        logger.info("Cookie is valid and not expired")
+        logger.info("Cookie is valid and token not expired")
         st.session_state.access_token = token
         return True
         
@@ -83,20 +87,18 @@ def clear_auth_cookie():
     logger.info("Clearing auth cookie")
     try:
         cookie_manager = get_cookie_manager()
-        cookie_key = st.session_state.get('auth_cookie_key')
-        if cookie_key:
-            cookie_manager.delete(cookie_key)
-            del st.session_state.auth_cookie_key
+        cookie_manager.delete(
+            "auth_token",
+            key=f"delete_cookie_{int(time.time())}"  # Unique key for the delete operation
+        )
         if 'access_token' in st.session_state:
             del st.session_state.access_token
-        if 'token_expiry' in st.session_state:
-            del st.session_state.token_expiry
         logger.info("Cookie cleared successfully")
     except Exception as e:
         logger.error(f"Error clearing cookie: {e}")
 
 def is_token_expired(token):
-    """Check if the token is expired"""
+    """Check if the token is expired using JWT expiry"""
     try:
         decoded = jwt.decode(token, options={"verify_signature": False})
         exp_timestamp = decoded.get('exp')
