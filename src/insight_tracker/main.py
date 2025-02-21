@@ -1,7 +1,7 @@
 import sqlite3
 import streamlit as st
 from insight_tracker.auth import handle_callback, logout, validate_token_and_get_user, silent_sign_in
-from insight_tracker.utils.cookie_manager import load_auth_cookie, clear_auth_cookie
+from insight_tracker.utils.cookie_manager import load_auth_cookie, clear_auth_cookie, get_cookie_manager
 from insight_tracker.db import getUserByEmail, init_db, init_recent_searches_db, check_and_alter_table, init_user_company_db, get_user_company_info
 from insight_tracker.ui.profile_insight_section import profile_insight_section
 from insight_tracker.ui.company_insight_section import company_insight_section
@@ -14,6 +14,9 @@ from insight_tracker.ui.onboarding_section import onboarding_section
 from insight_tracker.ui.components.loading_dialog import show_loading_dialog
 from insight_tracker.utils.url_manager import redirect_to_base_url, BASE_URL
 from insight_tracker.utils.logger import logger
+
+# Initialize cookie manager
+cookie_manager = get_cookie_manager()
 
 st.set_page_config(
     page_title="Insight Tracker",
