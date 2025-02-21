@@ -13,32 +13,7 @@ from insight_tracker.ui.session_state import initialize_session_state
 from insight_tracker.ui.onboarding_section import onboarding_section
 from insight_tracker.ui.components.loading_dialog import show_loading_dialog
 from insight_tracker.utils.url_manager import redirect_to_base_url, BASE_URL
-from insight_tracker.utils.logger import main_logger as logger
-import logging
-import os
-from pathlib import Path
-
-# Configure logging to write to project root directory
-PROJECT_ROOT = Path(__file__).parent.parent.parent  # Go up three levels to project root
-logging.basicConfig(
-    filename=PROJECT_ROOT / 'main.log',
-    level=logging.DEBUG,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    filemode='a'  # append mode
-)
-
-def check_and_alter_table():
-    """Check if the table needs alteration and perform it if necessary."""
-    conn = sqlite3.connect('recent_searches.db')
-    c = conn.cursor()
-    try:
-        # Check if the column exists
-        c.execute("PRAGMA table_info(profile_searches)")
-        columns = [column[1] for column in c.fetchall()]
-        if 'current_company' not in columns or 'current_company_url' not in columns:
-            alter_profile_searches_table()
-    finally:
-        conn.close()
+from insight_tracker.utils.logger import logger
 
 st.set_page_config(
     page_title="Insight Tracker",
