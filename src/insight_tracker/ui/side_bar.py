@@ -9,7 +9,7 @@ def display_side_bar():
         <style>
         /* Option menu styling */
         .nav-link {
-            color: #495057 !important;
+            color: #000000 !important;
             background-color: transparent !important;
         }
         
@@ -26,13 +26,23 @@ def display_side_bar():
         
         /* Menu title styling */
         .nav-link-title {
-            color: #212529 !important;
+            color: #000000 !important;
             font-weight: 600 !important;
         }
         
         /* Container styling */
         [data-testid="stSidebar"] {
             background-color: #ffffff;
+        }
+        
+        /* Make sure text is visible */
+        .nav-item {
+            color: #000000 !important;
+        }
+        
+        /* Ensure menu container is visible */
+        .stSelectbox {
+            color: #000000 !important;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -61,23 +71,34 @@ def display_side_bar():
                     default_index=current_idx,
                     key="navigation",
                     styles={
-                        "container": {"padding": "0!important", "background-color": "#ffffff"},
-                        "icon": {"color": "#495057", "font-size": "16px"},
+                        "container": {
+                            "padding": "0!important",
+                            "background-color": "#ffffff",
+                            "border": "1px solid #e9ecef",
+                        },
+                        "icon": {
+                            "color": "#000000",
+                            "font-size": "16px"
+                        },
                         "nav-link": {
                             "font-size": "16px",
                             "text-align": "left",
                             "padding": "15px",
                             "margin": "0px",
-                            "--hover-color": "#f8f9fa"
+                            "--hover-color": "#f8f9fa",
+                            "color": "#000000",
                         },
                         "nav-link-selected": {
                             "background-color": "#e7f1ff",
                             "color": "#0d6efd",
+                            "font-weight": "600",
                         },
                         "menu-title": {
                             "padding": "15px",
                             "font-size": "18px",
-                            "font-weight": "600"
+                            "font-weight": "600",
+                            "color": "#000000",
+                            "background-color": "#f8f9fa",
                         }
                     }
                 )
