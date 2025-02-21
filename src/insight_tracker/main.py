@@ -133,12 +133,18 @@ def display_main_content(user):
 def main():
     logger.info("Starting application")
     
+    # Debug current state
+    logger.debug(f"Session state at start: {dict(st.session_state)}")
+    logger.debug(f"Query params at start: {dict(st.query_params)}")
+    
     # First check for valid cookies and try silent sign-in
     if not st.session_state.get('authentication_status'):
+        logger.debug("No authentication status found")
         if load_auth_cookie():
             logger.info("Found valid auth cookie, attempting silent sign-in")
             if silent_sign_in():
                 logger.info("Silent sign-in successful")
+                logger.debug(f"User after silent sign-in: {st.session_state.get('user')}")
                 display_main_content(st.session_state.user)
                 return
             else:
@@ -147,12 +153,15 @@ def main():
                 st.session_state.access_token = None
                 st.session_state.user = None
                 st.session_state.authentication_status = 'unauthenticated'
+    else:
+        logger.debug(f"Existing auth status: {st.session_state.get('authentication_status')}")
     
     # Handle new authentication callback if present
     if 'code' in st.query_params:
         logger.info("Processing auth callback")
         if handle_auth():
             logger.info("Auth successful, displaying main content")
+            logger.debug(f"Session state after auth: {dict(st.session_state)}")
             display_main_content(st.session_state.user)
             return
         else:
@@ -162,11 +171,13 @@ def main():
     # Check if already authenticated
     if st.session_state.get('authentication_status') == 'authenticated' and st.session_state.get('user'):
         logger.info("User already authenticated, showing main content")
+        logger.debug(f"Authenticated user: {st.session_state.get('user')}")
         display_main_content(st.session_state.user)
         return
     
     # If we get here, show the initial screen
     logger.info("Showing initial login screen")
+    logger.debug("No valid authentication found, showing login")
     auth_section()
 
 if __name__ == "__main__":
