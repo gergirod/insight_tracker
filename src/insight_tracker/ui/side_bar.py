@@ -53,16 +53,10 @@ def display_side_bar():
 
     # -------------------- Sidebar Navigation -------------------- #
     with st.sidebar:
-        # Debug info in sidebar
-        st.write(f"Debug - Auth Status: {st.session_state.get('authentication_status')}")
-        st.write(f"Debug - User exists: {st.session_state.get('user') is not None}")
-        
         if st.session_state.get('user') is not None:
             try:
                 options = ["Profile Insight", "Company Insight", "Recent Searches", "Settings", "Logout"]
                 current_idx = options.index(st.session_state.nav_bar_option_selected) if st.session_state.nav_bar_option_selected in options else 0
-                
-                logger.info(f"Attempting to display option_menu with index {current_idx}")
                 
                 selected = option_menu(
                     menu_title="Insight Tracker",
@@ -103,9 +97,6 @@ def display_side_bar():
                     }
                 )
                 
-                logger.info(f"Option menu displayed successfully, selected: {selected}")
-                
-                # Update session state if selection changed
                 if selected != st.session_state.nav_bar_option_selected:
                     st.session_state.nav_bar_option_selected = selected
                     st.rerun()
@@ -113,8 +104,5 @@ def display_side_bar():
                 return selected
             except Exception as e:
                 logger.error(f"Error displaying sidebar menu: {e}")
-                st.error("Error displaying navigation menu")
-        else:
-            logger.warning("No user in session state, skipping sidebar menu")
 
     return st.session_state.nav_bar_option_selected

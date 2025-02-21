@@ -181,6 +181,7 @@ def main():
         if handle_auth():
             logger.info("Auth successful, displaying main content")
             logger.info(f"Session state after auth: {dict(st.session_state)}")
+            display_main_content(st.session_state.user)
             return
         else:
             logger.warning("Auth failed")
