@@ -14,6 +14,7 @@ from insight_tracker.ui.onboarding_section import onboarding_section
 from insight_tracker.ui.components.loading_dialog import show_loading_dialog
 from insight_tracker.utils.url_manager import redirect_to_base_url, BASE_URL
 import logging
+import os
 
 # Add at the top of the file after imports
 logging.basicConfig(
@@ -153,10 +154,12 @@ def display_main_content(user):
 def main():
     logging.info("Starting main application")
     
-    # Check if we're on the IP address
-    if "157.230.4.197" in st.request.url or ":8080" in st.request.url:
-        logging.info(f"Redirecting from IP address to {BASE_URL}")
-        redirect_to_base_url()
+    # Check if we're on the IP address or port 8080
+    current_url = st.experimental_get_url()
+    if "157.230.4.197" in current_url or ":8080" in current_url:
+        logging.info(f"Redirecting from {current_url} to {BASE_URL}")
+        base_url = os.getenv("BASE_URL", "/")
+        st.markdown(f'<meta http-equiv="refresh" content="0;url={base_url}">', unsafe_allow_html=True)
         return
     
     # Rest of your main function...
