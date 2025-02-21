@@ -20,10 +20,11 @@ def store_auth_cookie(access_token):
         if access_token:
             cookie_manager = get_cookie_manager()
             # Save token with secure settings
+            expiry = datetime.now() + timedelta(days=7)  # 7 days from now
             cookie_manager.set(
                 "auth_token",  # key
                 access_token,  # value
-                expires_at=int((datetime.now() + timedelta(days=7)).timestamp()),  # expiry in seconds
+                expires_at=expiry  # expiry as datetime object
             )
             logger.info("Cookie stored successfully")
             cookies = cookie_manager.get_all()
@@ -34,6 +35,8 @@ def store_auth_cookie(access_token):
             return False
     except Exception as e:
         logger.error(f"Error storing cookie: {e}")
+        logger.error(f"Cookie value: {access_token}")
+        logger.error(f"Cookie expiry: {expiry}")
         return False
 
 def load_auth_cookie():
