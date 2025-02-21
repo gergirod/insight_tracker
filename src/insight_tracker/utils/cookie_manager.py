@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 def get_cookie_manager():
     """Get or create cookie manager in the Streamlit context"""
     if 'cookie_manager' not in st.session_state:
-        cookie_manager = stx.CookieManager()
+        cookie_manager = stx.CookieManager(key="auth_cookie_manager")
         st.session_state.cookie_manager = cookie_manager
     return st.session_state.cookie_manager
 
@@ -22,30 +22,38 @@ def store_auth_cookie(access_token):
             cookie_manager = get_cookie_manager()
             
             # First verify we can get existing cookies
-            current_cookies = cookie_manager.get_all()
-            logger.info(f"Existing cookies before setting: {current_cookies}")
+            try:
+                current_cookies = cookie_manager.get_all()
+                logger.info(f"Existing cookies before setting: {current_cookies}")
+            except Exception as e:
+                logger.warning(f"Error getting existing cookies: {e}")
+                current_cookies = {}
             
-            # Set the cookie - note: extra_streamlit_components doesn't support expiry
-            # so we'll just set the cookie without expiry
-            cookie_manager.set("auth_token", access_token)
-            
-            # Verify the cookie was set
-            new_cookies = cookie_manager.get_all()
-            logger.info(f"Cookies after setting: {new_cookies}")
-            
-            if 'auth_token' in new_cookies:
-                logger.info("Cookie verified as stored successfully")
-                # Store expiry in session state since we can't store it in cookie
-                st.session_state.token_expiry = int((datetime.now() + timedelta(days=7)).timestamp())
-                return True
-            else:
-                logger.warning("Cookie was not stored successfully")
+            try:
+                # Set the cookie
+                cookie_manager.set("auth_token", access_token)
+                logger.info("Cookie set command executed")
+                
+                # Verify the cookie was set
+                new_cookies = cookie_manager.get_all()
+                logger.info(f"Cookies after setting: {new_cookies}")
+                
+                if 'auth_token' in new_cookies:
+                    logger.info("Cookie verified as stored successfully")
+                    # Store expiry in session state
+                    st.session_state.token_expiry = int((datetime.now() + timedelta(days=7)).timestamp())
+                    return True
+                else:
+                    logger.warning("Cookie was not found after setting")
+                    return False
+            except Exception as e:
+                logger.error(f"Error during cookie set/verify: {e}")
                 return False
         else:
             logger.warning("Attempted to store empty access token")
             return False
     except Exception as e:
-        logger.error(f"Error storing cookie: {e}")
+        logger.error(f"Error in store_auth_cookie: {e}")
         logger.error(f"Cookie value length: {len(access_token) if access_token else 0}")
         return False
 
