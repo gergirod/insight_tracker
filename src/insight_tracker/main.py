@@ -154,53 +154,46 @@ def display_main_content(user):
 def main():
     logging.info("Starting main application")
     
-    # Check if we need to redirect based on environment variable
-    current_url = os.getenv("CURRENT_URL")
-    base_url = os.getenv("BASE_URL")
-    
-    if current_url and base_url and (":8080" in current_url or "157.230.4.197" in current_url):
-        logging.info(f"Redirecting from {current_url} to {base_url}")
-        st.markdown(f'<meta http-equiv="refresh" content="0;url={base_url}">', unsafe_allow_html=True)
-        return
-    
-    # Rest of your main function...
-    if not st.session_state.get('access_token') and load_auth_cookie():
-        logging.info("Found auth cookie, attempting silent sign-in")
-        if silent_sign_in():
-            display_main_content(st.session_state.user)
-            return
-    
-    # Rest of the authentication flow
+    # First try to authenticate silently if we have a token
     if st.session_state.get('access_token'):
+        logging.info("Found existing token, attempting silent sign-in")
         if silent_sign_in():
+            logging.info("Silent sign-in successful")
             display_main_content(st.session_state.user)
             return
         else:
-            clear_auth_cookie()  # Clear invalid cookie
+            logging.info("Silent sign-in failed, clearing session")
+            clear_auth_cookie()
             st.session_state.access_token = None
             st.session_state.user = None
             st.session_state.authentication_status = 'unauthenticated'
     
-    # Handle new authentication if we have a code
+    # Then check if we're handling a new authentication callback
     if 'code' in st.query_params:
         logging.info("Processing new authentication")
         loading_container = show_loading_screen()
         if handle_auth():
-            # Successful authentication, rerun without query params
-            st.query_params.clear()
-            st.rerun()
-        else:
-            # Failed authentication, show auth section
-            st.session_state.authentication_status = 'unauthenticated'
-            auth_section()
+            logging.info("Authentication successful")
+            # Redirect to base URL after successful auth
+            base_url = os.getenv("BASE_URL", "/")
+            st.markdown(f'<meta http-equiv="refresh" content="0;url={base_url}">', unsafe_allow_html=True)
             return
+        else:
+            logging.warning("Authentication failed")
+            st.session_state.authentication_status = 'unauthenticated'
     
-    # Show appropriate content based on authentication status
-    if st.session_state.authentication_status == 'authenticated' and st.session_state.user:
+    # If we're not authenticated, show login page
+    if st.session_state.authentication_status != 'authenticated':
+        logging.info("Showing auth section")
+        auth_section()
+        return
+    
+    # If we get here and we're authenticated, show main content
+    if st.session_state.user:
         logging.info("Showing main content")
         display_main_content(st.session_state.user)
     else:
-        logging.info("Showing auth section")
+        logging.info("No user info found, showing auth section")
         auth_section()
 
 if __name__ == "__main__":
