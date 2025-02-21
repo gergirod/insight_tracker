@@ -4,6 +4,7 @@ import logging
 import extra_streamlit_components as stx
 import jwt
 from datetime import datetime, timedelta
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -19,22 +20,25 @@ def get_cookie_manager():
 
 def store_auth_cookie(access_token, id_token=None):
     """Store authentication data in browser cookies"""
-    logger.info("Storing new auth cookie")
+    logger.info("Storing auth cookies")
     try:
         if access_token:
             cookie_manager = get_cookie_manager()
             
-            # Store both tokens
-            cookie_manager.set("auth_token", access_token)
-            if id_token:
-                cookie_manager.set("id_token", id_token)
-            logger.info("Cookies set successfully")
+            # Store tokens as a single JSON object
+            tokens = {
+                "access_token": access_token,
+                "id_token": id_token if id_token else ""
+            }
             
-            # Verify the cookies were set
-            stored_token = cookie_manager.get("auth_token")
+            # Store as a single cookie
+            cookie_manager.set("auth_tokens", json.dumps(tokens))
+            logger.info("Auth tokens stored in cookie")
             
-            if stored_token == access_token:
-                logger.info("Cookies verified as stored successfully")
+            # Verify the cookie was set
+            stored_tokens = cookie_manager.get("auth_tokens")
+            if stored_tokens:
+                logger.info("Cookie verified as stored successfully")
                 return True
             else:
                 logger.warning("Cookie verification failed")
@@ -44,53 +48,59 @@ def store_auth_cookie(access_token, id_token=None):
             return False
     except Exception as e:
         logger.error(f"Error in store_auth_cookie: {e}")
-        logger.error(f"Cookie value length: {len(access_token) if access_token else 0}")
+        logger.error(f"Access token length: {len(access_token) if access_token else 0}")
         return False
 
 def load_auth_cookie():
     """Load authentication data from browser cookies"""
     try:
         cookie_manager = get_cookie_manager()
-        access_token = cookie_manager.get("auth_token")
-        id_token = cookie_manager.get("id_token")
+        stored_tokens = cookie_manager.get("auth_tokens")
         
-        logger.info("Checking auth cookies:")
-        logger.info(f"Access token exists: {bool(access_token)}")
-        logger.info(f"ID token exists: {bool(id_token)}")
-        
-        if not access_token or not id_token:
-            logger.info("No cookies found")
+        logger.info("Checking auth cookie")
+        if not stored_tokens:
+            logger.info("No auth cookie found")
             return False
             
-        # Check if token is expired using JWT expiry
-        if is_token_expired(id_token):  # Use ID token for expiry check
-            logger.info("Token is expired, clearing")
+        # Parse stored tokens
+        tokens = json.loads(stored_tokens)
+        access_token = tokens.get("access_token")
+        id_token = tokens.get("id_token")
+        
+        logger.info(f"Found tokens - Access: {bool(access_token)}, ID: {bool(id_token)}")
+        
+        if not access_token or not id_token:
+            logger.info("Missing required tokens")
+            return False
+            
+        # Check if token is expired
+        if is_token_expired(id_token):
+            logger.info("ID token is expired, clearing")
             clear_auth_cookie()
             return False
             
-        logger.info("Cookies are valid and token not expired")
+        logger.info("Tokens are valid and not expired")
         st.session_state.access_token = access_token
         st.session_state.id_token = id_token
         return True
         
     except Exception as e:
-        logger.error(f"Error loading cookie: {e}")
+        logger.error(f"Error loading auth cookie: {e}")
         return False
 
 def clear_auth_cookie():
     """Clear authentication data from cookies"""
-    logger.info("Clearing auth cookies")
+    logger.info("Clearing auth cookie")
     try:
         cookie_manager = get_cookie_manager()
-        cookie_manager.delete("auth_token")
-        cookie_manager.delete("id_token")
+        cookie_manager.delete("auth_tokens")
         if 'access_token' in st.session_state:
             del st.session_state.access_token
         if 'id_token' in st.session_state:
             del st.session_state.id_token
-        logger.info("Cookies cleared successfully")
+        logger.info("Auth cookie cleared successfully")
     except Exception as e:
-        logger.error(f"Error clearing cookies: {e}")
+        logger.error(f"Error clearing auth cookie: {e}")
 
 def is_token_expired(token):
     """Check if the token is expired using JWT expiry"""
