@@ -176,19 +176,6 @@ def handle_callback():
         received_state = query_params['state']
         stored_state = st.session_state.get('oauth_state')
         
-        logger.debug(f"Received state: {received_state}")
-        logger.debug(f"Stored state: {stored_state}")
-        
-        # Clear query params immediately to prevent reuse
-        st.query_params.clear()
-        
-        # Skip state verification if we don't have a stored state
-        if stored_state and received_state != stored_state:
-            logger.error("State parameter mismatch")
-            logger.debug(f"Stored state: {stored_state}")
-            logger.debug(f"Received state: {received_state}")
-            return False
-
         try:
             # Clear state immediately to prevent reuse
             st.session_state.pop('oauth_state', None)
@@ -202,8 +189,7 @@ def handle_callback():
             logger.info("Successfully fetched token from Auth0")
 
             access_token = token.get('access_token')
-            id_token = token.get('id_token')  # Also store the ID token if available
-            logger.debug(f"Access token obtained: {access_token[:10]}...")
+            id_token = token.get('id_token')
 
             user_info = auth0.get(
                 f"https://{AUTH0_DOMAIN}/userinfo", 
@@ -217,31 +203,20 @@ def handle_callback():
             st.session_state.user = user_info
             st.session_state.authentication_status = 'authenticated'
             
-            # Store in session state
+            # Store auth cookie
             store_auth_cookie(access_token)
             
-            # Clear query parameters without rerunning
+            # Clear query parameters
             st.query_params.clear()
-
-            # Redirect to base URL
-            base_url = os.getenv("BASE_URL", "/")
-            st.markdown(f'<meta http-equiv="refresh" content="0;url={base_url}">', unsafe_allow_html=True)
-            st.stop()  # Stop execution after redirect
             
-            success, is_new_user = create_user_if_not_exists(
-                full_name=user_info.get('name', ''),
-                email=user_info.get('email', ''),
-                company="",
-                role=""
-            )
-            
-            logger.info(f"User creation/update status - Success: {success}, New user: {is_new_user}")
-            st.session_state.is_new_user = is_new_user
+            # Log the session state after setting everything
+            logger.info(f"Session state after auth setup: {dict(st.session_state)}")
             
             return True
 
         except Exception as e:
             logger.error(f"Auth callback error: {str(e)}")
+            st.session_state.authentication_status = 'unauthenticated'
             return False
     else:
         logger.warning("No authorization code or state found in query params")

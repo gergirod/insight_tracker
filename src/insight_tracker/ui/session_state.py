@@ -7,12 +7,14 @@ def initialize_session_state():
     if 'initialized' not in st.session_state:
         st.session_state.initialized = True
         
-        if load_auth_cookie():
-            st.session_state.authentication_status = 'authenticated'
-        else:
-            st.session_state.authentication_status = 'unauthenticated'
-            st.session_state.access_token = None
-            st.session_state.user = None
+        # Don't override existing authentication status
+        if 'authentication_status' not in st.session_state:
+            if load_auth_cookie():
+                st.session_state.authentication_status = 'authenticated'
+            else:
+                st.session_state.authentication_status = 'unauthenticated'
+                st.session_state.access_token = None
+                st.session_state.user = None
 
         # Initialize other session state variables if they don't exist
         defaults = {
