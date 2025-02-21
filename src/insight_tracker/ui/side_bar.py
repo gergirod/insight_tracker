@@ -4,96 +4,81 @@ from insight_tracker.utils.logger import logger
 
 def display_side_bar():
     """Display the sidebar navigation"""
-    # Custom CSS for better button styling
+    # Custom CSS for minimalistic design
     st.markdown("""
         <style>
-        .stButton button {
-            width: 100%;
-            text-align: left;
-            padding: 15px;
-            margin: 5px 0;
-            border: none;
-            background-color: transparent;
-            color: #495057;
-            font-size: 16px;
-        }
-        
-        .stButton button:hover {
+        /* Clean up sidebar spacing */
+        section[data-testid="stSidebar"] {
+            padding-top: 2rem;
             background-color: #f8f9fa;
-            color: #0d6efd;
         }
         
-        /* Style for active button */
-        .stButton button[data-active="true"] {
-            background-color: #e7f1ff;
-            color: #0d6efd;
+        /* Style links */
+        .nav-link {
+            padding: 16px 20px;
+            border-radius: 4px;
+            margin: 4px 0;
+            display: flex;
+            align-items: center;
+            font-size: 15px;
+            font-weight: 400;
+            color: #495057;
+            background: none;
+            border: none;
+            transition: all 0.2s ease;
+        }
+        
+        /* Active link */
+        .nav-link.active {
+            background-color: #e7f1ff !important;
+            color: #0d6efd !important;
             font-weight: 500;
         }
         
-        /* Hide debug info in production */
-        .debug-info {
-            display: none;
+        /* Hover state */
+        .nav-link:hover {
+            background-color: #f1f3f5;
+            color: #0d6efd;
+        }
+        
+        /* Menu title */
+        .nav-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #212529;
+            padding: 0 20px 20px 20px;
+            margin-bottom: 0;
         }
         </style>
     """, unsafe_allow_html=True)
 
     with st.sidebar:
-        st.markdown("## Insight Tracker", unsafe_allow_html=True)
-        st.markdown("---")
-        
         if st.session_state.get('user') is not None:
-            # Create a container for buttons
-            nav_container = st.container()
+            selected = option_menu(
+                menu_title="Insight Tracker",
+                options=["Profile Insight", "Company Insight", "Recent Searches", "Settings", "Logout"],
+                icons=["person", "building", "clock-history", "gear", "box-arrow-right"],
+                menu_icon="graph-up",
+                default_index=0,
+                styles={
+                    "container": {"padding": "0"},
+                    "icon": {"font-size": "16px", "margin-right": "8px"},
+                    "nav-link": {
+                        "font-size": "15px",
+                        "text-align": "left",
+                        "padding": "16px 20px",
+                        "margin": "4px 0",
+                    },
+                    "menu-title": {
+                        "padding": "0 20px 20px 20px",
+                        "font-size": "18px",
+                        "font-weight": "600"
+                    }
+                }
+            )
             
-            with nav_container:
-                current_page = st.session_state.get('nav_bar_option_selected', 'Profile Insight')
-                
-                # Navigation buttons with icons
-                col1, col2 = st.columns([0.2, 0.8])
-                with col1:
-                    st.markdown("👤")
-                with col2:
-                    if st.button("Profile Insight", key="profile",
-                               help="View and analyze profile insights"):
-                        st.session_state.nav_bar_option_selected = "Profile Insight"
-                        st.rerun()
-                
-                col1, col2 = st.columns([0.2, 0.8])
-                with col1:
-                    st.markdown("🏢")
-                with col2:
-                    if st.button("Company Insight", key="company",
-                               help="Explore company insights"):
-                        st.session_state.nav_bar_option_selected = "Company Insight"
-                        st.rerun()
-                
-                col1, col2 = st.columns([0.2, 0.8])
-                with col1:
-                    st.markdown("🕒")
-                with col2:
-                    if st.button("Recent Searches", key="recent",
-                               help="View your recent searches"):
-                        st.session_state.nav_bar_option_selected = "Recent Searches"
-                        st.rerun()
-                
-                col1, col2 = st.columns([0.2, 0.8])
-                with col1:
-                    st.markdown("⚙️")
-                with col2:
-                    if st.button("Settings", key="settings",
-                               help="Manage your preferences"):
-                        st.session_state.nav_bar_option_selected = "Settings"
-                        st.rerun()
-                
-                st.markdown("---")
-                
-                col1, col2 = st.columns([0.2, 0.8])
-                with col1:
-                    st.markdown("🚪")
-                with col2:
-                    if st.button("Logout", key="logout",
-                               help="Sign out of your account"):
-                        st.session_state.nav_bar_option_selected = "Logout"
-                        st.rerun()
+            if selected != st.session_state.nav_bar_option_selected:
+                st.session_state.nav_bar_option_selected = selected
+                st.rerun()
 
     return st.session_state.nav_bar_option_selected
