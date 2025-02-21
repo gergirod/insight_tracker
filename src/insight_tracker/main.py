@@ -13,6 +13,7 @@ from insight_tracker.ui.session_state import initialize_session_state
 from insight_tracker.ui.onboarding_section import onboarding_section
 from insight_tracker.ui.components.loading_dialog import show_loading_dialog
 from insight_tracker.utils.url_manager import redirect_to_base_url, BASE_URL
+from insight_tracker.utils.logger import main_logger as logger
 import logging
 import os
 from pathlib import Path
@@ -71,8 +72,8 @@ def show_loading_screen():
 
 def handle_auth():
     """Handle authentication process"""
-    logging.info("Starting authentication handling")
-    logging.debug(f"Current session state: {dict(st.session_state)}")
+    logger.info("Starting authentication handling")
+    logger.debug(f"Current session state: {dict(st.session_state)}")
     
     # Check if we already have a valid session
     if st.session_state.get('access_token') and st.session_state.user:
@@ -80,28 +81,28 @@ def handle_auth():
             # Validate the existing token
             user_info = validate_token_and_get_user(st.session_state.access_token)
             if user_info:
-                logging.info("Existing session validated successfully")
+                logger.info("Existing session validated successfully")
                 st.session_state.user = user_info
                 st.session_state.authentication_status = 'authenticated'
                 return True
             else:
-                logging.warning("Existing token validation failed")
+                logger.warning("Existing token validation failed")
                 st.session_state.authentication_status = 'unauthenticated'
                 st.session_state.user = None
                 st.session_state.access_token = None
         except Exception as e:
-            logging.error(f"Error validating existing token: {str(e)}")
+            logger.error(f"Error validating existing token: {str(e)}")
             st.session_state.authentication_status = 'unauthenticated'
             st.session_state.user = None
             st.session_state.access_token = None
     
     # Handle new authentication
     if 'code' in st.query_params:
-        logging.info("Auth code found in query params")
+        logger.info("Auth code found in query params")
         if handle_callback():
-            logging.info("Callback handled successfully")
+            logger.info("Callback handled successfully")
             return True
-        logging.warning("Callback handling failed")
+        logger.warning("Callback handling failed")
     
     return st.session_state.user is not None
 
@@ -125,7 +126,7 @@ def check_user_setup_complete(user, user_company) -> bool:
 
 def display_main_content(user):
     """Display main content based on selected navigation option"""
-    logging.debug(f"Displaying main content for user: {user}")
+    logger.debug(f"Displaying main content for user: {user}")
     
     # Get user email from the dictionary
     user_email = user.get('email')
@@ -155,18 +156,18 @@ def display_main_content(user):
         profile_insight_section()  # Default to Profile Insight if no selection
 
 def main():
-    logging.info("Starting application")
+    logger.info("Starting application")
     
     # First check for valid cookies and try silent sign-in
     if not st.session_state.get('authentication_status'):
         if load_auth_cookie():
-            logging.info("Found valid auth cookie, attempting silent sign-in")
+            logger.info("Found valid auth cookie, attempting silent sign-in")
             if silent_sign_in():
-                logging.info("Silent sign-in successful")
+                logger.info("Silent sign-in successful")
                 display_main_content(st.session_state.user)
                 return
             else:
-                logging.info("Silent sign-in failed (expired/invalid token)")
+                logger.info("Silent sign-in failed (expired/invalid token)")
                 clear_auth_cookie()
                 st.session_state.access_token = None
                 st.session_state.user = None
@@ -184,7 +185,7 @@ def main():
             return
     
     # If we get here, show the initial screen
-    logging.info("Showing initial login screen")
+    logger.info("Showing initial login screen")
     auth_section()
 
 if __name__ == "__main__":
