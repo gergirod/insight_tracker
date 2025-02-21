@@ -12,6 +12,7 @@ from insight_tracker.ui.side_bar import display_side_bar
 from insight_tracker.ui.session_state import initialize_session_state
 from insight_tracker.ui.onboarding_section import onboarding_section
 from insight_tracker.ui.components.loading_dialog import show_loading_dialog
+from insight_tracker.utils.url_manager import redirect_to_base_url, BASE_URL
 import logging
 
 # Add at the top of the file after imports
@@ -152,14 +153,10 @@ def display_main_content(user):
 def main():
     logging.info("Starting main application")
     
-    # Check if we're on the IP:port URL and redirect if needed
-    current_url = st.query_params.get('_url', [''])[0]
-    if ':8080' in current_url:
-        base_url = "https://insight-tracker.com"
-        st.markdown(
-            f'<meta http-equiv="refresh" content="0; url={base_url}">',
-            unsafe_allow_html=True
-        )
+    # Check if we're on the IP address
+    if "157.230.4.197" in st.request.url or ":8080" in st.request.url:
+        logging.info(f"Redirecting from IP address to {BASE_URL}")
+        redirect_to_base_url()
         return
     
     # Rest of your main function...

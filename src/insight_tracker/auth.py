@@ -7,6 +7,9 @@ from insight_tracker.db import create_user_if_not_exists, get_user_company_info
 from insight_tracker.ui.session_state import initialize_session_state
 from insight_tracker.utils.cookie_manager import store_auth_cookie, load_auth_cookie, clear_auth_cookie
 import logging
+from insight_tracker.utils.url_manager import redirect_to_base_url, BASE_URL
+from time import time
+import time as time_module
 
 # Load environment variables
 load_dotenv()
@@ -35,14 +38,49 @@ def validate_token_and_get_user(token):
     logging.info(f"Attempting to validate token and get user info")
     try:
         # Get user info from Auth0
-        user_info = auth0.get(
+        response = auth0.get(
             f"https://{AUTH0_DOMAIN}/userinfo", 
             headers={"Authorization": f"Bearer {token}"}
-        ).json()
-        logging.info(f"Successfully retrieved user info from Auth0")
+        )
+        user_info = response.json()
+        
+        if 'error' in user_info:
+            if user_info['error'] == 'access_denied' and 'Too Many Requests' in user_info.get('error_description', ''):
+                logging.warning("Auth0 rate limit hit")
+
+                # Get reset time from headers if available
+                reset_time = response.headers.get('X-RateLimit-Reset')
+
+                if reset_time:
+                    reset_seconds = int(reset_time) - int(time())
+                    st.warning(f"Rate limit reached. Will reset in {reset_seconds} seconds.")
+                else:
+                    st.warning("Rate limit reached. Please wait a few seconds before trying again.")
+
+                # If we have cached data, use it and redirect
+                if 'user_info' in st.session_state:
+                    base_url = os.getenv("BASE_URL", "/")
+                    st.markdown(f'<meta http-equiv="refresh" content="0;url={base_url}">', unsafe_allow_html=True)
+                    return st.session_state.user_info
+
+                # Otherwise, force a reauth after a short delay
+                time_module.sleep(2)  # Add a small delay
+                st.session_state.authentication_status = 'unauthenticated'
+                return None
+
+        # Successfully got user info, store and redirect
+        st.session_state.user_info = user_info
+        base_url = os.getenv("BASE_URL", "/")
+        st.markdown(f'<meta http-equiv="refresh" content="0;url={base_url}">', unsafe_allow_html=True)
         return user_info
+
     except Exception as e:
-        logging.error(f"Error validating token: {str(e)}")
+        logging.error(f"Error validating token: {e}")
+        if 'user_info' in st.session_state:
+            # Use cached data if available
+            base_url = os.getenv("BASE_URL", "/")
+            st.markdown(f'<meta http-equiv="refresh" content="0;url={base_url}">', unsafe_allow_html=True)
+            return st.session_state.user_info
         return None
 
 def silent_sign_in():
@@ -187,15 +225,13 @@ def handle_callback():
             # Store in session state
             store_auth_cookie(access_token)
             
-            # Clear URL parameters and redirect to base domain
+            # Clear query parameters
             st.query_params.clear()
-            base_url = "https://insight-tracker.com"
-            
-            # Perform redirect to base URL
-            st.markdown(
-                f'<meta http-equiv="refresh" content="0; url={base_url}">',
-                unsafe_allow_html=True
-            )
+
+            # Redirect to base URL
+            base_url = os.getenv("BASE_URL", "/")
+            st.markdown(f'<meta http-equiv="refresh" content="0;url={base_url}">', unsafe_allow_html=True)
+            st.stop()  # Stop execution after redirect
             
             success, is_new_user = create_user_if_not_exists(
                 full_name=user_info.get('name', ''),
@@ -210,7 +246,7 @@ def handle_callback():
             return True
 
         except Exception as e:
-            logging.error(f"Error during callback handling: {str(e)}", exc_info=True)
+            logging.error(f"Auth callback error: {str(e)}")
             return False
     else:
         logging.warning("No authorization code or state found in query params")
@@ -224,10 +260,5 @@ def logout():
     st.session_state.clear()
     initialize_session_state()
     
-    # Redirect to base domain
-    base_url = "https://insight-tracker.com"  # Use your domain from config
-    st.markdown(
-        f'<meta http-equiv="refresh" content="0; url={base_url}">',
-        unsafe_allow_html=True
-    )
-    st.rerun()
+    # Redirect using JavaScript
+    redirect_to_base_url()
