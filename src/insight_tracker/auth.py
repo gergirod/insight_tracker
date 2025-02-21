@@ -203,8 +203,8 @@ def handle_callback():
             st.session_state.user = user_info
             st.session_state.authentication_status = 'authenticated'
             
-            # Store auth cookie
-            store_auth_cookie(access_token)
+            # Store both tokens in cookies
+            store_auth_cookie(access_token, id_token)
             
             # Create user in database if needed
             success, is_new_user = create_user_if_not_exists(
