@@ -11,6 +11,7 @@ from insight_tracker.utils.url_manager import redirect_to_base_url, BASE_URL
 from time import time
 import time as time_module
 from pathlib import Path
+from insight_tracker.utils.logger import logger
 
 # Load environment variables
 load_dotenv()
@@ -28,17 +29,8 @@ auth0 = OAuth2Session(
     redirect_uri=AUTH0_CALLBACK_URL
 )
 
-# Configure logging to write to project root directory
-PROJECT_ROOT = Path(__file__).parent.parent.parent  # Go up three levels to project root
-logging.basicConfig(
-    filename=PROJECT_ROOT / 'auth.log',
-    level=logging.DEBUG,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    filemode='a'  # append mode
-)
-
 def validate_token_and_get_user(token):
-    logging.info(f"Attempting to validate token and get user info")
+    logger.info("Attempting to validate token and get user info")
     try:
         # Get user info from Auth0
         response = auth0.get(
@@ -49,7 +41,7 @@ def validate_token_and_get_user(token):
         
         if 'error' in user_info:
             if user_info['error'] == 'access_denied' and 'Too Many Requests' in user_info.get('error_description', ''):
-                logging.warning("Auth0 rate limit hit")
+                logger.warning("Auth0 rate limit hit")
 
                 # Get reset time from headers if available
                 reset_time = response.headers.get('X-RateLimit-Reset')
@@ -78,7 +70,7 @@ def validate_token_and_get_user(token):
         return user_info
 
     except Exception as e:
-        logging.error(f"Error validating token: {e}")
+        logger.error(f"Error validating token: {e}")
         if 'user_info' in st.session_state:
             # Use cached data if available
             base_url = os.getenv("BASE_URL", "/")
@@ -88,27 +80,27 @@ def validate_token_and_get_user(token):
 
 def silent_sign_in():
     """Attempt to silently authenticate using stored token"""
-    logging.info("Attempting silent sign-in")
+    logger.info("Attempting silent sign-in")
     
     access_token = st.session_state.get('access_token')
     if not access_token:
-        logging.debug("No access token found for silent sign-in")
+        logger.debug("No access token found for silent sign-in")
         return False
         
     try:
         user_info = validate_token_and_get_user(access_token)
         if user_info:
-            logging.info(f"Silent sign-in successful for user: {user_info.get('email')}")
+            logger.info(f"Silent sign-in successful for user: {user_info.get('email')}")
             st.session_state.user = user_info
             st.session_state.authentication_status = 'authenticated'
             return True
         else:
-            logging.warning("Silent sign-in failed - invalid token")
+            logger.warning("Silent sign-in failed - invalid token")
             st.session_state.access_token = None
             st.session_state.user = None
             return False
     except Exception as e:
-        logging.error(f"Error during silent sign-in: {str(e)}")
+        logger.error(f"Error during silent sign-in: {str(e)}")
         st.session_state.access_token = None
         st.session_state.user = None
         return False
@@ -175,49 +167,49 @@ def signup():
         st.markdown(f'<meta http-equiv="refresh" content="0;url={signup_url}">', unsafe_allow_html=True)
 
 def handle_callback():
-    logging.info("Starting callback handling")
+    logger.info("Starting callback handling")
     query_params = st.query_params
-    logging.debug(f"Query params received: {query_params}")
+    logger.debug(f"Query params received: {query_params}")
 
     if 'code' in query_params and 'state' in query_params:
         code = query_params['code']
         received_state = query_params['state']
         stored_state = st.session_state.get('oauth_state')
         
-        logging.debug(f"Received state: {received_state}")
-        logging.debug(f"Stored state: {stored_state}")
+        logger.debug(f"Received state: {received_state}")
+        logger.debug(f"Stored state: {stored_state}")
         
         # Clear query params immediately to prevent reuse
         st.query_params.clear()
         
         # Skip state verification if we don't have a stored state
         if stored_state and received_state != stored_state:
-            logging.error("State parameter mismatch")
-            logging.debug(f"Stored state: {stored_state}")
-            logging.debug(f"Received state: {received_state}")
+            logger.error("State parameter mismatch")
+            logger.debug(f"Stored state: {stored_state}")
+            logger.debug(f"Received state: {received_state}")
             return False
 
         try:
             # Clear state immediately to prevent reuse
             st.session_state.pop('oauth_state', None)
             
-            logging.debug("Attempting to fetch token from Auth0")
+            logger.debug("Attempting to fetch token from Auth0")
             token = auth0.fetch_token(
                 f"https://{AUTH0_DOMAIN}/oauth/token",
                 code=code,
                 redirect_uri=AUTH0_CALLBACK_URL
             )
-            logging.info("Successfully fetched token from Auth0")
+            logger.info("Successfully fetched token from Auth0")
 
             access_token = token.get('access_token')
             id_token = token.get('id_token')  # Also store the ID token if available
-            logging.debug(f"Access token obtained: {access_token[:10]}...")
+            logger.debug(f"Access token obtained: {access_token[:10]}...")
 
             user_info = auth0.get(
                 f"https://{AUTH0_DOMAIN}/userinfo", 
                 headers={"Authorization": f"Bearer {access_token}"}
             ).json()
-            logging.info(f"Retrieved user info for email: {user_info.get('email')}")
+            logger.info(f"Retrieved user info for email: {user_info.get('email')}")
             
             # Store everything in session state
             st.session_state.access_token = access_token
@@ -243,20 +235,20 @@ def handle_callback():
                 role=""
             )
             
-            logging.info(f"User creation/update status - Success: {success}, New user: {is_new_user}")
+            logger.info(f"User creation/update status - Success: {success}, New user: {is_new_user}")
             st.session_state.is_new_user = is_new_user
             
             return True
 
         except Exception as e:
-            logging.error(f"Auth callback error: {str(e)}")
+            logger.error(f"Auth callback error: {str(e)}")
             return False
     else:
-        logging.warning("No authorization code or state found in query params")
+        logger.warning("No authorization code or state found in query params")
         return False
 
 def logout():
-    logging.info("Initiating logout")
+    logger.info("Initiating logout")
     
     # Clear cookies and session
     clear_auth_cookie()
