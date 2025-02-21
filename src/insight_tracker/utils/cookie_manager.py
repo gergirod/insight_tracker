@@ -10,7 +10,10 @@ logger = logging.getLogger(__name__)
 def get_cookie_manager():
     """Get or create cookie manager in the Streamlit context"""
     if 'cookie_manager' not in st.session_state:
-        st.session_state.cookie_manager = stx.CookieManager()
+        cookie_manager = stx.CookieManager()
+        # Initialize the cookie manager in the page
+        st.markdown(cookie_manager.generate_key())
+        st.session_state.cookie_manager = cookie_manager
     return st.session_state.cookie_manager
 
 def store_auth_cookie(access_token):
@@ -21,21 +24,33 @@ def store_auth_cookie(access_token):
             cookie_manager = get_cookie_manager()
             # Save token with secure settings
             expiry = datetime.now() + timedelta(days=7)  # 7 days from now
+            
+            # First verify we can get existing cookies
+            current_cookies = cookie_manager.get_all()
+            logger.info(f"Existing cookies before setting: {current_cookies}")
+            
             cookie_manager.set(
                 "auth_token",  # key
                 access_token,  # value
                 expires_at=expiry  # expiry as datetime object
             )
-            logger.info("Cookie stored successfully")
-            cookies = cookie_manager.get_all()
-            logger.info(f"Current cookies: {cookies}")
-            return True
+            
+            # Verify the cookie was set
+            new_cookies = cookie_manager.get_all()
+            logger.info(f"Cookies after setting: {new_cookies}")
+            
+            if 'auth_token' in new_cookies:
+                logger.info("Cookie verified as stored successfully")
+                return True
+            else:
+                logger.warning("Cookie was not stored successfully")
+                return False
         else:
             logger.warning("Attempted to store empty access token")
             return False
     except Exception as e:
         logger.error(f"Error storing cookie: {e}")
-        logger.error(f"Cookie value: {access_token}")
+        logger.error(f"Cookie value length: {len(access_token) if access_token else 0}")
         logger.error(f"Cookie expiry: {expiry}")
         return False
 
