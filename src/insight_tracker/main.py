@@ -15,12 +15,15 @@ from insight_tracker.ui.components.loading_dialog import show_loading_dialog
 from insight_tracker.utils.url_manager import redirect_to_base_url, BASE_URL
 import logging
 import os
+from pathlib import Path
 
-# Add at the top of the file after imports
+# Configure logging to write to project root directory
+PROJECT_ROOT = Path(__file__).parent.parent.parent  # Go up three levels to project root
 logging.basicConfig(
-    filename='main.log',
+    filename=PROJECT_ROOT / 'main.log',
     level=logging.DEBUG,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    filemode='a'  # append mode
 )
 
 def check_and_alter_table():
@@ -155,18 +158,24 @@ def main():
     logging.info("Starting application")
     
     # First check for valid cookies and try silent sign-in
-    if load_auth_cookie():
-        logging.info("Found valid auth cookie, attempting silent sign-in")
-        if silent_sign_in():
-            logging.info("Silent sign-in successful")
-            display_main_content(st.session_state.user)
-            return
-        else:
-            logging.info("Silent sign-in failed (expired/invalid token)")
-            clear_auth_cookie()  # Clear invalid/expired cookie
-            st.session_state.access_token = None
-            st.session_state.user = None
-            st.session_state.authentication_status = 'unauthenticated'
+    if not st.session_state.get('authentication_status'):
+        if load_auth_cookie():
+            logging.info("Found valid auth cookie, attempting silent sign-in")
+            if silent_sign_in():
+                logging.info("Silent sign-in successful")
+                display_main_content(st.session_state.user)
+                return
+            else:
+                logging.info("Silent sign-in failed (expired/invalid token)")
+                clear_auth_cookie()
+                st.session_state.access_token = None
+                st.session_state.user = None
+                st.session_state.authentication_status = 'unauthenticated'
+    
+    # If already authenticated, show main content
+    elif st.session_state.authentication_status == 'authenticated':
+        display_main_content(st.session_state.user)
+        return
     
     # Handle new authentication callback if present
     if 'code' in st.query_params:

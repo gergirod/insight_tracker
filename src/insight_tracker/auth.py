@@ -10,6 +10,7 @@ import logging
 from insight_tracker.utils.url_manager import redirect_to_base_url, BASE_URL
 from time import time
 import time as time_module
+from pathlib import Path
 
 # Load environment variables
 load_dotenv()
@@ -27,11 +28,13 @@ auth0 = OAuth2Session(
     redirect_uri=AUTH0_CALLBACK_URL
 )
 
-# Configure logging at the top of the file
+# Configure logging to write to project root directory
+PROJECT_ROOT = Path(__file__).parent.parent.parent  # Go up three levels to project root
 logging.basicConfig(
-    filename='auth.log',
+    filename=PROJECT_ROOT / 'auth.log',
     level=logging.DEBUG,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    filemode='a'  # append mode
 )
 
 def validate_token_and_get_user(token):
@@ -225,7 +228,7 @@ def handle_callback():
             # Store in session state
             store_auth_cookie(access_token)
             
-            # Clear query parameters
+            # Clear query parameters without rerunning
             st.query_params.clear()
 
             # Redirect to base URL
