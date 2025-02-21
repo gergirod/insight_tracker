@@ -1,5 +1,13 @@
 import sqlite3
 import streamlit as st
+# First Streamlit command must be set_page_config
+st.set_page_config(
+    page_title="Insight Tracker",
+    page_icon="🎯",
+    initial_sidebar_state="expanded",
+)
+
+# Rest of the imports
 from insight_tracker.auth import handle_callback, logout, validate_token_and_get_user, silent_sign_in
 from insight_tracker.utils.cookie_manager import load_auth_cookie, clear_auth_cookie, get_cookie_manager
 from insight_tracker.db import getUserByEmail, init_db, init_recent_searches_db, check_and_alter_table, init_user_company_db, get_user_company_info
@@ -15,14 +23,8 @@ from insight_tracker.ui.components.loading_dialog import show_loading_dialog
 from insight_tracker.utils.url_manager import redirect_to_base_url, BASE_URL
 from insight_tracker.utils.logger import logger
 
-# Initialize cookie manager first
+# Initialize cookie manager
 cookie_manager = get_cookie_manager()
-
-st.set_page_config(
-    page_title="Insight Tracker",
-    page_icon="🎯",
-    initial_sidebar_state="expanded",
-)
 
 hide_streamlit_style = """
     <style>
