@@ -82,6 +82,24 @@ def load_auth_cookie():
         logger.info("Tokens are valid and not expired")
         st.session_state.access_token = access_token
         st.session_state.id_token = id_token
+        st.session_state.authentication_status = 'authenticated'
+        
+        # Try to get user info from the token
+        try:
+            decoded = jwt.decode(id_token, options={"verify_signature": False})
+            st.session_state.user = {
+                'sub': decoded.get('sub'),
+                'email': decoded.get('email'),
+                'name': decoded.get('name'),
+                'given_name': decoded.get('given_name'),
+                'family_name': decoded.get('family_name'),
+                'nickname': decoded.get('nickname'),
+                'picture': decoded.get('picture')
+            }
+        except Exception as e:
+            logger.error(f"Error decoding user info from token: {e}")
+            return False
+            
         return True
         
     except Exception as e:
