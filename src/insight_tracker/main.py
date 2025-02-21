@@ -148,16 +148,22 @@ def main():
                 st.session_state.user = None
                 st.session_state.authentication_status = 'unauthenticated'
     
-    # If already authenticated, show main content
-    elif st.session_state.authentication_status == 'authenticated':
-        display_main_content(st.session_state.user)
-        return
-    
     # Handle new authentication callback if present
     if 'code' in st.query_params:
+        logger.info("Processing auth callback")
         if handle_auth():
-            st.rerun()
+            logger.info("Auth successful, displaying main content")
+            display_main_content(st.session_state.user)
             return
+        else:
+            logger.warning("Auth failed")
+            st.session_state.authentication_status = 'unauthenticated'
+    
+    # Check if already authenticated
+    if st.session_state.get('authentication_status') == 'authenticated' and st.session_state.get('user'):
+        logger.info("User already authenticated, showing main content")
+        display_main_content(st.session_state.user)
+        return
     
     # If we get here, show the initial screen
     logger.info("Showing initial login screen")
