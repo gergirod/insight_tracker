@@ -15,7 +15,7 @@ from insight_tracker.ui.components.loading_dialog import show_loading_dialog
 from insight_tracker.utils.url_manager import redirect_to_base_url, BASE_URL
 from insight_tracker.utils.logger import logger
 
-# Initialize cookie manager
+# Initialize cookie manager first
 cookie_manager = get_cookie_manager()
 
 st.set_page_config(
