@@ -11,9 +11,19 @@ st.set_page_config(
 from insight_tracker.utils.cookie_manager import get_cookie_manager
 _ = get_cookie_manager()  # Initialize the global instance
 
+# Import the entire auth module instead of individual functions
+from insight_tracker import auth  # This should work now
+
+# Or if you prefer the individual functions:
+from insight_tracker import (
+    handle_callback,
+    logout,
+    validate_token_and_get_user,
+    silent_sign_in
+)
+
 # Rest of the imports
-from insight_tracker.auth import handle_callback, logout, validate_token_and_get_user, silent_sign_in
-from insight_tracker.utils.cookie_manager import load_auth_cookie, clear_auth_cookie, get_cookie_manager
+from insight_tracker.utils.cookie_manager import load_auth_cookie, clear_auth_cookie
 from insight_tracker.db import getUserByEmail, init_db, init_recent_searches_db, check_and_alter_table, init_user_company_db, get_user_company_info
 from insight_tracker.ui.profile_insight_section import profile_insight_section
 from insight_tracker.ui.company_insight_section import company_insight_section
@@ -63,7 +73,7 @@ def handle_auth():
     if st.session_state.get('access_token') and st.session_state.user:
         try:
             # Validate the existing token
-            user_info = validate_token_and_get_user(st.session_state.access_token)
+            user_info = auth.validate_token_and_get_user(st.session_state.access_token)
             if user_info:
                 logger.info("Existing session validated successfully")
                 st.session_state.user = user_info
@@ -83,7 +93,7 @@ def handle_auth():
     # Handle new authentication
     if 'code' in st.query_params:
         logger.info("Auth code found in query params")
-        if handle_callback():
+        if auth.handle_callback():
             logger.info("Callback handled successfully")
             return True
         logger.warning("Callback handling failed")
@@ -135,62 +145,36 @@ def display_main_content(user):
     elif st.session_state.nav_bar_option_selected == "Settings":
         settings_section(saved_user, user_company, setup_complete=True)
     elif st.session_state.nav_bar_option_selected == "Logout":
-        logout()
+        auth.logout()
     else:
         profile_insight_section()  # Default to Profile Insight if no selection
 
 def main():
     logger.info("Starting application")
-    
-    # Debug current state
     logger.info(f"Session state at start: {dict(st.session_state)}")
     logger.info(f"Query params at start: {dict(st.query_params)}")
-    
-    # First check for valid cookies and try silent sign-in
-    if not st.session_state.get('authentication_status'):
-        logger.info("No authentication status found")
-        if load_auth_cookie():
-            logger.info("Found valid auth cookie, attempting silent sign-in")
-            if silent_sign_in():
-                logger.info("Silent sign-in successful")
-                logger.info(f"User after silent sign-in: {st.session_state.get('user')}")
-                display_main_content(st.session_state.user)
-                return
-            else:
-                logger.info("Silent sign-in failed (expired/invalid token)")
-                clear_auth_cookie()
-                st.session_state.access_token = None
-                st.session_state.user = None
-                st.session_state.authentication_status = 'unauthenticated'
-    else:
-        logger.info(f"Existing auth status: {st.session_state.get('authentication_status')}")
-        # If authenticated, verify cookie still exists
-        if st.session_state.authentication_status == 'authenticated':
-            if load_auth_cookie():
-                logger.info("Authentication verified with cookie")
-                display_main_content(st.session_state.user)
-                return
-            else:
-                logger.info("Cookie missing for authenticated session, clearing state")
-                clear_auth_cookie()
-                st.session_state.authentication_status = 'unauthenticated'
-    
-    # Handle new authentication callback if present
+
+    # Single authentication check with priority
     if 'code' in st.query_params:
+        # Handle OAuth callback first
         logger.info("Processing auth callback")
         if handle_auth():
-            logger.info("Auth successful, displaying main content")
-            logger.info(f"Session state after auth: {dict(st.session_state)}")
+            logger.info("Auth successful via callback")
             display_main_content(st.session_state.user)
             return
-        else:
-            logger.warning("Auth failed")
-            st.session_state.authentication_status = 'unauthenticated'
-    
-    # If we get here, show the initial screen
-    logger.info("Showing initial login screen")
-    logger.info("No valid authentication found, showing login")
-    auth_section()
+        clear_auth_cookie()
+    elif st.session_state.get('authentication_status') == 'authenticated' and load_auth_cookie():
+        # Then check existing session
+        logger.info("Using existing authenticated session")
+        display_main_content(st.session_state.user)
+        return
+    else:
+        # Clear any invalid state
+        logger.info("No valid authentication found")
+        clear_auth_cookie()
+        st.session_state.authentication_status = 'unauthenticated'
+        st.session_state.user = None
+        auth_section()
 
 if __name__ == "__main__":
     main()

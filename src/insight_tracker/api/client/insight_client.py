@@ -1,12 +1,15 @@
 import requests
 import json
-from typing import Optional, Dict, Any, List, Union
+from typing import Optional, Dict, Any, List, Union, AsyncGenerator, Tuple
 from ..exceptions.api_exceptions import ApiError
 from ..models.responses import (
     OutreachResponse,
     ProfileCompanyFitResponse,
     MeetingResponse
 )
+import streamlit as st
+from sseclient import SSEClient  # Add this import at the top
+import aiohttp  # Add this import
 
 # Optional: Add logging for better debugging
 import logging
@@ -271,3 +274,114 @@ class InsightApiClient:
 
             return MeetingResponse.from_dict(meeting_data)
         raise ApiError("Invalid response format or missing meeting data", status_code=500)
+
+    def stream_with_ui_updates(
+        self,
+        response: requests.Response,
+    ):
+        """Handle streaming responses"""
+        try:
+            print("DEBUG: Starting stream processing")
+            for line in response.iter_lines():
+                print(f"DEBUG: Raw line received: {line}")
+                if line:
+                    try:
+                        data = json.loads(line.decode('utf-8'))
+                        print(f"DEBUG: Parsed data: {data}")
+                        
+                        # Update UI based on data type
+                        if "status" in data:
+                            print(f"DEBUG: Status update: {data['status']}")
+                        if "intermediate_result" in data:
+                            print(f"DEBUG: Intermediate result: {data['intermediate_result']}")
+                        
+                        yield data
+                    except json.JSONDecodeError as e:
+                        print(f"DEBUG: JSON decode error: {e} for line: {line}")
+                    
+        except Exception as e:
+            print(f"Debug - Streaming Error: {str(e)}")
+            # Print the full response content to see what we got
+            print(f"DEBUG: Full response content: {response.content}")
+            raise ApiError(str(e))
+
+    def get_profile_insight_stream(
+        self,
+        full_name: str,
+        company_name: str,
+        language: str = "en"
+    ):
+        """Get streaming profile insights"""
+        print("\n=== Starting Profile Stream ===")
+        endpoint = "/api/v2/profile_insight/stream"
+        data = {
+            "profile": full_name,
+            "company": company_name,
+            "language": language
+        }
+        
+        url = f"{self.base_url}{endpoint}"
+        try:
+            print("Debug - Getting profile insight stream 1")
+            
+            response = requests.post(
+                url, 
+                json=data,
+                stream=True,
+                verify=False,
+                headers={
+                    'Content-Type': 'application/json',
+                    'X-API-Key': self.api_key,
+                    'X-OpenAI-API-Key': self.openai_api_key
+                }
+            )
+            
+            print(f"Debug - Response status: {response.status_code}")
+            
+            # Process the response line by line
+            for line in response.iter_lines():
+                if line:
+                    line_text = line.decode('utf-8')
+                    print(f"Debug - Raw line: {line_text}")
+                    
+                    if line_text.startswith('data: '):
+                        event_data = json.loads(line_text[6:])
+                        print(f"Debug - Event: {event_data}")
+                        yield event_data
+                        
+        except Exception as e:
+            print(f"Debug - Error in stream: {str(e)}")
+            raise ApiError(str(e))
+
+    async def get_company_insight_stream(
+        self,
+        company_name: str,
+        industry: str,
+        language: str = "en"
+    ) -> Dict[str, Any]:
+        """Get streaming company insights"""
+        endpoint = "/api/v2/company_insight/stream"
+        params = {
+            "companyName": company_name,
+            "industry": industry,
+            "language": language
+        }
+        
+        url = f"{self.base_url}{endpoint}"
+        try:
+            response = self.session.get(url, params=params, stream=True)
+            print(f"Debug - GET Stream Request URL: {response.url}")
+            print(f"Debug - Response Status: {response.status_code}")
+            
+            if response.status_code in [401, 403]:
+                print(f"Debug - Auth Error Response: {response.text}")
+                raise ApiError(
+                    f"Authentication failed: {response.text}",
+                    status_code=response.status_code
+                )
+                
+            response.raise_for_status()
+            return response
+        except requests.exceptions.RequestException as e:
+            print(f"Debug - Request Error: {str(e)}")
+            raise ApiError(str(e))

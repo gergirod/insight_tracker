@@ -16,29 +16,83 @@ def run_async(coroutine):
     asyncio.set_event_loop(loop)
     return loop.run_until_complete(coroutine)
 
-def inject_settings_css():
+def inject_css():
     st.markdown("""
         <style>
-        /* Button styling */
+        /* Base button style for all action buttons */
         .stButton > button {
-            width: 100%;
-            background-color: rgb(49, 132, 252) !important;  /* Updated to match app theme */
+            background-color: #4f46e5 !important;  /* Indigo color */
             color: white !important;
-            padding: 0.5rem 1rem !important;
-            font-size: 1rem !important;
-            font-weight: 500 !important;
+            padding: 14px 24px !important;
+            font-size: 16px !important;
+            font-weight: 600 !important;
+            text-decoration: none !important;
+            border-radius: 50px !important;
             border: none !important;
-            border-radius: 8px !important;
+            box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2) !important;
             transition: all 0.2s ease !important;
+            margin: 10px 0 !important;
+            letter-spacing: 0.3px !important;
+            text-align: center !important;
+            width: 100% !important;
         }
-        
+
+        /* Hover state for all buttons */
         .stButton > button:hover {
-            background-color: rgb(28, 119, 252) !important;  /* Slightly darker on hover */
-            box-shadow: 0 2px 6px rgba(49, 132, 252, 0.2) !important;
+            background-color: #4338ca !important;  /* Darker indigo */
+            box-shadow: 0 4px 6px rgba(79, 70, 229, 0.3) !important;
+            transform: translateY(-1px) !important;
         }
-        
+
+        /* Active state */
         .stButton > button:active {
-            transform: translateY(1px);
+            transform: translateY(0px) !important;
+        }
+
+        /* Disabled state */
+        .stButton > button:disabled {
+            background-color: #6c757d !important;
+            opacity: 0.65 !important;
+            cursor: not-allowed !important;
+        }
+
+        /* Save button style - keeping green but matching the new style */
+        .stButton > button:has(div:contains("Save")),
+        .stButton > button:has(div:contains("Update")) {
+            background-color: #28a745 !important;
+            box-shadow: 0 2px 4px rgba(40, 167, 69, 0.2) !important;
+        }
+
+        .stButton > button:has(div:contains("Save")):hover,
+        .stButton > button:has(div:contains("Update")):hover {
+            background-color: #218838 !important;
+            box-shadow: 0 4px 6px rgba(40, 167, 69, 0.3) !important;
+        }
+
+        /* Ensure text color stays white */
+        .stButton > button div {
+            color: white !important;
+        }
+
+        /* Input field styling */
+        .stTextInput > div > div {
+            border-radius: 4px !important;
+        }
+
+        /* Add spacing between input fields */
+        .stTextInput {
+            margin-bottom: 0.5rem !important;
+        }
+
+        /* Ensure consistent button styling */
+        [data-testid="stButton"] > button {
+            background-color: #0d6efd !important;  /* Bootstrap blue */
+            color: white !important;
+        }
+
+        [data-testid="stButton"] > button:hover {
+            background-color: #0b5ed7 !important;  /* Darker blue */
+            color: white !important;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -79,7 +133,7 @@ def display_company_data(company):
     st.markdown('</div></div>', unsafe_allow_html=True)
 
 def settings_section(user, user_company, setup_complete=True):
-    inject_settings_css()
+    inject_css()
     
     # Personal Information Section
     st.markdown("""
@@ -121,20 +175,10 @@ def settings_section(user, user_company, setup_complete=True):
     # Add some space before the button
     st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
     
-    # Personal Information save button
-    st.markdown("""
-        <style>
-        [data-testid="stButton"] > button {
-            background-color: rgb(49, 132, 252);
-            color: white;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-    
-    if st.button("Save", 
-                key="save_button",
-                use_container_width=True,
-                help="Save your personal profile information"):
+    # Personal Information Save Button - Full width
+    if st.button("💾 Save Personal Information", 
+                key="save_personal_info",
+                use_container_width=True):
         email = st.session_state.user.get('email')
         create_user_if_not_exists(full_name, email, role_position, company)
         st.success("✅ Personal information saved successfully!")
@@ -174,13 +218,10 @@ def settings_section(user, user_company, setup_complete=True):
         help="We'll use this to fetch detailed information about your company"
     )
 
-    # Single button for fetch and save
-    if st.button(
-        "Update Company Information",
-        key="update_company_data",
-        use_container_width=True,
-        help="Fetch and save your company information"
-    ):
+    # Company Information Update Button - Full width
+    if st.button("🔄 Update Company Information",
+                key="update_company_info",
+                use_container_width=True):
         try:
             with st.spinner('Analyzing company data...'):
                 api_client = InsightApiClient(

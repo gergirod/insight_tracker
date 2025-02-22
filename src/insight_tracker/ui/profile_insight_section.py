@@ -7,6 +7,8 @@ from insight_tracker.api.client.insight_client import InsightApiClient
 from insight_tracker.api.services.insight_service import InsightService
 from insight_tracker.api.exceptions.api_exceptions import ApiError
 import re
+from streamlit.runtime.scriptrunner import add_script_run_ctx
+from datetime import datetime
 
 
 # Disable SSL verification warnings
@@ -19,86 +21,135 @@ def run_async(coroutine):
     return loop.run_until_complete(coroutine)
 
 def inject_css():
+    # First override Streamlit's default theme
     st.markdown("""
         <style>
-        /* Button styling */
+        /* Override Streamlit's default theme */
+        :root {
+            --primary-color: #0d6efd;
+            --background-color: #ffffff;
+            --secondary-background-color: #f8f9fa;
+            --text-color: #212529;
+        }
+        
+        /* Reset all button styles first */
         .stButton > button {
-            width: 100%;
-            border-radius: 4px;
-            padding: 0.5rem 1rem;
-            background-color: #0d6efd;  /* Changed to match app's blue */
+            all: unset;
+            width: 100% !important;
+            border-radius: 4px !important;
+            padding: 0.5rem 1rem !important;
+            background-color: var(--primary-color) !important;
             color: white !important;
-            border: none;
-            transition: all 0.2s ease;
-            margin-top: 1rem;
+            border: none !important;
+            cursor: pointer !important;
+            text-align: center !important;
+            font-family: sans-serif !important;
+            font-size: 1rem !important;
+            margin-top: 1rem !important;
+            display: block !important;
+            box-sizing: border-box !important;
         }
         
-        .stButton > button:hover {
-            background-color: #0b5ed7;  /* Darker shade for hover */
-            color: white !important;
-            border: none;
-        }
-        
-        /* Save button specific styling */
-        .stButton > button:has(div:contains("💾")) {
-            background-color: #28a745;
-            color: white !important;
-            margin-top: 0.5rem;
-        }
-        
-        .stButton > button:has(div:contains("💾")):hover {
-            background-color: #218838;
-            color: white !important;
-        }
-
-        /* Disabled button styling */
-        .stButton > button:disabled {
-            background-color: #0d6efd !important;  /* Changed to match blue */
-            opacity: 0.65;
-            cursor: not-allowed;
-            color: white !important;
-        }
-
-        /* Research button specific styling */
+        /* Research button specific */
         .stButton > button:has(div:contains("Research")) {
-            background-color: #0d6efd !important;
-            color: white !important;
-            font-weight: 500;
+            background-color: #4f46e5 !important;
+            font-weight: 600 !important;
+            box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2) !important;
         }
 
         .stButton > button:has(div:contains("Research")):hover {
-            background-color: #0b5ed7 !important;
+            background-color: #4338ca !important;
+            box-shadow: 0 4px 6px rgba(79, 70, 229, 0.3) !important;
+            transform: translateY(-1px) !important;
         }
 
-        /* Input field styling */
-        .stTextInput > div > div {
-            border-radius: 4px;
+        /* Save button */
+        .stButton > button:has(div:contains("💾")) {
+            background-color: #28a745 !important;
+        }
+        
+        /* Action buttons */
+        .stButton > button[type="primary"] {
+            background-color: #0d6efd !important;
         }
 
-        /* Add spacing between input fields */
-        .stTextInput {
-            margin-bottom: 0.5rem;
-        }
-
-        /* Expander styling */
-        .streamlit-expanderHeader {
-            font-size: 1rem;
-            font-weight: 600;
-        }
-
-        /* Ensure button text stays white in all states */
-        .stButton > button:active, 
-        .stButton > button:focus,
-        .stButton > button:visited {
+        /* Ensure text color stays white */
+        .stButton > button div {
             color: white !important;
         }
+        
+        /* Disabled state */
+        .stButton > button:disabled {
+            background-color: #6c757d !important;
+            opacity: 0.65 !important;
+            cursor: not-allowed !important;
+        }
 
-        /* Ensure button content (text and emoji) stays white */
-        .stButton > button > div {
+        /* Style for all action buttons */
+        .stButton > button {
+            background-color: #1E88E5 !important;
+            color: white !important;
+            padding: 14px 24px !important;
+            font-size: 16px !important;
+            font-weight: 500 !important;
+            text-decoration: none !important;
+            border-radius: 50px !important;
+            border: none !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+            transition: all 0.2s ease !important;
+            margin: 10px 0 !important;
+            letter-spacing: 0.3px !important;
+            text-align: center !important;
+            width: 100% !important;
+        }
+
+        .stButton > button:hover {
+            background-color: #1976D2 !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+            transform: translateY(-1px) !important;
+        }
+
+        .stButton > button:active {
+            transform: translateY(0px) !important;
+        }
+
+        /* Save button style */
+        .stButton > button:has(div:contains("💾")) {
+            background-color: #28a745 !important;
+        }
+
+        /* Ensure text color stays white */
+        .stButton > button div {
             color: white !important;
         }
         </style>
     """, unsafe_allow_html=True)
+
+def get_verification_badge(status):
+    """Return appropriate badge based on verification status"""
+    if status.lower() == 'verified':
+        return "✅ Verified"
+    elif status.lower() == 'not provided' or status.lower() == 'Verified (No information available)':
+        return "❓ Not Provided"
+    elif status.lower() == 'unverified':
+        return "⚠️ Unverified"
+    elif status.lower() == 'partial':
+        return "🔄 Partially Verified"
+    else:
+        return f"ℹ️ {status}"
+
+def get_verification_color(status):
+    """Return appropriate color based on verification status"""
+    if status.lower() == 'verified':
+        return "#00CC66"  # Green
+    elif status.lower() == 'not provided':
+        return "#808080"  # Gray
+    elif status.lower() == 'unverified':
+        return "#FF6B6B"  # Red
+    elif status.lower() == 'partial':
+        return "#FFA500"  # Orange
+    else:
+        return "#4A90E2"  # Blue
 
 def profile_insight_section():
     inject_css()
@@ -106,7 +157,7 @@ def profile_insight_section():
     
     user_email = st.session_state.user.get('email')
     
-    # Initialize API service with SSL verification disabled
+    # Initialize API service
     api_client = InsightApiClient(
         base_url=os.getenv("API_BASE_URL"),
         api_key=os.getenv("API_KEY"),
@@ -115,64 +166,464 @@ def profile_insight_section():
     )
     insight_service = InsightService(api_client)
 
-    # Input fields with memory
-    person_name = st.text_input("Name", key="person_name_input")
-    person_company = st.text_input("Company", key="person_company_input")
+    # Input fields
+    name = st.text_input("Name of the person you want to research")
+    company = st.text_input("Their company")
 
-    if st.button("Research", key="profile_research_button"):
-        if person_name and person_company:
-            try:
-                # Profile Analysis
-                with st.spinner('Analyzing profile...'):
-                    profile_result = run_async(
-                        insight_service.get_profile_analysis(
-                            full_name=person_name,
-                            company_name=person_company
-                        )
-                    )
-                    st.session_state.profile_result = profile_result
+    # Create placeholders for updates
+    if 'status_placeholder' not in st.session_state:
+        st.session_state.status_placeholder = st.empty()
+    
+    # Initialize events list in session state if not exists
+    if 'event_history' not in st.session_state:
+        st.session_state.event_history = []
+
+    # Display all events stored in session state
+    for event in st.session_state.event_history:
+        event_type = event.get('type')
+        content = event.get('content')
+        timestamp = event.get('timestamp')
+        
+        if event_type == "agent_start":
+            st.write(f"🤖 **Agent:** {content['name']}")
+            st.write(f"*Function: {content['function']}*")
+        elif event_type == "thought":
+            st.write(f"💭 {content}")
+        elif event_type == "task_complete":
+            st.write(f"✅ {content}")
+        elif event_type == "transition":
+            st.write(f"🔄 {content}")
+        elif event_type == "complete":
+            st.write(f"✨ Analysis Complete")
+        elif event_type == "error":
+            st.write(f"❌ Error: {content}")
+
+    async def process_stream():
+        try:
+            async for event in insight_service.get_profile_analysis_stream(
+                full_name=name,
+                company_name=company
+            ):
+                print(f"UI received event: {event}")
+                # Add event to session state
+                st.session_state.event_history.append({
+                    'type': event.get('type'),
+                    'content': event.get('content'),
+                    'timestamp': datetime.now().strftime("%H:%M:%S")
+                })
+                
+                if event.get('type') == 'complete':
+                    st.session_state.profile_result = event['content']['profile_insight']
                     st.session_state.search_completed = True
-                    st.session_state.fit_evaluated = False  # Reset fit evaluation flag
+                    return
                 
-                st.success("Research completed!")
+                # Force a rerun to update the UI
+                st.rerun()
                 
-            except ApiError as e:
-                st.error(f"API Error: {e.error_message}")
-                st.session_state.search_completed = False
+        except Exception as e:
+            print(f"Stream processing error: {e}")
+            raise
+
+    # Research button
+    if st.button("🔍 Delegate Research", key="research_button", use_container_width=True):
+        if name and company:
+            try:
+                print("Debug - UI: Starting research stream")
+                st.session_state.event_history = []  # Clear previous events
+                
+                # Create containers for live updates
+                progress_container = st.empty()
+                with progress_container.container():
+                    agent_status = st.empty()
+                    thought_status = st.empty()
+                    task_status = st.empty()
+                    transition_status = st.empty()
+                
+                # Regular synchronous iteration
+                for event in insight_service.get_profile_analysis_stream(
+                    full_name=name,
+                    company_name=company
+                ):
+                    print(f"Debug - UI got event: {event}")
+                    event_type = event.get('type')
+                    content = event.get('content')
+                    
+                    # Add event to history
+                    st.session_state.event_history.append({
+                        'type': event_type,
+                        'content': content,
+                        'timestamp': datetime.now().strftime("%H:%M:%S")
+                    })
+                    
+                    # Update UI based on event type
+                    with progress_container.container():
+                        if event_type == "agent_start" and content and content.get('name') and content.get('function'):
+                            # Clear previous agent's thoughts and tasks
+                            thought_status.empty()
+                            task_status.empty()
+                            transition_status.empty()
+                            
+                            agent_status.markdown(f"""
+                            🤖 **Current Agent: {content['name']}**  
+                            *{content['function']}*
+                            """)
+                            
+                        elif event_type == "thought" and content:
+                            thought_status.markdown(f"💭 **Thinking:**  \n{content}")
+                            # Clear previous task when new thought starts
+                            task_status.empty()
+                            
+                        elif event_type == "task_complete" and content:
+                            task_status.markdown(f"✅ **Completed:**  \n{content}")
+                            
+                        elif event_type == "transition" and content:
+                            # Clear all previous states for transition
+                            agent_status.empty()
+                            thought_status.empty()
+                            task_status.empty()
+                            transition_status.markdown(f"🔄 **Transition:**  \n{content}")
+                            
+                        elif event_type == "complete" and content:
+                            thought_status.empty()
+                            task_status.empty()
+                            transition_status.empty()
+                            if 'profile_insight' in content:
+                                st.session_state.profile_result = content['profile_insight']
+                            if 'trust_evaluation' in content:
+                                st.session_state.trust_evaluation = content['trust_evaluation']
+                            st.session_state.search_completed = True
+                            st.success("✨ Analysis Complete!")
+                            break
+                            
+                        elif event_type == "error" and content:
+                            raise Exception(content)
+                    
             except Exception as e:
-                st.error(f"An error occurred: {str(e)}")
-                st.error(f"Error details: {type(e).__name__}")
-                st.session_state.search_completed = False
+                print(f"Debug - Error in UI: {str(e)}")
+                st.error(f"An unexpected issue occurred during research: {str(e)}")
         else:
-            st.warning("Please provide both Name and Company.")
+            st.warning("Please provide both the person's name and company to begin research.")    
+
+    # Show event history right after the research button
+    if st.session_state.get('event_history'):
+        with st.expander("🕒 Analysis History", expanded=False):
+            st.markdown("### Research Process Timeline")
+            for event in st.session_state.event_history:
+                event_type = event['type']
+                content = event['content']
+                timestamp = event['timestamp']
+                
+                if event_type == "agent_start":
+                    st.markdown(f"**{timestamp}** - 🤖 Agent: {content['name']}")
+                    st.markdown(f"*Function: {content['function']}*")
+                
+                elif event_type == "thought":
+                    st.markdown(f"**{timestamp}** - 💭 Thinking: {content}")
+                
+                elif event_type == "task_complete":
+                    st.markdown(f"**{timestamp}** - ✅ Completed: {content}")
+                
+                elif event_type == "transition":
+                    st.markdown(f"**{timestamp}** - 🔄 {content}")
+                
+                elif event_type == "complete":
+                    st.markdown(f"**{timestamp}** - ✨ Analysis Complete")
+                
+                elif event_type == "error":
+                    st.markdown(f"**{timestamp}** - ❌ Error: {content}")
+                
+                st.markdown("---")
 
     # Display results only if research is completed
     if st.session_state.get('search_completed', False):
         if 'profile_result' in st.session_state:
-            with st.container():
-                st.subheader("👤 Profile Information")
-                response = st.session_state.profile_result
-                profile = response.profile
-                            
-                cols = st.columns(2)
-                with cols[0]:
-                    st.markdown(f"**👨‍💼 Name:** {profile.full_name}")
-                    st.markdown(f"**🏢 Title:** {profile.current_job_title or 'N/A'}")
-                    st.markdown(f"**🏢 Company:** {profile.current_company or 'N/A'}")
-                    st.markdown(f"**🔗 Company URL:** {profile.current_company_url or 'N/A'}")
+            st.markdown("---")  # Sepa
+            
+            st.subheader("👤 Basic Information")
+            profile = st.session_state.profile_result
+            
+            # Essential info in a clean layout
+            essential_fields = [
+                ('full_name', '👤 Name'),
+                ('current_job_title', '💼 Title'),
+                ('current_company', '🏢 Company'),
+                ('current_company_industry', '🏭 Industry')
+            ]
+            
+            for field_key, field_label in essential_fields:
+                field_data = profile.get(field_key, {})
+                status = field_data.get('verification_status', 'N/A')
+                badge = get_verification_badge(status)
+                color = get_verification_color(status)
+                
+                # Clean field display with badge
+                st.markdown(f"""
+                    <div style="
+                        padding: 0.5rem;
+                        margin-bottom: 0.5rem;
+                        border-radius: 0.3rem;
+                        background-color: rgba(255, 255, 255, 0.8);
+                    ">
+                        <div style="color: #666; font-size: 0.9em;">{field_label}</div>
+                        <div style="
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            margin-top: 0.2rem;
+                        ">
+                            <div style="font-size: 1.1em; font-weight: 500;">
+                                {field_data.get('value', 'N/A')}
+                            </div>
+                            <div style="color: {color}; font-weight: 500; font-size: 0.9em;">
+                                {badge}
+                            </div>
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                # Expandable details
+                with st.expander("📝 Details & Sources"):
+                    cols = st.columns([2, 1])
+                    with cols[0]:
+                        sources = field_data.get('source_url', [])
+                        if sources:
+                            st.markdown("**🔍 Sources:**")
+                            for source in sources:
+                                st.markdown(f"- [{source}]({source})")
                     
-                with cols[1]:
-                    st.markdown(f"**📞 Contact:** {profile.contact or 'N/A'}")
-                    st.markdown(f"**🔗 LinkedIn:** {profile.linkedin_url or 'N/A'}")
+                    with cols[1]:
+                        credibility = field_data.get('source_credibility', [])
+                        if credibility:
+                            st.markdown("**⭐ Credibility:**")
+                            for cred in credibility:
+                                st.markdown(f"- {cred}")
+            
+            # Contact Information
+            st.subheader("📇 Contact Information")
+            contact_fields = [
+                ('contact', '📧 Contact'),
+                ('linkedin_url', '🔗 LinkedIn')
+            ]
+            
+            # Display contact fields vertically
+            for field_key, field_label in contact_fields:
+                field_data = profile.get(field_key, {})
+                value = field_data.get('value', 'N/A')
+                status = field_data.get('verification_status', 'N/A')
+                badge = get_verification_badge(status)
+                color = get_verification_color(status)
+                
+                st.markdown(f"""
+                    <div style="
+                        padding: 0.5rem;
+                        margin-bottom: 0.5rem;
+                        border-radius: 0.3rem;
+                        background-color: rgba(255, 255, 255, 0.8);
+                    ">
+                        <div style="color: #666; font-size: 0.9em;">{field_label}</div>
+                        <div style="
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            margin-top: 0.2rem;
+                        ">
+                            <div style="font-size: 1.1em; font-weight: 500;">
+                                {value}
+                            </div>
+                            <div style="color: {color}; font-weight: 500; font-size: 0.9em;">
+                                {badge}
+                            </div>
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                # Expandable details for each contact field
+                with st.expander("📝 Details & Sources"):
+                    cols = st.columns([2, 1])
+                    with cols[0]:
+                        sources = field_data.get('source_url', [])
+                        if sources:
+                            st.markdown("**🔍 Sources:**")
+                            for source in sources:
+                                st.markdown(f"- [{source}]({source})")
+                    
+                    with cols[1]:
+                        credibility = field_data.get('source_credibility', [])
+                        if credibility:
+                            st.markdown("**⭐ Credibility:**")
+                            for cred in credibility:
+                                st.markdown(f"- {cred}")
+            
+            # Detailed Sections
+            st.markdown("---")
+            st.subheader("📚 Detailed Information")
+            
+            tabs = st.tabs([
+                "Professional Background",
+                "Past Experience",
+                "Key Achievements"
+            ])
+            
+            sections = ['professional_background', 'past_jobs', 'key_achievements']
+            for tab, section in zip(tabs, sections):
+                with tab:
+                    section_data = profile.get(section, {})
+                    status = section_data.get('verification_status', 'N/A')
+                    badge = get_verification_badge(status)
+                    color = get_verification_color(status)
+                    
+                    st.markdown(f"""
+                        <div style="float: right; color: {color};">{badge}</div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Special handling for achievements
+                    if section == 'key_achievements':
+                        try:
+                            # Try to parse industry profile for structured achievements
+                            industry_profile = profile.get('industry_profile', {}).get('value', '{}')
+                            if isinstance(industry_profile, str):
+                                import json
+                                try:
+                                    industry_data = json.loads(industry_profile)
+                                    if 'Achievements' in industry_data:
+                                        st.markdown("### 🏆 Verified Achievements")
+                                        for achievement in industry_data['Achievements']:
+                                            # Create achievement card
+                                            st.markdown(f"""
+                                                <div style="
+                                                    padding: 1rem;
+                                                    margin-bottom: 1rem;
+                                                    background-color: rgba(255, 255, 255, 0.8);
+                                                    border-radius: 0.5rem;
+                                                    border-left: 4px solid {get_verification_color('verified')};
+                                                ">
+                                                    <div style="
+                                                        display: flex;
+                                                        justify-content: space-between;
+                                                        align-items: center;
+                                                    ">
+                                                        <div style="font-weight: 600; color: #1a1a1a;">
+                                                            {achievement.get('Type', 'Achievement')}
+                                                        </div>
+                                                        <div style="color: #00CC66;">✅</div>
+                                                    </div>
+                                                    <div style="margin: 0.5rem 0;">
+                                                        {achievement.get('Details', '')}
+                                                    </div>
+                                                    <div style="text-align: right;">
+                                                        <a href="{achievement.get('Link', '#')}" target="_blank" style="color: #4A90E2; text-decoration: none;">
+                                                            🔗 View Source
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            """, unsafe_allow_html=True)
+                                except json.JSONDecodeError:
+                                    # Fall back to regular achievement display
+                                    pass
+                            
+                            # Display any remaining achievements from the main value field
+                            achievements_text = section_data.get('value', '')
+                            achievements = [ach.strip() for ach in achievements_text.split(';') if ach.strip()]
+                            
+                            if achievements:
+                                st.markdown("### Additional Achievements")
+                                for achievement in achievements:
+                                    has_source = any(source in achievement for source in section_data.get('source_url', []))
+                                    verification_icon = "✅" if has_source else "⚠️"
+                                    st.markdown(f"""
+                                        <div style="
+                                            display: flex;
+                                            justify-content: space-between;
+                                            align-items: center;
+                                            padding: 0.5rem;
+                                            margin-bottom: 0.5rem;
+                                            background-color: rgba(255, 255, 255, 0.5);
+                                            border-radius: 0.3rem;
+                                        ">
+                                            <div>{achievement}</div>
+                                            <div>{verification_icon}</div>
+                                        </div>
+                                    """, unsafe_allow_html=True)
+                                    
+                        except Exception as e:
+                            print(f"Error parsing achievements: {e}")
+                            # Fall back to displaying raw value
+                            st.markdown(section_data.get('value', 'N/A'))
+                    else:
+                        st.markdown(section_data.get('value', 'N/A'))
+                    
+                    with st.expander("🔍 Sources & Verification"):
+                        sources = section_data.get('source_url', [])
+                        if sources:
+                            st.markdown("**Sources:**")
+                            for source in sources:
+                                st.markdown(f"- [{source}]({source})")
+                        
+                        credibility = section_data.get('source_credibility', [])
+                        if credibility:
+                            st.markdown("**Credibility Assessment:**")
+                            for cred in credibility:
+                                st.markdown(f"- {cred}")
 
-            with st.expander("📚 Professional Background", expanded=True):
-                st.markdown(profile.professional_background)
-            
-            with st.expander("💼 Past Experience"):
-                st.markdown(profile.past_jobs)
-            
-            with st.expander("🏆 Key Achievements"):
-                st.markdown(profile.key_achievements)
+            # Add Trust Evaluation section
+            if 'trust_evaluation' in st.session_state:
+                trust_eval = st.session_state.trust_evaluation
+                with st.expander("🔒 Trust Evaluation", expanded=True):
+                    try:
+                        # Trust Score
+                        score_col1, score_col2 = st.columns(2)
+                        with score_col1:
+                            overall_score = trust_eval.get('trust_score', {}).get('overall_score', 'N/A')
+                            confidence = trust_eval.get('trust_score', {}).get('confidence_level', 'N/A')
+                            risk = trust_eval.get('trust_score', {}).get('risk_level', 'N/A')
+                            
+                            st.metric("Trust Score", f"{overall_score}%" if overall_score != 'N/A' else 'N/A')
+                            st.markdown(f"**Confidence Level:** {confidence}")
+                            st.markdown(f"**Risk Level:** {risk}")
+                        
+                        with score_col2:
+                            category_scores = trust_eval.get('trust_score', {}).get('category_scores', {})
+                            if category_scores:
+                                st.markdown("**Category Scores:**")
+                                for category, score in category_scores.items():
+                                    st.markdown(f"- {category}: {score}%")
+                        
+                        # Supporting Evidence
+                        evidence_list = trust_eval.get('supporting_evidence', [])
+                        if evidence_list:
+                            st.markdown("### Supporting Evidence")
+                            for evidence in evidence_list:
+                                with st.container():
+                                    st.markdown(f"**{evidence.get('source_type', 'Unknown Source')}** "
+                                              f"(Credibility: {evidence.get('credibility_score', 'N/A')}%)")
+                                    st.markdown(evidence.get('description', ''))
+                                    source_url = evidence.get('source_url')
+                                    if source_url:
+                                        st.markdown(f"*Source: [{source_url}]({source_url})*")
+                        
+                        # Areas of Concern
+                        concerns = trust_eval.get('areas_of_concern', [])
+                        if concerns:
+                            st.markdown("### Areas of Concern")
+                            for concern in concerns:
+                                st.markdown(f"- {concern}")
+                        
+                        # Verification Summary
+                        verification_summary = trust_eval.get('verification_summary', {})
+                        if verification_summary:
+                            st.markdown("### Verification Summary")
+                            total_fields = verification_summary.get('total_fields_verified', 'N/A')
+                            st.markdown(f"- Total Fields Verified: {total_fields}")
+                            
+                            methods = verification_summary.get('verification_methods_used', [])
+                            if methods:
+                                st.markdown("**Verification Methods:**")
+                                for method in methods:
+                                    st.markdown(f"- {method}")
+                                    
+                    except Exception as e:
+                        print(f"Error displaying trust evaluation: {str(e)}")
+                        st.warning("Some trust evaluation data could not be displayed")
 
             if st.button("💾 Save Research", key="save_button"):
                 save_profile_search(user_email, profile)
@@ -184,11 +635,10 @@ def profile_insight_section():
             user = getUserByEmail(user_email)
 
             with col1:
-                user = getUserByEmail(user_email)
-                user_company = get_user_company_info(user_email)
-                
-                generate_email = st.button("Generate Email", type="primary")
-                if generate_email:
+                if st.button("📧 Request Outreach Draft", 
+                             type="primary",
+                             key="generate_email_button",
+                             use_container_width=True):
                     # Get latest user and company data
                     user = getUserByEmail(user_email)
                     user_company = get_user_company_info(user_email)
@@ -218,7 +668,7 @@ def profile_insight_section():
                             st.rerun()
                     else:
                         try:
-                            with st.spinner('Generating outreach email...'):
+                            with st.spinner('AI Communication Team preparing your outreach draft...'):
                                 sender_info = {
                                     "full_name": user[1],
                                     "company": user[4],
@@ -234,14 +684,15 @@ def profile_insight_section():
                                     )
                                 )
                                 st.session_state.email_content = email_content
-                                st.success("Email generated successfully!")
+                                st.success("Professional outreach draft ready for your review")
                         except Exception as e:
                             st.error(f"Failed to generate email: {str(e)}")
 
             with col2:
-                
-                prepare_meeting = st.button("Prepare for Meeting", type="primary")
-                if prepare_meeting:
+                if st.button("📅 Generate Meeting Brief", 
+                             type="primary",
+                             key="prepare_meeting_button",
+                             use_container_width=True):
                     # Get latest user and company data
                     user_company = get_user_company_info(user_email)
                     # Check if we have all required information
@@ -268,7 +719,7 @@ def profile_insight_section():
                             st.rerun()
                     else:
                         try:
-                            with st.spinner('Preparing meeting strategy...'):
+                            with st.spinner('AI Strategy Team analyzing and preparing meeting insights...'):
                                 meeting_result = run_async(
                                     insight_service.prepare_meeting(
                                         profile=profile.__dict__,
@@ -276,14 +727,15 @@ def profile_insight_section():
                                     )
                                 )
                                 st.session_state.meeting_result = meeting_result
-                                st.success("Meeting preparation completed!")
+                                st.success("Meeting strategy brief is ready for review")
                         except Exception as e:
                             st.error(f"Failed to prepare meeting: {str(e)}")
 
             with col3:
-                
-                evaluate_fit = st.button("Evaluate Fit", type="primary")
-                if evaluate_fit:
+                if st.button("⚖️ Analyze Partnership Fit", 
+                             type="primary",
+                             key="evaluate_fit_button",
+                             use_container_width=True):
                     # Get latest company data
                     user_company = get_user_company_info(user_email)
                     
@@ -301,7 +753,7 @@ def profile_insight_section():
                             st.rerun()
                     else:
                         try:
-                            with st.spinner('Evaluating fit...'):
+                            with st.spinner('AI Analysis Team evaluating strategic alignment...'):
                                 fit_result = run_async(
                                     insight_service.evaluate_profile_fit(
                                         profile=profile.__dict__,
@@ -309,7 +761,7 @@ def profile_insight_section():
                                     )
                                 )
                                 st.session_state.fit_evaluation_result = fit_result
-                                st.success("Fit evaluation completed!")
+                                st.success("Partnership analysis report is ready")
                         except Exception as e:
                             st.error(f"Failed to evaluate fit: {str(e)}")
 

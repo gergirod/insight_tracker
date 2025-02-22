@@ -12,6 +12,9 @@ from time import time
 import time as time_module
 from pathlib import Path
 from insight_tracker.utils.logger import logger
+from typing import Optional, Dict, Any
+import requests
+import json
 
 # Load environment variables
 load_dotenv()
@@ -166,82 +169,110 @@ def signup():
     if st.button("Sign Up with Auth0"):
         st.markdown(f'<meta http-equiv="refresh" content="0;url={signup_url}">', unsafe_allow_html=True)
 
-def handle_callback():
-    logger.info("Starting callback handling")
+def process_callback():
+    """Process OAuth callback and set up user session"""
     query_params = st.query_params
     logger.debug(f"Query params received: {query_params}")
 
-    if 'code' in query_params and 'state' in query_params:
-        code = query_params['code']
-        received_state = query_params['state']
-        stored_state = st.session_state.get('oauth_state')
-        
-        try:
-            # Clear state immediately to prevent reuse
-            st.session_state.pop('oauth_state', None)
-            
-            logger.debug("Attempting to fetch token from Auth0")
-            token = auth0.fetch_token(
-                f"https://{AUTH0_DOMAIN}/oauth/token",
-                code=code,
-                redirect_uri=AUTH0_CALLBACK_URL
-            )
-            logger.info("Successfully fetched token from Auth0")
-
-            access_token = token.get('access_token')
-            id_token = token.get('id_token')
-
-            user_info = auth0.get(
-                f"https://{AUTH0_DOMAIN}/userinfo", 
-                headers={"Authorization": f"Bearer {access_token}"}
-            ).json()
-            logger.info(f"Retrieved user info for email: {user_info.get('email')}")
-            
-            # Store everything in session state
-            st.session_state.access_token = access_token
-            st.session_state.id_token = id_token
-            st.session_state.user = user_info
-            st.session_state.authentication_status = 'authenticated'
-            
-            # Store both tokens in cookies
-            store_auth_cookie(access_token, id_token)
-            
-            # Create user in database if needed
-            success, is_new_user = create_user_if_not_exists(
-                full_name=user_info.get('name', ''),
-                email=user_info.get('email', ''),
-                company="",
-                role=""
-            )
-            st.session_state.is_new_user = is_new_user
-            
-            # Clear query parameters
-            st.query_params.clear()
-            
-            # Log the session state after setting everything
-            logger.info(f"Session state after auth setup: {dict(st.session_state)}")
-            
-            # Redirect to base URL
-            base_url = os.getenv("BASE_URL", "/")
-            st.markdown(f'<meta http-equiv="refresh" content="0;url={base_url}">', unsafe_allow_html=True)
-            
-            return True
-
-        except Exception as e:
-            logger.error(f"Auth callback error: {str(e)}")
-            st.session_state.authentication_status = 'unauthenticated'
-            return False
-    else:
+    if 'code' not in query_params or 'state' not in query_params:
         logger.warning("No authorization code or state found in query params")
+        raise Exception("Invalid callback parameters")
+
+    code = query_params['code']
+    received_state = query_params['state']
+    stored_state = st.session_state.get('oauth_state')
+    
+    # Clear state immediately to prevent reuse
+    st.session_state.pop('oauth_state', None)
+    
+    logger.debug("Attempting to fetch token from Auth0")
+    token = auth0.fetch_token(
+        f"https://{AUTH0_DOMAIN}/oauth/token",
+        code=code,
+        redirect_uri=AUTH0_CALLBACK_URL
+    )
+    logger.info("Successfully fetched token from Auth0")
+
+    access_token = token.get('access_token')
+    id_token = token.get('id_token')
+
+    user_info = auth0.get(
+        f"https://{AUTH0_DOMAIN}/userinfo", 
+        headers={"Authorization": f"Bearer {access_token}"}
+    ).json()
+    logger.info(f"Retrieved user info for email: {user_info.get('email')}")
+    
+    # Store everything in session state
+    st.session_state.access_token = access_token
+    st.session_state.id_token = id_token
+    st.session_state.user = user_info
+    st.session_state.authentication_status = 'authenticated'
+    
+    # Store both tokens in cookies
+    store_auth_cookie(access_token, id_token)
+    
+    # Create user in database if needed
+    success, is_new_user = create_user_if_not_exists(
+        full_name=user_info.get('name', ''),
+        email=user_info.get('email', ''),
+        company="",
+        role=""
+    )
+    st.session_state.is_new_user = is_new_user
+    
+    # Log the session state after setting everything
+    logger.info(f"Session state after auth setup: {dict(st.session_state)}")
+
+def clear_session_state():
+    """Clear session state and cookies during logout"""
+    logger.info("Clearing session state and cookies")
+    
+    # Clear cookies
+    clear_auth_cookie()
+    
+    # Clear session state
+    st.session_state.clear()
+    
+    # Reinitialize session state with defaults
+    initialize_session_state()
+    
+    logger.info("Session state and cookies cleared")
+
+def handle_callback():
+    """Handle OAuth callback"""
+    logger.info("Starting callback handling")
+    try:
+        # Process callback
+        process_callback()
+
+        # Log before redirect
+        logger.info("Callback processed successfully, preparing to redirect")
+        logger.info(f"Query params before redirect: {dict(st.query_params)}")
+        
+        # Redirect to base URL
+        redirect_to_base_url()
+        
+        return True
+    except Exception as e:
+        logger.error(f"Error in callback handling: {str(e)}")
+        logger.exception("Detailed error trace:")
         return False
 
 def logout():
-    logger.info("Initiating logout")
-    
-    # Clear cookies and session
-    clear_auth_cookie()
-    st.session_state.clear()
-    initialize_session_state()
-    
-    # Redirect using JavaScript
-    redirect_to_base_url()
+    """Handle user logout"""
+    logger.info("Starting logout process")
+    try:
+        # Clear session state
+        clear_session_state()
+        
+        # Log before redirect
+        logger.info("Session cleared, preparing to redirect")
+        logger.info(f"Query params before logout redirect: {dict(st.query_params)}")
+        
+        # Redirect to base URL
+        redirect_to_base_url()
+        
+        return True
+    except Exception as e:
+        logger.error(f"Error in logout: {str(e)}")
+        return False
