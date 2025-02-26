@@ -1,7 +1,8 @@
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, AsyncGenerator
 from ..client.insight_client import InsightApiClient
 from ..exceptions.api_exceptions import ApiError
 from ..models.responses import ProfileInsightResponse, CompanyInsightResponse, EmailResponse, ProfessionalProfile, Company, ProfileCompanyFitResponse, OutreachResponse, MeetingResponse, MeetingPreparation
+import json
 
 class InsightService:
     def __init__(self, api_client: InsightApiClient):
@@ -178,4 +179,46 @@ class InsightService:
             raise
         except Exception as e:
             print(f"Debug - Unexpected error in prepare_meeting: {str(e)}")
+            raise
+
+    def get_profile_analysis_stream(
+        self,
+        full_name: str,
+        company_name: str,
+        language: str = "en"
+    ):
+        """Get streaming profile analysis"""
+        print("Debug - Service: Starting profile analysis stream")
+        try:
+            for event in self.api_client.get_profile_insight_stream(
+                full_name=full_name,
+                company_name=company_name,
+                language=language
+            ):
+                print(f"Debug - Service got event: {event}")
+                yield event
+                    
+        except Exception as e:
+            print(f"Debug - Service: Error in stream: {str(e)}")
+            raise
+
+    def get_company_analysis_stream(
+        self,
+        company_name: str,
+        industry: str,
+        language: str = "en"
+    ):
+        """Get streaming company analysis"""
+        print("Debug - Service: Starting company analysis stream")
+        try:
+            for event in self.api_client.get_company_insight_stream(
+                company_name=company_name,
+                industry=industry,
+                language=language
+            ):
+                print(f"Debug - Service got event: {event}")
+                yield event
+                    
+        except Exception as e:
+            print(f"Debug - Service: Error in stream: {str(e)}")
             raise

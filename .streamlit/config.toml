@@ -7,3 +7,10 @@ enableCORS = false
 [browser]
 serverAddress = "https://insight-tracker.com/"  # Replace with your domain
 serverPort = 443  # Use 443 for HTTPS 
+
+[theme]
+primaryColor = "#0d6efd"  # Bootstrap primary blue
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f8f9fa"
+textColor = "#212529"
+font = "sans-serif" 
