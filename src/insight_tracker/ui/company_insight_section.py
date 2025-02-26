@@ -11,6 +11,8 @@ import os
 from insight_tracker.api.models.responses import Company
 from insight_tracker.db import get_user_company_info
 import json
+from datetime import datetime
+import re
 
 research_company = None
 
@@ -69,6 +71,27 @@ def inject_css():
         .stButton > button div {
             color: white !important;
         }
+
+        .meeting-header {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: #1E88E5;
+        }
+        .meeting-item {
+            margin-bottom: 0.5rem;
+            padding-left: 1rem;
+        }
+        .risk-item {
+            color: #FF5252;
+        }
+        .success-item {
+            color: #4CAF50;
+        }
+        .next-step-item {
+            color: #FF9800;
+        }
         </style>
     """, unsafe_allow_html=True)
 
@@ -77,6 +100,32 @@ def run_async(coroutine):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     return loop.run_until_complete(coroutine)
+
+def get_verification_badge(status):
+    """Return appropriate badge based on verification status"""
+    if status.lower() == 'verified':
+        return "✅ Verified"
+    elif status.lower() == 'not provided':
+        return "❓ Not Provided"
+    elif status.lower() == 'unverified':
+        return "⚠️ Unverified"
+    elif status.lower() == 'partial':
+        return "🔄 Partially Verified"
+    else:
+        return f"ℹ️ {status}"
+
+def get_verification_color(status):
+    """Return appropriate color based on verification status"""
+    if status.lower() == 'verified':
+        return "#00CC66"  # Green
+    elif status.lower() == 'not provided':
+        return "#808080"  # Gray
+    elif status.lower() == 'unverified':
+        return "#FF6B6B"  # Red
+    elif status.lower() == 'partial':
+        return "#FFA500"  # Orange
+    else:
+        return "#4A90E2"  # Blue
 
 def company_insight_section():
     inject_css()
@@ -93,248 +142,586 @@ def company_insight_section():
     )
     insight_service = InsightService(api_client)
 
-    # Ensure search_method is in session state
-    if 'search_method' not in st.session_state:
-        st.session_state.search_method = 'Search by Name and Industry'
+    # Input fields for company name and industry
+    company_name = st.text_input("Company to research")
+    industry = st.text_input("Industry (helps focus the research)")
 
-    # Define callback function for radio button
-    def on_search_method_change():
-        st.session_state.search_method = st.session_state.search_method_radio
+    # Initialize events list in session state if not exists
+    if 'company_event_history' not in st.session_state:
+        st.session_state.company_event_history = []
 
-    # Search method selection    
-    search_options = ["Search by Name and Industry", "Search by Company URL"]
-    st.radio(
-        "",
-        options=search_options,
-        key="search_method_radio",
-        index=search_options.index(st.session_state.search_method),
-        on_change=on_search_method_change
-    )
-
-    # Display input fields based on the selected search method
-    if st.session_state.search_method == "Search by Name and Industry":
-        company_name = st.text_input("Company to research")
-        industry = st.text_input("Industry (helps focus the research)")
-
-        if st.button("🔍 Delegate Company Research", 
-                    key="company_research_button", 
-                    use_container_width=True):
-            if company_name:
-                with st.spinner('Your AI researcher is analyzing the company...'):
-                    try:
-                        # company_result = run_async(insight_service.get_company_analysis(
-                        #     company_name=company_name,
-                        #     industry=industry,
-                        #     scrape_employees=False
-                        # ))
-
-                        run_async(insight_service.get_company_analysis_stream(
-                            company_name=company_name,
-                            industry=industry,
-                            scrape_employees=False
-                        ))
-                        
-                        # st.session_state.company_insight_result = company_result
-                        # st.success("Research completed! Here are the insights I've gathered.")
-                        # st.session_state.search_completed = True
-                        # research_company = company_result.company
-                        # st.session_state.company_data = company_result.company
-
-                    except ApiError as e:
-                        st.error(f"Research encountered an issue: {e.error_message}")
-                    except Exception as e:
-                        st.error(f"An unexpected issue occurred during research: {str(e)}")
-            else:
-                st.warning("Please provide the company name to begin research.")
-
-    elif st.session_state.search_method == "Search by Company URL":
-        company_url = st.text_input("Company URL")
-        
-        if st.button("🔍 Delegate URL Research", 
-                    key="company_url_research_button",
-                    use_container_width=True):
-            if company_url:
-                with st.spinner('Your AI researcher is analyzing the company website...'):
-                    try:
-                        company_result = run_async(insight_service.get_company_analysis_by_url(
-                            company_url=company_url,
-                            scrape_employees=False
-                        ))
-                        
-                        st.session_state.company_insight_result = company_result
-                        st.success("Research completed! Here are the insights I've gathered.")
-                        st.session_state.search_completed = True
-                        research_company = company_result.company
-                        st.session_state.company_data = company_result.company
-
-                    except ApiError as e:
-                        st.error(f"Research encountered an issue: {e.error_message}")
-                    except Exception as e:
-                        st.error(f"An unexpected issue occurred during research: {str(e)}")
-            else:
-                st.warning("Please provide a Company URL.")
-
-    # Save Company Search Button - Only show after successful search
-    if st.session_state.get('search_completed', False):
-        if st.session_state.company_data:
-            company = st.session_state.company_data
-            st.markdown("<h2>🏢 Company Information</h2>", unsafe_allow_html=True)
-            # Store company data in session state
-            st.session_state.company_data = company
-
-            cols = st.columns(2)  # Create two columns for layout
-
-            with cols[0]:
-                st.markdown(f"**🏷️ Company Name:** {company.company_name}")
-                st.markdown(f"**🌐 Website:** {company.company_website or 'N/A'}")
-                st.markdown(f"**🔗 LinkedIn:** [{company.company_linkedin}]({company.company_linkedin})" if company.company_linkedin else "N/A")
-                st.markdown(f"**📝 Summary:** {company.company_summary or 'N/A'}")
-                st.markdown(f"**🏭 Industry:** {company.company_industry or 'N/A'}")
-                st.markdown(f"**👥 Size:** {company.company_size or 'N/A'}")
-
-            with cols[1]:
-                st.markdown(f"**🛠️ Services:** {', '.join(company.company_services) if company.company_services else 'N/A'}")
-                st.markdown(f"**🏢 Industries:** {', '.join(company.company_industries) if company.company_industries else 'N/A'}")
-                st.markdown(f"**🏆 Awards:** {', '.join(company.company_awards_recognitions) if company.company_awards_recognitions else 'N/A'}")
-                st.markdown(f"**🤝 Clients:** {', '.join(company.company_clients_partners) if company.company_clients_partners else 'N/A'}")
-                st.markdown(f"**📍 Headquarters:** {company.company_headquarters or 'N/A'}")
-                st.markdown(f"**📅 Founded:** {company.company_founded_year or 'N/A'}")
-                st.markdown(f"**🌱 Culture:** {', '.join(company.company_culture) if company.company_culture else 'N/A'}")
-                st.markdown(f"**📰 Recent Updates:** {', '.join(company.company_recent_updates) if company.company_recent_updates else 'N/A'}")
-
-        if st.button("💾 Save Company Search"):
-            if st.session_state.company_data:  # Ensure company data exists
-                save_company_search(user_email, st.session_state.company_data)
-                st.success("Company search saved successfully!")
-            else:
-                st.warning("No company data to save.")
-
-        # Add Evaluate Fit Button
-        evaluate_fit = st.button("Evaluate Fit", type="primary")
-        if evaluate_fit:
-            # Get latest company data
-            research_company = st.session_state.company_data
-            user_company = get_user_company_info(user_email)
-            
-            print(f"Debug - Research company: {research_company}")
-            print(f"Debug - User company: {user_company}")
-            if not user_company:
-                st.warning("""
-                    ⚠️ Company information required
-                    
-                    To evaluate company fit, we need your company context. Please complete your company information in the Settings section first.
-                    
-                    This helps us provide more accurate and meaningful insights.
-                """)
+    # Research button
+    if st.button("🔍 Delegate Research", 
+                key="company_research_button", 
+                use_container_width=True):
+        if company_name and industry:
+            try:
+                print("Debug - UI: Starting company research stream")
+                st.session_state.company_event_history = []  # Clear previous events
                 
-                if st.button("Complete Company Settings →", type="primary"):
-                    st.session_state.nav_bar_option_selected = "Settings"
-                    st.rerun()
-            else:
-                try:
-                    with st.spinner('Evaluating fit...'):
-                        fit_result = run_async(
-                            insight_service.evaluate_profile_fit(
-                                targetCompany=research_company.__dict__,
-                                company=user_company.__dict__
-                            )
-                        )
-                        st.session_state.fit_evaluation_result = fit_result
-                        st.success("Fit evaluation completed!")
-                except Exception as e:
-                    st.error(f"Failed to evaluate fit: {str(e)}")
+                # Create containers for live updates
+                progress_container = st.empty()
+                with progress_container.container():
+                    agent_status = st.empty()
+                    thought_status = st.empty()
+                    task_status = st.empty()
+                    transition_status = st.empty()
+                
+                # Regular synchronous iteration
+                for event in insight_service.get_company_analysis_stream(
+                    company_name=company_name,
+                    industry=industry
+                ):
+                    print(f"Debug - UI got event: {event}")
+                    event_type = event.get('type')
+                    content = event.get('content')
+                    
+                    # Add event to history
+                    st.session_state.company_event_history.append({
+                        'type': event_type,
+                        'content': content,
+                        'timestamp': datetime.now().strftime("%H:%M:%S")
+                    })
+                    
+                    # Update UI based on event type
+                    with progress_container.container():
+                        if event_type == "agent_start" and content and content.get('name') and content.get('function'):
+                            # Clear previous agent's thoughts and tasks
+                            thought_status.empty()
+                            task_status.empty()
+                            transition_status.empty()
+                            
+                            # Add special styling for industry researcher
+                            agent_name = content['name']
+                            agent_function = content['function']
+                            
+                            if "industry" in agent_name.lower():
+                                agent_status.markdown(f"""
+                                🏭 **Current Agent: {agent_name}**  
+                                *{agent_function}*
+                                """)
+                            else:
+                                agent_status.markdown(f"""
+                                🤖 **Current Agent: {agent_name}**  
+                                *{agent_function}*
+                                """)
+                            
+                        elif event_type == "thought" and content:
+                            thought_status.markdown(f"💭 **Thinking:**  \n{content}")
+                            # Clear previous task when new thought starts
+                            task_status.empty()
+                            
+                        elif event_type == "task_complete" and content:
+                            task_status.markdown(f"✅ **Completed:**  \n{content}")
+                            
+                        elif event_type == "transition" and content:
+                            # Clear all previous states for transition
+                            agent_status.empty()
+                            thought_status.empty()
+                            task_status.empty()
+                            transition_status.markdown(f"🔄 **Transition:**  \n{content}")
+                            
+                        elif event_type == "complete" and content:
+                            task_status.empty()
+                            if 'company_insight' in content:
+                                st.session_state.company_result = content['company_insight']
+                            if 'trust_evaluation' in content:
+                                st.session_state.company_trust_evaluation = content['trust_evaluation']
+                            st.session_state.company_search_completed = True
+                            st.success("✨ Analysis Complete!")
+                            break
+                            
+                        elif event_type == "error" and content:
+                            raise Exception(content)
+                    
+            except Exception as e:
+                print(f"Debug - Error in UI: {str(e)}")
+                st.error(f"An unexpected issue occurred during research: {str(e)}")
+        else:
+            st.warning("Please provide both the company name and industry to begin research.")
 
-            if 'fit_evaluation_result' in st.session_state:
-                with st.expander("🔍 Fit Evaluation Results", expanded=False):
-                    fit_result = st.session_state.fit_evaluation_result.evaluation
+    # Show event history right after the research button
+    if st.session_state.get('company_event_history'):
+        with st.expander("🕒 Analysis History", expanded=False):
+            st.markdown("### Research Process Timeline")
+            for event in st.session_state.company_event_history:
+                event_type = event['type']
+                content = event['content']
+                timestamp = event['timestamp']
+                
+                if event_type == "agent_start":
+                    agent_name = content['name']
+                    agent_icon = "🏭" if "industry" in agent_name.lower() else "🤖"
+                    st.markdown(f"**{timestamp}** - {agent_icon} Agent: {agent_name}")
+                    st.markdown(f"*Function: {content['function']}*")
+                
+                elif event_type == "thought":
+                    st.markdown(f"**{timestamp}** - 💭 Thinking: {content}")
+                
+                elif event_type == "task_complete":
+                    st.markdown(f"**{timestamp}** - ✅ Completed: {content}")
+                
+                elif event_type == "transition":
+                    st.markdown(f"**{timestamp}** - 🔄 {content}")
+                
+                elif event_type == "complete":
+                    st.markdown(f"**{timestamp}** - ✨ Analysis Complete")
+                
+                elif event_type == "error":
+                    st.markdown(f"**{timestamp}** - ❌ Error: {content}")
+                
+                st.markdown("---")
 
-                    # Fit Score and Summary
-                    st.markdown('<div class="meeting-header">📊 Overall Fit Assessment</div>', unsafe_allow_html=True)
-                    st.markdown(f'<div class="meeting-item"><strong>Fit Score:</strong> {fit_result.fit_score if fit_result.fit_score is not None else "N/A"}</div>', unsafe_allow_html=True)
-                    st.markdown(f'<div class="meeting-item"><strong>Summary:</strong> {fit_result.fit_summary if fit_result.fit_summary is not None else "N/A"}</div>', unsafe_allow_html=True)
-
-                    # Key Insights
-                    st.markdown('<div class="meeting-header">💡 Key Insights</div>', unsafe_allow_html=True)
-                    for insight in fit_result.key_insights:
-                        st.markdown(f'<div class="meeting-item">• {insight}</div>', unsafe_allow_html=True)
-
-                    # Expertise Matches
-                    if fit_result.expertise_matches:
-                        st.markdown('<div class="meeting-header">🎯 Expertise Matches</div>', unsafe_allow_html=True)
-                        for match in fit_result.expertise_matches:
-                            st.markdown(f"""
-                                <div class="agenda-item">
-                                    <div class="agenda-title">{match.area if match.area is not None else 'N/A'}</div>
-                                    <div class="meeting-item">• Relevance Score: {match.relevance_score if match.relevance_score is not None else 'N/A'}</div>
-                                    <div class="meeting-item">• {match.description if match.description is not None else 'N/A'}</div>
-                                    <div class="meeting-item">• Evidence: {', '.join(match.evidence) if match.evidence else 'N/A'}</div>
+    # Display results only if research is completed
+    if st.session_state.get('company_search_completed', False):
+        if 'company_result' in st.session_state:
+            st.markdown("---")  # Separator
+            
+            # Main Company Section
+            st.header("📊 Company Analysis Results")
+            
+            # Debug output
+            print(f"Debug - Company result keys: {st.session_state.company_result.keys() if st.session_state.company_result else 'None'}")
+            
+            # Get the company data from the result
+            company_data = st.session_state.company_result
+            
+            # Check if we have company data
+            if not company_data:
+                st.warning("No company data available. The research couldn't find verifiable information.")
+                return
+                
+            # Get company info
+            company_info = company_data.get('company', {})
+            
+            if not company_info:
+                print(f"Debug - Company data structure: {json.dumps(company_data, indent=2)}")
+                st.warning("Limited company information available. The research found minimal verifiable data.")
+                company_info = company_data  # Fallback to using the entire data
+            
+            # Get company info and industry analysis
+            industry_analysis = company_data.get('industry_analysis', {})
+            
+            if not company_info:
+                st.warning("Limited company information available. The research found minimal verifiable data.")
+            
+            # Basic Information Card
+            st.subheader("🏢 Basic Information")
+            
+            # Essential info in a clean layout
+            essential_fields = [
+                ('company_name', '🏢 Company Name'),
+                ('company_industry', '🏭 Industry'),
+                ('company_website', '🌐 Website'),
+                ('company_headquarters', '📍 Headquarters'),
+                ('company_size', '👥 Company Size'),
+                ('company_founded_year', '📅 Founded')
+            ]
+            
+            # Check if we have any data to display
+            has_data = False
+            for field_key, _ in essential_fields:
+                field_data = company_info.get(field_key)
+                if field_data and isinstance(field_data, dict) and field_data.get('value'):
+                    has_data = True
+                    break
+                    
+            if not has_data:
+                st.warning("Limited company information available. The research found minimal verifiable data.")
+            
+            for field_key, field_label in essential_fields:
+                field_data = company_info.get(field_key, {})
+                if not field_data or not isinstance(field_data, dict) or not field_data.get('value'):
+                    # Skip empty fields or show as not available
+                    st.markdown(f"""
+                        <div style="
+                            padding: 0.5rem;
+                            margin-bottom: 0.5rem;
+                            border-radius: 0.3rem;
+                            background-color: rgba(240, 240, 240, 0.5);
+                        ">
+                            <div style="color: #666; font-size: 0.9em;">{field_label}</div>
+                            <div style="
+                                display: flex;
+                                justify-content: space-between;
+                                align-items: center;
+                                margin-top: 0.2rem;
+                            ">
+                                <div style="font-size: 1.1em; font-weight: 500; color: #999;">
+                                    Not Available
                                 </div>
-                            """, unsafe_allow_html=True)
-
-                    # Decision Maker Analysis
-                    st.markdown('<div class="meeting-header">👔 Decision Maker Analysis</div>', unsafe_allow_html=True)
-                    decision_maker_analysis = fit_result.decision_maker_analysis
-                    if decision_maker_analysis:
-                        st.markdown(f'<div class="meeting-item"><strong>Influence Level:</strong> {decision_maker_analysis.influence_level if decision_maker_analysis.influence_level is not None else "N/A"}</div>', unsafe_allow_html=True)
-                        for evidence in decision_maker_analysis.influence_evidence:
-                            st.markdown(f'<div class="meeting-item">• {evidence}</div>', unsafe_allow_html=True)
-
-                    # Business Model & Market Synergy
-                    st.markdown('<div class="meeting-header">💼 Business Alignment</div>', unsafe_allow_html=True)
-                    st.markdown(f'<div class="meeting-item"><strong>Business Model Fit:</strong> {fit_result.business_model_fit if fit_result.business_model_fit is not None else "N/A"}</div>', unsafe_allow_html=True)
-                    st.markdown(f'<div class="meeting-item">{fit_result.business_model_analysis if fit_result.business_model_analysis is not None else "N/A"}</div>', unsafe_allow_html=True)
-                    st.markdown(f'<div class="meeting-item"><strong>Market Synergy:</strong> {fit_result.market_synergy if fit_result.market_synergy is not None else "N/A"}</div>', unsafe_allow_html=True)
-                    st.markdown(f'<div class="meeting-item">{fit_result.market_synergy_explanation if fit_result.market_synergy_explanation is not None else "N/A"}</div>', unsafe_allow_html=True)
-
-                    # Engagement Opportunities
-                    st.markdown('<div class="meeting-header">🚀 Engagement Opportunities</div>', unsafe_allow_html=True)
-                    for opportunity in fit_result.engagement_opportunities:
-                        st.markdown(f"""
-                            <div class="agenda-item">
-                                <div class="agenda-title">{opportunity.opportunity_description if opportunity.opportunity_description is not None else 'N/A'}</div>
-                                <div class="meeting-item">• {opportunity.rationale if opportunity.rationale is not None else 'N/A'}</div>
+                                <div style="color: #808080; font-weight: 500; font-size: 0.9em;">
+                                    ❓ Not Provided
+                                </div>
                             </div>
-                        """, unsafe_allow_html=True)
-
-                    # Potential Challenges
-                    st.markdown('<div class="meeting-header">⚠️ Potential Challenges</div>', unsafe_allow_html=True)
-                    for challenge in fit_result.potential_challenges:
-                        st.markdown(f"""
-                            <div class="agenda-item risk-item">
-                                <div class="agenda-title">{challenge.challenge_description if challenge.challenge_description is not None else 'N/A'}</div>
-                                <div class="meeting-item">• Impact: {challenge.impact_assessment if challenge.impact_assessment is not None else 'N/A'}</div>
-                                <div class="meeting-item">• Mitigation: {challenge.mitigation_strategy if challenge.mitigation_strategy is not None else 'N/A'}</div>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    continue
+                
+                value = field_data.get('value', 'N/A')
+                verification_level = field_data.get('verification_level', 'N/A')
+                
+                # Map verification level to badge
+                if verification_level == "HIGH":
+                    badge = "✅ Verified"
+                    color = "#00CC66"  # Green
+                elif verification_level == "MEDIUM":
+                    badge = "🔄 Partially Verified"
+                    color = "#FFA500"  # Orange
+                elif verification_level == "LOW":
+                    badge = "⚠️ Low Verification"
+                    color = "#FF6B6B"  # Red
+                else:
+                    badge = "❓ Unknown"
+                    color = "#808080"  # Gray
+                
+                st.markdown(f"""
+                    <div style="
+                        padding: 0.5rem;
+                        margin-bottom: 0.5rem;
+                        border-radius: 0.3rem;
+                        background-color: rgba(255, 255, 255, 0.8);
+                    ">
+                        <div style="color: #666; font-size: 0.9em;">{field_label}</div>
+                        <div style="
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            margin-top: 0.2rem;
+                        ">
+                            <div style="font-size: 1.1em; font-weight: 500;">
+                                {value}
                             </div>
-                        """, unsafe_allow_html=True)
-
-                    # Recommended Approach
-                    st.markdown('<div class="meeting-header">🎯 Recommended Approach</div>', unsafe_allow_html=True)
-                    recommended_approach = fit_result.recommended_approach
-                    if recommended_approach:
-                        st.markdown(f"""
-                            <div class="agenda-item success-item">
-                                <div class="agenda-title">{recommended_approach.approach_description if recommended_approach.approach_description is not None else 'N/A'}</div>
-                                <div class="meeting-item">• Rationale: {recommended_approach.rationale if recommended_approach.rationale is not None else 'N/A'}</div>
-                                <div class="meeting-item">• Expected Outcomes: {', '.join(recommended_approach.expected_outcomes) if recommended_approach.expected_outcomes else 'N/A'}</div>
-                                <div class="meeting-item">• Resources Required: {', '.join(recommended_approach.resources_required) if recommended_approach.resources_required else 'N/A'}</div>
+                            <div style="color: {color}; font-weight: 500; font-size: 0.9em;">
+                                {badge}
                             </div>
-                        """, unsafe_allow_html=True)
-
-                    # Next Steps
-                    st.markdown('<div class="meeting-header">➡️ Next Steps</div>', unsafe_allow_html=True)
-                    for step in fit_result.next_steps:
-                        st.markdown(f"""
-                            <div class="meeting-item next-step-item">• {step.step_description if step.step_description is not None else 'N/A'}
-                                <div class="meeting-item" style="margin-left: 1rem;">Rationale: {step.rationale if step.rationale is not None else 'N/A'}</div>
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                # Expandable details for each field
+                with st.expander("📝 Details & Sources"):
+                    # Sources
+                    sources = field_data.get('source_urls', [])
+                    if sources:
+                        st.markdown("**🔍 Sources:**")
+                        for source in sources:
+                            st.markdown(f"- [{source}]({source})")
+                    
+                    # Verification notes
+                    notes = field_data.get('verification_notes')
+                    if notes:
+                        st.markdown("**📋 Verification Notes:**")
+                        st.markdown(f"- {notes}")
+            
+            # Contact Information
+            st.subheader("📇 Contact Information")
+            contact_fields = [
+                ('company_linkedin', '🔗 LinkedIn'),
+                ('company_social_media', '📱 Social Media')
+            ]
+            
+            # Check if we have any contact data
+            has_contact = False
+            for field_key, _ in contact_fields:
+                field_data = company_info.get(field_key)
+                if field_data and isinstance(field_data, dict) and field_data.get('value'):
+                    has_contact = True
+                    break
+                    
+            if not has_contact:
+                st.info("No contact information available for this company.")
+            
+            # Display contact fields vertically
+            for field_key, field_label in contact_fields:
+                field_data = company_info.get(field_key, {})
+                if not field_data or not isinstance(field_data, dict) or not field_data.get('value'):
+                    continue
+                    
+                value = field_data.get('value', 'N/A')
+                verification_level = field_data.get('verification_level', 'N/A')
+                
+                # Map verification level to badge
+                if verification_level == "HIGH":
+                    badge = "✅ Verified"
+                    color = "#00CC66"  # Green
+                elif verification_level == "MEDIUM":
+                    badge = "🔄 Partially Verified"
+                    color = "#FFA500"  # Orange
+                elif verification_level == "LOW":
+                    badge = "⚠️ Low Verification"
+                    color = "#FF6B6B"  # Red
+                else:
+                    badge = "❓ Unknown"
+                    color = "#808080"  # Gray
+                
+                st.markdown(f"""
+                    <div style="
+                        padding: 0.5rem;
+                        margin-bottom: 0.5rem;
+                        border-radius: 0.3rem;
+                        background-color: rgba(255, 255, 255, 0.8);
+                    ">
+                        <div style="color: #666; font-size: 0.9em;">{field_label}</div>
+                        <div style="
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            margin-top: 0.2rem;
+                        ">
+                            <div style="font-size: 1.1em; font-weight: 500;">
+                                {value}
                             </div>
-                        """, unsafe_allow_html=True)
+                            <div style="color: {color}; font-weight: 500; font-size: 0.9em;">
+                                {badge}
+                            </div>
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                # Expandable details for each contact field
+                with st.expander("📝 Details & Sources"):
+                    # Sources
+                    sources = field_data.get('source_urls', [])
+                    if sources:
+                        st.markdown("**🔍 Sources:**")
+                        for source in sources:
+                            st.markdown(f"- [{source}]({source})")
+                    
+                    # Verification notes
+                    notes = field_data.get('verification_notes')
+                    if notes:
+                        st.markdown("**📋 Verification Notes:**")
+                        st.markdown(f"- {notes}")
+            
+            # Detailed Sections
+            st.markdown("---")
+            st.subheader("📚 Detailed Information")
+            
+            # Define the sections we want to display
+            detailed_sections = [
+                ('company_summary', 'Company Summary'),
+                ('company_services', 'Products & Services'),
+                ('company_industries', 'Industries Served'),
+                ('company_clients_partners', 'Clients & Partners'),
+                ('company_awards_recognitions', 'Awards & Recognition'),
+                ('company_culture', 'Company Culture'),
+                ('company_recent_updates', 'Recent Updates')
+            ]
+            
+            # Filter out sections with no data
+            available_sections = []
+            for key, label in detailed_sections:
+                field_data = company_info.get(key)
+                if field_data:
+                    # Handle both dict and list types
+                    if isinstance(field_data, dict) and field_data.get('value'):
+                        available_sections.append((key, label))
+                    elif isinstance(field_data, list) and len(field_data) > 0:
+                        available_sections.append((key, label))
+            
+            if not available_sections:
+                st.info("No detailed information available for this company.")
+            else:
+                # Create tabs for available sections
+                if available_sections:
+                    tabs = st.tabs([label for _, label in available_sections])
+                    
+                    for i, (section_key, _) in enumerate(available_sections):
+                        with tabs[i]:
+                            section_data = company_info.get(section_key, {})
+                            
+                            # Handle both dict and list types
+                            if isinstance(section_data, dict):
+                                verification_level = section_data.get('verification_level', 'N/A')
+                                
+                                # Map verification level to badge
+                                if verification_level == "HIGH":
+                                    badge = "✅ Verified"
+                                    color = "#00CC66"  # Green
+                                elif verification_level == "MEDIUM":
+                                    badge = "🔄 Partially Verified"
+                                    color = "#FFA500"  # Orange
+                                elif verification_level == "LOW":
+                                    badge = "⚠️ Low Verification"
+                                    color = "#FF6B6B"  # Red
+                                else:
+                                    badge = "❓ Unknown"
+                                    color = "#808080"  # Gray
+                                
+                                st.markdown(f"""
+                                    <div style="float: right; color: {color};">{badge}</div>
+                                """, unsafe_allow_html=True)
+                                
+                                st.markdown(section_data.get('value', 'N/A'))
+                                
+                                with st.expander("🔍 Sources & Verification", expanded=False):
+                                    # Sources
+                                    sources = section_data.get('source_urls', [])
+                                    if sources:
+                                        st.markdown("**Sources:**")
+                                        for source in sources:
+                                            st.markdown(f"- [{source}]({source})")
+                                    
+                                    # Verification notes
+                                    notes = section_data.get('verification_notes')
+                                    if notes:
+                                        st.markdown("**Verification Notes:**")
+                                        st.markdown(f"- {notes}")
+                            
+                            elif isinstance(section_data, list):
+                                for item in section_data:
+                                    if isinstance(item, dict) and item.get('value'):
+                                        verification_level = item.get('verification_level', 'N/A')
+                                        
+                                        # Map verification level to badge
+                                        if verification_level == "HIGH":
+                                            badge = "✅ Verified"
+                                            color = "#00CC66"  # Green
+                                        elif verification_level == "MEDIUM":
+                                            badge = "🔄 Partially Verified"
+                                            color = "#FFA500"  # Orange
+                                        elif verification_level == "LOW":
+                                            badge = "⚠️ Low Verification"
+                                            color = "#FF6B6B"  # Red
+                                        else:
+                                            badge = "❓ Unknown"
+                                            color = "#808080"  # Gray
+                                        
+                                        st.markdown(f"""
+                                            <div style="
+                                                padding: 0.5rem;
+                                                margin-bottom: 0.5rem;
+                                                border-radius: 0.3rem;
+                                                background-color: rgba(255, 255, 255, 0.8);
+                                            ">
+                                                <div style="
+                                                    display: flex;
+                                                    justify-content: space-between;
+                                                    align-items: center;
+                                                ">
+                                                    <div style="font-size: 1.1em;">
+                                                        {item.get('value', 'N/A')}
+                                                    </div>
+                                                    <div style="color: {color}; font-weight: 500; font-size: 0.9em;">
+                                                        {badge}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        """, unsafe_allow_html=True)
+                                        
+                                        with st.expander("🔍 Sources & Verification", expanded=False):
+                                            # Sources
+                                            sources = item.get('source_urls', [])
+                                            if sources:
+                                                st.markdown("**Sources:**")
+                                                for source in sources:
+                                                    st.markdown(f"- [{source}]({source})")
+                                            
+                                            # Verification notes
+                                            notes = item.get('verification_notes')
+                                            if notes:
+                                                st.markdown("**Verification Notes:**")
+                                                st.markdown(f"- {notes}")
+            
+            # Add Trust Evaluation section
+            if 'company_trust_evaluation' in st.session_state:
+                trust_eval = st.session_state.company_trust_evaluation
+                with st.expander("🔒 Trust Evaluation", expanded=False):
+                    try:
+                        # Trust Score
+                        score_col1, score_col2 = st.columns(2)
+                        with score_col1:
+                            overall_score = trust_eval.get('trust_score', {}).get('overall_score', 'N/A')
+                            confidence = trust_eval.get('trust_score', {}).get('confidence_level', 'N/A')
+                            risk = trust_eval.get('trust_score', {}).get('risk_level', 'N/A')
+                            
+                            st.metric("Trust Score", f"{overall_score}%" if overall_score != 'N/A' else 'N/A')
+                            st.markdown(f"**Confidence Level:** {confidence}")
+                            st.markdown(f"**Risk Level:** {risk}")
+                        
+                        with score_col2:
+                            category_scores = trust_eval.get('trust_score', {}).get('category_scores', {})
+                            if category_scores:
+                                st.markdown("**Category Scores:**")
+                                for category, score in category_scores.items():
+                                    st.markdown(f"- {category}: {score}%")
+                        
+                        # Supporting Evidence
+                        evidence_list = trust_eval.get('supporting_evidence', [])
+                        if evidence_list:
+                            st.markdown("### Supporting Evidence")
+                            for evidence in evidence_list:
+                                with st.container():
+                                    st.markdown(f"**{evidence.get('source_type', 'Unknown Source')}** "
+                                              f"(Credibility: {evidence.get('credibility_score', 'N/A')}%)")
+                                    st.markdown(evidence.get('description', ''))
+                                    source_url = evidence.get('source_url')
+                                    if source_url:
+                                        st.markdown(f"*Source: [{source_url}]({source_url})*")
+                        
+                        # Areas of Concern
+                        concerns = trust_eval.get('areas_of_concern', [])
+                        if concerns:
+                            st.markdown("### Areas of Concern")
+                            for concern in concerns:
+                                st.markdown(f"- {concern}")
+                        
+                        # Verification Summary
+                        verification_summary = trust_eval.get('verification_summary', {})
+                        if verification_summary:
+                            st.markdown("### Verification Summary")
+                            
+                            # Handle different verification summary formats
+                            if 'total_fields' in verification_summary:
+                                total_fields = verification_summary.get('total_fields', 'N/A')
+                                verified_fields = verification_summary.get('verified_fields', 'N/A')
+                                verification_rate = verification_summary.get('verification_rate', 'N/A')
+                                
+                                st.markdown(f"- Total Fields: {total_fields}")
+                                st.markdown(f"- Verified Fields: {verified_fields}")
+                                st.markdown(f"- Verification Rate: {verification_rate}")
+                            else:
+                                # Alternative format
+                                verification_date = verification_summary.get('verification_date', 'N/A')
+                                verified_percentage = verification_summary.get('verified_fields_percentage', 'N/A')
+                                
+                                st.markdown(f"- Verification Date: {verification_date}")
+                                st.markdown(f"- Verified Fields: {verified_percentage}")
+                                
+                                # Primary sources
+                                primary_sources = verification_summary.get('primary_sources', [])
+                                if primary_sources:
+                                    st.markdown("**Primary Sources:**")
+                                    for source in primary_sources:
+                                        st.markdown(f"- {source}")
+                            
+                            # Verification notes
+                            notes = verification_summary.get('notes') or verification_summary.get('overall_verification_notes')
+                            if notes:
+                                st.markdown(f"**Notes:** {notes}")
+                                
+                        # Recommendations
+                        recommendations = trust_eval.get('recommendations', [])
+                        if recommendations:
+                            st.markdown("### Recommendations")
+                            for rec in recommendations:
+                                st.markdown(f"- {rec}")
+                                    
+                    except Exception as e:
+                        print(f"Error displaying trust evaluation: {str(e)}")
+                        st.warning("Some trust evaluation data could not be displayed")
 
-    # Add helper text
-    st.markdown("""
-        <div style='font-size: 0.9em; color: #666; margin-top: 1rem;'>
-        💡 I'll gather comprehensive information about the company, including business model, market position, and key insights.
-        </div>
-    """, unsafe_allow_html=True)
+            # Disable the save button
+            if st.button("💾 Save Research", key="save_company_button", disabled=True):
+                pass  # This code won't execute since the button is disabled
+                
+            # Add a note explaining why it's disabled
+            st.markdown("""
+                <div style="font-size: 0.8em; color: #666; text-align: center;">
+                    Save functionality temporarily unavailable
+                </div>
+            """, unsafe_allow_html=True)
 
 def display_people_data():
     if not st.session_state.employee_profiles:
@@ -375,15 +762,3 @@ def display_people_data():
                     st.markdown(f"**Contact:** {profile.contact}")
                 if profile.linkedin_url:
                     st.markdown(f"**LinkedIn:** [{profile.linkedin_url}]({profile.linkedin_url})")
-
-# Add this to handle async operations with Streamlit
-def init():
-    import asyncio
-    if "company_insight_section" not in st.session_state:
-        st.session_state.company_insight_section = asyncio.new_event_loop()
-
-    loop = st.session_state.company_insight_section
-    asyncio.set_event_loop(loop)
-    
-    loop.run_until_complete(company_insight_section())
-    loop.run_until_complete(company_insight_section())

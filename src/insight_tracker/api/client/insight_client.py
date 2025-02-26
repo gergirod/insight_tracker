@@ -353,35 +353,50 @@ class InsightApiClient:
             print(f"Debug - Error in stream: {str(e)}")
             raise ApiError(str(e))
 
-    async def get_company_insight_stream(
+    def get_company_insight_stream(
         self,
         company_name: str,
         industry: str,
         language: str = "en"
-    ) -> Dict[str, Any]:
+    ):
         """Get streaming company insights"""
+        print("\n=== Starting Company Stream ===")
         endpoint = "/api/v2/company_insight/stream"
-        params = {
-            "companyName": company_name,
+        data = {
+            "company": company_name,
             "industry": industry,
             "language": language
         }
         
         url = f"{self.base_url}{endpoint}"
         try:
-            response = self.session.get(url, params=params, stream=True)
-            print(f"Debug - GET Stream Request URL: {response.url}")
-            print(f"Debug - Response Status: {response.status_code}")
+            print("Debug - Getting company insight stream")
             
-            if response.status_code in [401, 403]:
-                print(f"Debug - Auth Error Response: {response.text}")
-                raise ApiError(
-                    f"Authentication failed: {response.text}",
-                    status_code=response.status_code
-                )
-                
-            response.raise_for_status()
-            return response
-        except requests.exceptions.RequestException as e:
-            print(f"Debug - Request Error: {str(e)}")
+            response = requests.post(
+                url, 
+                json=data,
+                stream=True,
+                verify=False,
+                headers={
+                    'Content-Type': 'application/json',
+                    'X-API-Key': self.api_key,
+                    'X-OpenAI-API-Key': self.openai_api_key
+                }
+            )
+            
+            print(f"Debug - Response status: {response.status_code}")
+            
+            # Process the response line by line
+            for line in response.iter_lines():
+                if line:
+                    line_text = line.decode('utf-8')
+                    print(f"Debug - Raw line: {line_text}")
+                    
+                    if line_text.startswith('data: '):
+                        event_data = json.loads(line_text[6:])
+                        print(f"Debug - Event: {event_data}")
+                        yield event_data
+                        
+        except Exception as e:
+            print(f"Debug - Error in stream: {str(e)}")
             raise ApiError(str(e))

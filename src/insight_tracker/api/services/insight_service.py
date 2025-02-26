@@ -202,29 +202,23 @@ class InsightService:
             print(f"Debug - Service: Error in stream: {str(e)}")
             raise
 
-    async def get_company_analysis_stream(
+    def get_company_analysis_stream(
         self,
         company_name: str,
         industry: str,
         language: str = "en"
-    ) -> AsyncGenerator[Dict[str, Any], None]:
+    ):
         """Get streaming company analysis"""
+        print("Debug - Service: Starting company analysis stream")
         try:
-            response = await self.api_client.get_company_insight_stream(
+            for event in self.api_client.get_company_insight_stream(
                 company_name=company_name,
                 industry=industry,
                 language=language
-            )
-            
-            for line in response.iter_lines():
-                if line:
-                    data = json.loads(line.decode('utf-8'))
-                    print("Debug - Received data:", data)
-                    yield data
+            ):
+                print(f"Debug - Service got event: {event}")
+                yield event
                     
-        except ApiError as e:
-            print(f"Debug - API Error in get_company_analysis_stream: {str(e)}")
-            raise
         except Exception as e:
-            print(f"Debug - Unexpected error in get_company_analysis_stream: {str(e)}")
+            print(f"Debug - Service: Error in stream: {str(e)}")
             raise

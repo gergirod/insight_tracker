@@ -284,9 +284,7 @@ def profile_insight_section():
                             transition_status.markdown(f"🔄 **Transition:**  \n{content}")
                             
                         elif event_type == "complete" and content:
-                            thought_status.empty()
                             task_status.empty()
-                            transition_status.empty()
                             if 'profile_insight' in content:
                                 st.session_state.profile_result = content['profile_insight']
                             if 'trust_evaluation' in content:
@@ -302,7 +300,7 @@ def profile_insight_section():
                 print(f"Debug - Error in UI: {str(e)}")
                 st.error(f"An unexpected issue occurred during research: {str(e)}")
         else:
-            st.warning("Please provide both the person's name and company to begin research.")    
+            st.warning("Please provide both the name and company to begin research.")
 
     # Show event history right after the research button
     if st.session_state.get('event_history'):
@@ -337,7 +335,7 @@ def profile_insight_section():
     # Display results only if research is completed
     if st.session_state.get('search_completed', False):
         if 'profile_result' in st.session_state:
-            st.markdown("---")  # Sepa
+            st.markdown("---")  # Separator
             
             st.subheader("👤 Basic Information")
             profile = st.session_state.profile_result
@@ -352,51 +350,105 @@ def profile_insight_section():
             
             for field_key, field_label in essential_fields:
                 field_data = profile.get(field_key, {})
-                status = field_data.get('verification_status', 'N/A')
-                badge = get_verification_badge(status)
-                color = get_verification_color(status)
                 
-                # Clean field display with badge
-                st.markdown(f"""
-                    <div style="
-                        padding: 0.5rem;
-                        margin-bottom: 0.5rem;
-                        border-radius: 0.3rem;
-                        background-color: rgba(255, 255, 255, 0.8);
-                    ">
-                        <div style="color: #666; font-size: 0.9em;">{field_label}</div>
+                # Handle both dictionary and list types
+                if isinstance(field_data, dict):
+                    value = field_data.get('value', 'N/A')
+                    status = field_data.get('verification_status', 'N/A')
+                    badge = get_verification_badge(status)
+                    color = get_verification_color(status)
+                    
+                    st.markdown(f"""
                         <div style="
-                            display: flex;
-                            justify-content: space-between;
-                            align-items: center;
-                            margin-top: 0.2rem;
+                            padding: 0.5rem;
+                            margin-bottom: 0.5rem;
+                            border-radius: 0.3rem;
+                            background-color: rgba(255, 255, 255, 0.8);
+                            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
                         ">
-                            <div style="font-size: 1.1em; font-weight: 500;">
-                                {field_data.get('value', 'N/A')}
-                            </div>
-                            <div style="color: {color}; font-weight: 500; font-size: 0.9em;">
-                                {badge}
+                            <div style="color: #666; font-size: 0.9em;">{field_label}</div>
+                            <div style="
+                                display: flex;
+                                justify-content: space-between;
+                                align-items: center;
+                                margin-top: 0.2rem;
+                            ">
+                                <div style="font-size: 1.1em; font-weight: 500;">
+                                    {value}
+                                </div>
+                                <div style="color: {color}; font-weight: 500; font-size: 0.9em;">
+                                    {badge}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                """, unsafe_allow_html=True)
-                
-                # Expandable details
-                with st.expander("📝 Details & Sources"):
-                    cols = st.columns([2, 1])
-                    with cols[0]:
-                        sources = field_data.get('source_url', [])
-                        if sources:
-                            st.markdown("**🔍 Sources:**")
-                            for source in sources:
-                                st.markdown(f"- [{source}]({source})")
+                    """, unsafe_allow_html=True)
                     
-                    with cols[1]:
-                        credibility = field_data.get('source_credibility', [])
-                        if credibility:
-                            st.markdown("**⭐ Credibility:**")
-                            for cred in credibility:
-                                st.markdown(f"- {cred}")
+                    # Expandable details for each field
+                    with st.expander("📝 Details & Sources"):
+                        cols = st.columns([2, 1])
+                        with cols[0]:
+                            sources = field_data.get('source_url', [])
+                            if sources:
+                                st.markdown("**🔍 Sources:**")
+                                for source in sources:
+                                    st.markdown(f"- [{source}]({source})")
+                        
+                        with cols[1]:
+                            credibility = field_data.get('source_credibility', [])
+                            if credibility:
+                                st.markdown("**⭐ Credibility:**")
+                                for cred in credibility:
+                                    st.markdown(f"- {cred}")
+                
+                # Handle list type fields
+                elif isinstance(field_data, list):
+                    st.markdown(f"### {field_label}")
+                    for item in field_data:
+                        if isinstance(item, dict):
+                            value = item.get('value', 'N/A')
+                            status = item.get('verification_status', 'N/A')
+                            badge = get_verification_badge(status)
+                            color = get_verification_color(status)
+                            
+                            st.markdown(f"""
+                                <div style="
+                                    padding: 0.5rem;
+                                    margin-bottom: 0.5rem;
+                                    border-radius: 0.3rem;
+                                    background-color: rgba(255, 255, 255, 0.8);
+                                    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+                                ">
+                                    <div style="
+                                        display: flex;
+                                        justify-content: space-between;
+                                        align-items: center;
+                                    ">
+                                        <div style="font-size: 1.1em;">
+                                            {value}
+                                        </div>
+                                        <div style="color: {color}; font-weight: 500; font-size: 0.9em;">
+                                            {badge}
+                                        </div>
+                                    </div>
+                                </div>
+                            """, unsafe_allow_html=True)
+                            
+                            # Expandable details for each item
+                            with st.expander("📝 Details & Sources"):
+                                cols = st.columns([2, 1])
+                                with cols[0]:
+                                    sources = item.get('source_url', [])
+                                    if sources:
+                                        st.markdown("**🔍 Sources:**")
+                                        for source in sources:
+                                            st.markdown(f"- [{source}]({source})")
+                                
+                                with cols[1]:
+                                    credibility = item.get('source_credibility', [])
+                                    if credibility:
+                                        st.markdown("**⭐ Credibility:**")
+                                        for cred in credibility:
+                                            st.markdown(f"- {cred}")
             
             # Contact Information
             st.subheader("📇 Contact Information")
@@ -568,7 +620,7 @@ def profile_insight_section():
             # Add Trust Evaluation section
             if 'trust_evaluation' in st.session_state:
                 trust_eval = st.session_state.trust_evaluation
-                with st.expander("🔒 Trust Evaluation", expanded=True):
+                with st.expander("🔒 Trust Evaluation", expanded=False):
                     try:
                         # Trust Score
                         score_col1, score_col2 = st.columns(2)
@@ -625,148 +677,68 @@ def profile_insight_section():
                         print(f"Error displaying trust evaluation: {str(e)}")
                         st.warning("Some trust evaluation data could not be displayed")
 
-            if st.button("💾 Save Research", key="save_button"):
-                save_profile_search(user_email, profile)
-                st.success("Research saved successfully!")
+            # Disable the save button
+            if st.button("💾 Save Research", key="save_button", disabled=True):
+                pass  # This code won't execute since the button is disabled
+                
+            # Add a note explaining why it's disabled
+            st.markdown("""
+                <div style="font-size: 0.8em; color: #666; text-align: center;">
+                    Save functionality temporarily unavailable
+                </div>
+            """, unsafe_allow_html=True)
 
-            # Action buttons in horizontal layout
+            # Action buttons
+            st.markdown("### 🚀 Actions")
+            
+            # Create three columns for the action buttons
             col1, col2, col3 = st.columns(3)
-            user_company = get_user_company_info(user_email)
-            user = getUserByEmail(user_email)
-
+            
             with col1:
-                if st.button("📧 Request Outreach Draft", 
-                             type="primary",
-                             key="generate_email_button",
-                             use_container_width=True):
-                    # Get latest user and company data
-                    user = getUserByEmail(user_email)
-                    user_company = get_user_company_info(user_email)
-                    
-                    # Check if we have all required information
-                    missing_user_info = not user or not all([user[1]])  # name, role, company
-                    missing_company_info = not user_company
-                    
-                    if missing_user_info or missing_company_info:
-                        warning_message = []
-                        if missing_user_info:
-                            warning_message.append("• Complete your personal information (name, role, company)")
-                        if missing_company_info:
-                            warning_message.append("• Add your company information")
-                        
-                        st.warning(f"""
-                            ⚠️ Additional information required
-                            
-                            To generate a personalized outreach email, please first:
-                            {chr(10).join(warning_message)}
-                            
-                            This helps us create more effective and contextual communications.
-                        """)
-                        
-                        if st.button("Complete Profile Settings →", type="primary"):
-                            st.session_state.nav_bar_option_selected = "Settings"
-                            st.rerun()
-                    else:
-                        try:
-                            with st.spinner('AI Communication Team preparing your outreach draft...'):
-                                sender_info = {
-                                    "full_name": user[1],
-                                    "company": user[4],
-                                    "role": user[3]
-                                }
-                                profile_data = profile.__dict__
-                                
-                                email_content = run_async(
-                                    insight_service.generate_outreach_email(
-                                        profile=profile_data,
-                                        company=user_company.__dict__,
-                                        sender_info=sender_info
-                                    )
-                                )
-                                st.session_state.email_content = email_content
-                                st.success("Professional outreach draft ready for your review")
-                        except Exception as e:
-                            st.error(f"Failed to generate email: {str(e)}")
+                # Disable the button by adding disabled=True
+                st.button("✉️ Request Outreach Draft", 
+                         type="primary",
+                         key="request_email_button",
+                         use_container_width=True,
+                         disabled=True)
+                
+                # Add a note explaining why it's disabled
+                st.markdown("""
+                    <div style="font-size: 0.8em; color: #666; text-align: center;">
+                        Feature temporarily unavailable
+                    </div>
+                """, unsafe_allow_html=True)
 
             with col2:
-                if st.button("📅 Generate Meeting Brief", 
-                             type="primary",
-                             key="prepare_meeting_button",
-                             use_container_width=True):
-                    # Get latest user and company data
-                    user_company = get_user_company_info(user_email)
-                    # Check if we have all required information
-                    missing_company_info = not user_company
-                    
-                    if missing_company_info:
-                        warning_message = []
-                        if missing_user_info:
-                            warning_message.append("• Complete your personal information (name, role, company)")
-                        if missing_company_info:
-                            warning_message.append("• Add your company information")
-                        
-                        st.warning(f"""
-                            ⚠️ Context Required for Meeting Preparation
-                            
-                            To create a personalized meeting strategy, please first:
-                            {chr(10).join(warning_message)}
-                            
-                            This helps us provide more targeted talking points and strategic recommendations.
-                        """)
-                        
-                        if st.button("Complete Profile Settings →", type="primary"):
-                            st.session_state.nav_bar_option_selected = "Settings"
-                            st.rerun()
-                    else:
-                        try:
-                            with st.spinner('AI Strategy Team analyzing and preparing meeting insights...'):
-                                meeting_result = run_async(
-                                    insight_service.prepare_meeting(
-                                        profile=profile.__dict__,
-                                        company=user_company.__dict__
-                                    )
-                                )
-                                st.session_state.meeting_result = meeting_result
-                                st.success("Meeting strategy brief is ready for review")
-                        except Exception as e:
-                            st.error(f"Failed to prepare meeting: {str(e)}")
+                # Disable the button
+                st.button("📅 Generate Meeting Brief", 
+                         type="primary",
+                         key="prepare_meeting_button",
+                         use_container_width=True,
+                         disabled=True)
+                
+                # Add a note explaining why it's disabled
+                st.markdown("""
+                    <div style="font-size: 0.8em; color: #666; text-align: center;">
+                        Feature temporarily unavailable
+                    </div>
+                """, unsafe_allow_html=True)
 
             with col3:
-                if st.button("⚖️ Analyze Partnership Fit", 
-                             type="primary",
-                             key="evaluate_fit_button",
-                             use_container_width=True):
-                    # Get latest company data
-                    user_company = get_user_company_info(user_email)
-                    
-                    if not user_company:
-                        st.warning("""
-                            ⚠️ Company information required
-                            
-                            To evaluate profile fit, we need your company context. Please complete your company information in the Settings section first.
-                            
-                            This helps us provide more accurate and meaningful insights.
-                        """)
-                        
-                        if st.button("Complete Company Settings →", type="primary"):
-                            st.session_state.nav_bar_option_selected = "Settings"
-                            st.rerun()
-                    else:
-                        try:
-                            with st.spinner('AI Analysis Team evaluating strategic alignment...'):
-                                fit_result = run_async(
-                                    insight_service.evaluate_profile_fit(
-                                        profile=profile.__dict__,
-                                        company=user_company.__dict__
-                                    )
-                                )
-                                st.session_state.fit_evaluation_result = fit_result
-                                st.success("Partnership analysis report is ready")
-                        except Exception as e:
-                            st.error(f"Failed to evaluate fit: {str(e)}")
+                # Disable the button
+                st.button("⚖️ Analyze Partnership Fit", 
+                         type="primary",
+                         key="evaluate_fit_button",
+                         use_container_width=True,
+                         disabled=True)
+                
+                # Add a note explaining why it's disabled
+                st.markdown("""
+                    <div style="font-size: 0.8em; color: #666; text-align: center;">
+                        Feature temporarily unavailable
+                    </div>
+                """, unsafe_allow_html=True)
 
-            # Display sections based on results
-            
             # Email section
             if 'email_content' in st.session_state:
                 with st.expander("✉️ Outreach Email", expanded=False):
