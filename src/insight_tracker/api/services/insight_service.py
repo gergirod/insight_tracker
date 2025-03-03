@@ -222,3 +222,24 @@ class InsightService:
         except Exception as e:
             print(f"Debug - Service: Error in stream: {str(e)}")
             raise
+
+    def get_my_company_insight_stream(
+        self,
+        company_name: str,
+        industry: str,
+        language: str = "en"
+    ):
+        """Get streaming company analysis for the user's own company"""
+        print("Debug - Service: Starting my company analysis stream")
+        try:
+            for event in self.api_client.get_my_company_insight_stream(
+                company_name=company_name,
+                industry=industry,
+                language=language
+            ):
+                print(f"Debug - Service got event: {event}")
+                yield event
+                    
+        except Exception as e:
+            print(f"Debug - Service: Error in stream: {str(e)}")
+            raise

@@ -18,11 +18,10 @@ def display_side_bar():
             # Welcome message below app name
             st.markdown(f'<p class="welcome">👋 Hello, {user_name}!</p>', unsafe_allow_html=True)
             
-            # Navigation options with icons
+            # Navigation options with icons - removed Recent Searches
             options = {
                 "Profile Insight": "👤",
                 "Company Insight": "🏢",
-                "Recent Searches": "🕒",
                 "Settings": "⚙️",
                 "Logout": "🚪"
             }

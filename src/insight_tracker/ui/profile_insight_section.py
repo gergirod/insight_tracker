@@ -284,6 +284,7 @@ def profile_insight_section():
                             transition_status.markdown(f"🔄 **Transition:**  \n{content}")
                             
                         elif event_type == "complete" and content:
+                            thought_status.empty()
                             task_status.empty()
                             if 'profile_insight' in content:
                                 st.session_state.profile_result = content['profile_insight']
