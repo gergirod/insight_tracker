@@ -6,6 +6,7 @@ from insight_tracker.api.exceptions.api_exceptions import ApiError
 import os
 import asyncio
 import urllib3
+from datetime import datetime
 
 # Disable SSL verification warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -154,34 +155,28 @@ def settings_section(user, user_company, setup_complete=True):
                 margin-bottom: 24px;
                 font-size: 0.95rem;
             ">
-                Update your professional details to enhance your outreach effectiveness. 
-                This information helps us provide personalized insights for building meaningful connections 
-                and crafting more impactful communications.
+                Your profile information is managed through your authentication provider.
             </p>
         </div>
     """, unsafe_allow_html=True)
     
-    # Form inputs
+    # Display user information in a clean card
     full_name_value = user[1] if user is not None else ""
     contact_info = user[2] if user is not None else ""
-    role_position_value = user[3] if user is not None else ""
-    company_value = user[4] if user is not None else ""
-
-    full_name = st.text_input("Full Name", placeholder="Enter your full name", value=full_name_value)
-    email = st.text_input("Email", value=contact_info, disabled=True)
-    role_position = st.text_input("Role/Position", placeholder="Enter your role or position", value=role_position_value)
-    company = st.text_input("Company", placeholder="Enter your company name", value=company_value)
-
-    # Add some space before the button
-    st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
     
-    # Personal Information Save Button - Full width
-    if st.button("💾 Save Personal Information", 
-                key="save_personal_info",
-                use_container_width=True):
-        email = st.session_state.user.get('email')
-        create_user_if_not_exists(full_name, email, role_position, company)
-        st.success("✅ Personal information saved successfully!")
+    st.markdown(f"""
+    <div style="
+        background-color: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    ">
+        <h3 style="margin-top: 0;">User Details</h3>
+        <p><strong>Name:</strong> {full_name_value}</p>
+        <p><strong>Email:</strong> {contact_info}</p>
+    </div>
+    """, unsafe_allow_html=True)
 
     # Add spacing between sections
     st.markdown("<div style='margin-top: 3rem;'></div>", unsafe_allow_html=True)
@@ -205,57 +200,289 @@ def settings_section(user, user_company, setup_complete=True):
                 margin-bottom: 24px;
                 font-size: 0.95rem;
             ">
-                Help us understand your company context to provide better insights for your professional outreach 
-                and strategic connections.
+                Help us understand your company context to provide better insights for your professional outreach.
             </p>
         </div>
     """, unsafe_allow_html=True)
 
-    # Simplified company data input
-    company_url = st.text_input(
-        "Company Website",
-        placeholder="Enter your company's website (e.g., https://company.com)",
-        help="We'll use this to fetch detailed information about your company"
-    )
+    # Company search inputs - using name and industry
+    col1, col2 = st.columns(2)
+    with col1:
+        company_name = st.text_input(
+            "Company Name",
+            placeholder="Enter company name",
+            help="Enter the name of your company"
+        )
+    
+    with col2:
+        industry = st.text_input(
+            "Industry",
+            placeholder="Enter industry",
+            help="Enter your company's industry"
+        )
 
     # Company Information Update Button - Full width
-    if st.button("🔄 Update Company Information",
-                key="update_company_info",
+    if st.button("🔍 Research Company Information",
+                key="research_company_info",
                 use_container_width=True):
-        try:
-            with st.spinner('Analyzing company data...'):
-                api_client = InsightApiClient(
-                    base_url=os.getenv('API_BASE_URL'),
-                    api_key=os.getenv('API_KEY'),
-                    openai_api_key=os.getenv('OPENAI_API_KEY'),
-                    verify_ssl=False
-                )
-                insight_service = InsightService(api_client=api_client)
-                company_result = run_async(
-                    insight_service.get_company_analysis_by_url(company_url=company_url)
-                )
+        if company_name and industry:
+            try:
+                with st.spinner('Researching company data...'):
+                    # Initialize API client
+                    api_client = InsightApiClient(
+                        base_url=os.getenv('API_BASE_URL'),
+                        api_key=os.getenv('API_KEY'),
+                        openai_api_key=os.getenv('OPENAI_API_KEY'),
+                        verify_ssl=False
+                    )
+                    insight_service = InsightService(api_client=api_client)
+                    
+                    # Create containers for live updates
+                    progress_container = st.empty()
+                    with progress_container.container():
+                        agent_status = st.empty()
+                        thought_status = st.empty()
+                        task_status = st.empty()
+                        transition_status = st.empty()
+                    
+                    # Use streaming API with the new my_company_insight endpoint
+                    st.session_state.company_event_history = []
+                    
+                    # Use the new my_company_insight stream method
+                    for event in insight_service.get_my_company_insight_stream(
+                        company_name=company_name,
+                        industry=industry
+                    ):
+                        event_type = event.get('type')
+                        content = event.get('content')
+                        
+                        # Add event to history
+                        st.session_state.company_event_history.append({
+                            'type': event_type,
+                            'content': content,
+                            'timestamp': datetime.now().strftime("%H:%M:%S")
+                        })
+                        
+                        # Update UI based on event type
+                        with progress_container.container():
+                            if event_type == "agent_start" and content and content.get('name') and content.get('function'):
+                                # Clear previous agent's thoughts and tasks
+                                thought_status.empty()
+                                task_status.empty()
+                                transition_status.empty()
+                                
+                                # Add special styling for industry researcher
+                                agent_name = content['name']
+                                agent_function = content['function']
+                                
+                                if "industry" in agent_name.lower():
+                                    agent_status.markdown(f"""
+                                    🏭 **Current Agent: {agent_name}**  
+                                    *{agent_function}*
+                                    """)
+                                else:
+                                    agent_status.markdown(f"""
+                                    🤖 **Current Agent: {agent_name}**  
+                                    *{agent_function}*
+                                    """)
+                                
+                            elif event_type == "thought" and content:
+                                thought_status.markdown(f"💭 **Thinking:**  \n{content}")
+                                # Clear previous task when new thought starts
+                                task_status.empty()
+                                
+                            elif event_type == "task_complete" and content:
+                                task_status.markdown(f"✅ **Completed:**  \n{content}")
+                                
+                            elif event_type == "transition" and content:
+                                # Clear all previous states for transition
+                                agent_status.empty()
+                                thought_status.empty()
+                                task_status.empty()
+                                transition_status.markdown(f"🔄 **Transition:**  \n{content}")
+                                
+                            elif event_type == "complete" and content:
+                                if 'company_insight' in content:
+                                    st.session_state.company_result = content
+                                    email = st.session_state.user.get('email')
+                                    save_user_company_info(email, content)
+                                st.session_state.company_search_completed = True
+                                st.success("✨ Company Analysis Complete!")
+                                progress_container.empty()
+                                break
+                                
+                            elif event_type == "error" and content:
+                                raise Exception(content)
                 
-                if company_result and company_result.company:
-                    save_user_company_info(email, company_result.company)
-                    st.session_state.company_result = company_result
-                    st.success("✅ Company information updated successfully!")
-                else:
-                    st.error("❌ Couldn't fetch company information. Please check the URL and try again.")
-        except Exception as e:
-            st.error(f"❌ An error occurred: {str(e)}")
+                st.rerun()  # Rerun to display the results
+                
+            except Exception as e:
+                st.error(f"❌ An error occurred: {str(e)}")
+        else:
+            st.warning("Please enter both company name and industry.")
 
     # Display current company information if available
-    if user_company is not None or 'company_result' in st.session_state:
+    if st.session_state.get('company_search_completed', False) and 'company_result' in st.session_state:
         st.markdown("<div style='margin-top: 2rem;'></div>", unsafe_allow_html=True)
         
-        if 'company_result' in st.session_state:
-            display_company_data(st.session_state.company_result.company)
-        elif user_company is not None:
-            display_company_data(user_company)
-
-    api_client = InsightApiClient(
-        base_url=os.getenv("API_BASE_URL"),
-        api_key=os.getenv("API_KEY"),
-        openai_api_key=os.getenv("OPENAI_API_KEY"),
-        verify_ssl=False
-    )
+        # Get the company data from the result
+        company_result = st.session_state.company_result
+        
+        print("company_result")
+        print(company_result)
+        
+        # Extract company data from the correct path in the response
+        company_data = None
+        
+        # Try all possible paths to find the company data
+        if isinstance(company_result, dict):
+            # Path 1: content -> company_insight -> company
+            if ('content' in company_result and 
+                isinstance(company_result['content'], dict) and
+                'company_insight' in company_result['content'] and
+                isinstance(company_result['content']['company_insight'], dict) and
+                'company' in company_result['content']['company_insight']):
+                company_data = company_result['content']['company_insight']['company']
+                print("Found data in content.company_insight.company")
+            
+            # Path 2: company_insight -> company
+            elif ('company_insight' in company_result and 
+                  isinstance(company_result['company_insight'], dict) and
+                  'company' in company_result['company_insight']):
+                company_data = company_result['company_insight']['company']
+                print("Found data in company_insight.company")
+            
+            # Path 3: content -> company_insight (no company level)
+            elif ('content' in company_result and 
+                  isinstance(company_result['content'], dict) and
+                  'company_insight' in company_result['content']):
+                company_data = company_result['content']['company_insight']
+                print("Found data in content.company_insight")
+            
+            # Path 4: company_insight (no company level)
+            elif 'company_insight' in company_result:
+                company_data = company_result['company_insight']
+                print("Found data in company_insight")
+            
+            # Path 5: Use the result itself
+            else:
+                company_data = company_result
+                print("Using entire result as company data")
+        
+        print("Company data structure:")
+        print(company_data)
+        
+        # If we have company data, display it
+        if company_data:
+            # Display simplified company information
+            st.markdown("""
+            <div style="
+                background-color: white;
+                border-radius: 10px;
+                padding: 20px;
+                margin-bottom: 20px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            ">
+                <h3 style="margin-top: 0;">Company Details</h3>
+            """, unsafe_allow_html=True)
+            
+            # Extract basic information safely
+            try:
+                # Company name
+                company_name = "N/A"
+                if 'company_name' in company_data and isinstance(company_data['company_name'], dict):
+                    company_name = company_data['company_name'].get('value', 'N/A')
+                st.markdown(f"<p><strong>Name:</strong> {company_name}</p>", unsafe_allow_html=True)
+                
+                # Website
+                website = "N/A"
+                if 'company_website' in company_data and isinstance(company_data['company_website'], dict):
+                    website = company_data['company_website'].get('value', 'N/A')
+                
+                if website != 'N/A' and isinstance(website, str) and website.startswith(('http://', 'https://')):
+                    st.markdown(f"<p><strong>Website:</strong> <a href='{website}' target='_blank'>{website}</a></p>", unsafe_allow_html=True)
+                else:
+                    st.markdown(f"<p><strong>Website:</strong> {website}</p>", unsafe_allow_html=True)
+                
+                # Industry
+                industry = "N/A"
+                if 'company_industry' in company_data and isinstance(company_data['company_industry'], dict):
+                    industry = company_data['company_industry'].get('value', 'N/A')
+                st.markdown(f"<p><strong>Industry:</strong> {industry}</p>", unsafe_allow_html=True)
+                
+                # Summary
+                summary = "N/A"
+                if 'company_summary' in company_data and isinstance(company_data['company_summary'], dict):
+                    summary = company_data['company_summary'].get('value', 'N/A')
+                st.markdown(f"<p><strong>Summary:</strong> {summary}</p>", unsafe_allow_html=True)
+                
+                # Services - completely defensive approach
+                st.markdown("<p><strong>Services:</strong></p>", unsafe_allow_html=True)
+                
+                # Try different ways to access services
+                services_found = False
+                
+                # Try company_services as a key
+                if 'company_services' in company_data:
+                    services = company_data['company_services']
+                    services_found = True
+                # Try services as a key
+                elif 'services' in company_data:
+                    services = company_data['services']
+                    services_found = True
+                # Try products_and_services as a key
+                elif 'products_and_services' in company_data:
+                    services = company_data['products_and_services']
+                    services_found = True
+                
+                if services_found and services:
+                    # Handle list of services
+                    if isinstance(services, list):
+                        for service in services:
+                            if service is None:
+                                continue
+                            if isinstance(service, dict) and 'value' in service:
+                                st.markdown(f"• {service['value']}")
+                            else:
+                                st.markdown(f"• {str(service)}")
+                    # Handle single service as dict
+                    elif isinstance(services, dict) and 'value' in services:
+                        st.markdown(f"• {services['value']}")
+                    # Handle string
+                    elif isinstance(services, str):
+                        st.markdown(f"• {services}")
+                else:
+                    st.markdown("• No services information available")
+                
+            except Exception as e:
+                st.error(f"Error displaying company data: {str(e)}")
+                import traceback
+                st.write("Error details:", traceback.format_exc())
+            
+            st.markdown("</div>", unsafe_allow_html=True)
+            
+            # Add custom services/products
+            st.subheader("Add Additional Information")
+            
+            # Add service
+            new_service = st.text_input("Add Service", placeholder="Enter a service your company provides")
+            if st.button("➕ Add Service", key="add_service"):
+                if new_service:
+                    if 'custom_services' not in st.session_state:
+                        st.session_state.custom_services = []
+                    st.session_state.custom_services.append(new_service)
+                    st.success(f"Added service: {new_service}")
+                    st.rerun()
+            
+            # Display custom services
+            if 'custom_services' in st.session_state and st.session_state.custom_services:
+                st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
+                st.markdown("<p><strong>Custom Services:</strong></p>", unsafe_allow_html=True)
+                for i, service in enumerate(st.session_state.custom_services):
+                    col1, col2 = st.columns([5, 1])
+                    with col1:
+                        st.markdown(f"• {service}")
+                    with col2:
+                        if st.button("🗑️", key=f"delete_service_{i}"):
+                            st.session_state.custom_services.pop(i)
+                            st.rerun()

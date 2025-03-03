@@ -400,3 +400,51 @@ class InsightApiClient:
         except Exception as e:
             print(f"Debug - Error in stream: {str(e)}")
             raise ApiError(str(e))
+
+    def get_my_company_insight_stream(
+        self,
+        company_name: str,
+        industry: str,
+        language: str = "en"
+    ):
+        """Get streaming company insights for the user's own company"""
+        print("\n=== Starting My Company Stream ===")
+        endpoint = "/api/v2/my_company_insight/stream"
+        data = {
+            "company": company_name,
+            "industry": industry,
+            "language": language
+        }
+        
+        url = f"{self.base_url}{endpoint}"
+        try:
+            print("Debug - Getting my company insight stream")
+            
+            response = requests.post(
+                url, 
+                json=data,
+                stream=True,
+                verify=False,
+                headers={
+                    'Content-Type': 'application/json',
+                    'X-API-Key': self.api_key,
+                    'X-OpenAI-API-Key': self.openai_api_key
+                }
+            )
+            
+            print(f"Debug - Response status: {response.status_code}")
+            
+            # Process the response line by line
+            for line in response.iter_lines():
+                if line:
+                    line_text = line.decode('utf-8')
+                    print(f"Debug - Raw line: {line_text}")
+                    
+                    if line_text.startswith('data: '):
+                        event_data = json.loads(line_text[6:])
+                        print(f"Debug - Event: {event_data}")
+                        yield event_data
+                        
+        except Exception as e:
+            print(f"Debug - Error in stream: {str(e)}")
+            raise ApiError(str(e))
