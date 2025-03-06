@@ -354,7 +354,9 @@ def profile_insight_section():
                 
                 # Handle both dictionary and list types
                 if isinstance(field_data, dict):
+                    # Get value from either 'value' key or directly from field_data
                     value = field_data.get('value', 'N/A')
+                    # Get verification status from either 'verification_status' key or directly
                     status = field_data.get('verification_status', 'N/A')
                     badge = get_verification_badge(status)
                     color = get_verification_color(status)
@@ -388,8 +390,14 @@ def profile_insight_section():
                     with st.expander("📝 Details & Sources"):
                         cols = st.columns([2, 1])
                         with cols[0]:
+                            # Handle both 'source_url' and 'sources' keys
                             sources = field_data.get('source_url', [])
-                            if sources:
+                            if not sources and 'sources' in field_data:
+                                # If no source_url but has sources, use those as text
+                                st.markdown("**🔍 Sources:**")
+                                for source in field_data.get('sources', []):
+                                    st.markdown(f"- {source}")
+                            elif sources:
                                 st.markdown("**🔍 Sources:**")
                                 for source in sources:
                                     st.markdown(f"- [{source}]({source})")
@@ -466,6 +474,10 @@ def profile_insight_section():
                 badge = get_verification_badge(status)
                 color = get_verification_color(status)
                 
+                # Skip empty fields or provide a better placeholder
+                if value == "":
+                    value = "Not available"
+                
                 st.markdown(f"""
                     <div style="
                         padding: 0.5rem;
@@ -514,109 +526,97 @@ def profile_insight_section():
             tabs = st.tabs([
                 "Professional Background",
                 "Past Experience",
-                "Key Achievements"
+                "Industry Verification"
             ])
             
-            sections = ['professional_background', 'past_jobs', 'key_achievements']
+            sections = ['professional_background', 'past_jobs', 'industry_verification']
             for tab, section in zip(tabs, sections):
                 with tab:
-                    section_data = profile.get(section, {})
-                    status = section_data.get('verification_status', 'N/A')
-                    badge = get_verification_badge(status)
-                    color = get_verification_color(status)
-                    
-                    st.markdown(f"""
-                        <div style="float: right; color: {color};">{badge}</div>
-                    """, unsafe_allow_html=True)
-                    
-                    # Special handling for achievements
-                    if section == 'key_achievements':
-                        try:
-                            # Try to parse industry profile for structured achievements
-                            industry_profile = profile.get('industry_profile', {}).get('value', '{}')
-                            if isinstance(industry_profile, str):
-                                import json
-                                try:
-                                    industry_data = json.loads(industry_profile)
-                                    if 'Achievements' in industry_data:
-                                        st.markdown("### 🏆 Verified Achievements")
-                                        for achievement in industry_data['Achievements']:
-                                            # Create achievement card
-                                            st.markdown(f"""
-                                                <div style="
-                                                    padding: 1rem;
-                                                    margin-bottom: 1rem;
-                                                    background-color: rgba(255, 255, 255, 0.8);
-                                                    border-radius: 0.5rem;
-                                                    border-left: 4px solid {get_verification_color('verified')};
-                                                ">
-                                                    <div style="
-                                                        display: flex;
-                                                        justify-content: space-between;
-                                                        align-items: center;
-                                                    ">
-                                                        <div style="font-weight: 600; color: #1a1a1a;">
-                                                            {achievement.get('Type', 'Achievement')}
-                                                        </div>
-                                                        <div style="color: #00CC66;">✅</div>
-                                                    </div>
-                                                    <div style="margin: 0.5rem 0;">
-                                                        {achievement.get('Details', '')}
-                                                    </div>
-                                                    <div style="text-align: right;">
-                                                        <a href="{achievement.get('Link', '#')}" target="_blank" style="color: #4A90E2; text-decoration: none;">
-                                                            🔗 View Source
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                            """, unsafe_allow_html=True)
-                                except json.JSONDecodeError:
-                                    # Fall back to regular achievement display
-                                    pass
+                    # Special handling for industry verification
+                    if section == 'industry_verification':
+                        industry_data = profile.get('industry_verification', {})
+                        if industry_data:
+                            # Industry name and verification score
+                            industry_name = industry_data.get('industry_name', 'N/A')
+                            verification_score = industry_data.get('verification_score', 'N/A')
                             
-                            # Display any remaining achievements from the main value field
-                            achievements_text = section_data.get('value', '')
-                            achievements = [ach.strip() for ach in achievements_text.split(';') if ach.strip()]
+                            # Format verification score as percentage if it's a number
+                            if isinstance(verification_score, (int, float)):
+                                score_display = f"{verification_score}%"
+                            else:
+                                score_display = verification_score
                             
+                            st.markdown(f"### 🏭 Industry: {industry_name}")
+                            st.markdown(f"**Verification Score:** {score_display}")
+                            
+                            # Evidence
+                            evidence_list = industry_data.get('evidence', [])
+                            if evidence_list:
+                                st.markdown("### 🔍 Evidence")
+                                for evidence in evidence_list:
+                                    st.markdown(f"- {evidence}")
+                            
+                            # Industry Achievements
+                            achievements = industry_data.get('industry_achievements', [])
                             if achievements:
-                                st.markdown("### Additional Achievements")
+                                st.markdown("### 🏆 Industry Achievements")
                                 for achievement in achievements:
-                                    has_source = any(source in achievement for source in section_data.get('source_url', []))
-                                    verification_icon = "✅" if has_source else "⚠️"
+                                    # Create achievement card
+                                    achievement_type = achievement.get('type', 'Achievement')
+                                    achievement_name = achievement.get('name', '')
+                                    description = achievement.get('description', '')
+                                    source_url = achievement.get('source_url', '')
+                                    credibility = achievement.get('source_credibility', 'N/A')
+                                    relevance = achievement.get('industry_relevance', '')
+                                    
                                     st.markdown(f"""
                                         <div style="
-                                            display: flex;
-                                            justify-content: space-between;
-                                            align-items: center;
-                                            padding: 0.5rem;
-                                            margin-bottom: 0.5rem;
-                                            background-color: rgba(255, 255, 255, 0.5);
-                                            border-radius: 0.3rem;
+                                            padding: 1rem;
+                                            margin-bottom: 1rem;
+                                            background-color: rgba(255, 255, 255, 0.8);
+                                            border-radius: 0.5rem;
+                                            border-left: 4px solid {get_verification_color('verified')};
                                         ">
-                                            <div>{achievement}</div>
-                                            <div>{verification_icon}</div>
+                                            <div style="
+                                                display: flex;
+                                                justify-content: space-between;
+                                                align-items: center;
+                                            ">
+                                                <div style="font-weight: 600; color: #1a1a1a;">
+                                                    {achievement_type}: {achievement_name}
+                                                </div>
+                                                <div style="color: #00CC66;">✅</div>
+                                            </div>
+                                            <div style="margin: 0.5rem 0;">
+                                                {description}
+                                            </div>
+                                            <div style="margin: 0.5rem 0; font-style: italic; color: #666;">
+                                                {relevance}
+                                            </div>
+                                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                                <div style="color: #666;">
+                                                    <small>Credibility: {credibility}</small>
+                                                </div>
+                                                <div>
+                                                    {f'<a href="{source_url}" target="_blank" style="color: #4A90E2; text-decoration: none;">🔗 View Source</a>' if source_url else ''}
+                                                </div>
+                                            </div>
                                         </div>
                                     """, unsafe_allow_html=True)
-                                    
-                        except Exception as e:
-                            print(f"Error parsing achievements: {e}")
-                            # Fall back to displaying raw value
-                            st.markdown(section_data.get('value', 'N/A'))
+                        else:
+                            st.markdown("No industry verification data available.")
                     else:
-                        st.markdown(section_data.get('value', 'N/A'))
-                    
-                    with st.expander("🔍 Sources & Verification"):
-                        sources = section_data.get('source_url', [])
-                        if sources:
-                            st.markdown("**Sources:**")
-                            for source in sources:
-                                st.markdown(f"- [{source}]({source})")
+                        section_data = profile.get(section, {})
+                        status = section_data.get('verification_status', 'N/A')
+                        badge = get_verification_badge(status)
+                        color = get_verification_color(status)
                         
-                        credibility = section_data.get('source_credibility', [])
-                        if credibility:
-                            st.markdown("**Credibility Assessment:**")
-                            for cred in credibility:
-                                st.markdown(f"- {cred}")
+                        st.markdown(f"""
+                            <div style="float: right; color: {color};">{badge}</div>
+                        """, unsafe_allow_html=True)
+                        
+                        # Display the section value
+                        st.markdown(section_data.get('value', 'N/A'))
 
             # Add Trust Evaluation section
             if 'trust_evaluation' in st.session_state:
@@ -630,7 +630,13 @@ def profile_insight_section():
                             confidence = trust_eval.get('trust_score', {}).get('confidence_level', 'N/A')
                             risk = trust_eval.get('trust_score', {}).get('risk_level', 'N/A')
                             
-                            st.metric("Trust Score", f"{overall_score}%" if overall_score != 'N/A' else 'N/A')
+                            # Format the score as a percentage if it's a number
+                            if isinstance(overall_score, (int, float)):
+                                score_display = f"{overall_score}%"
+                            else:
+                                score_display = overall_score
+                                
+                            st.metric("Trust Score", score_display)
                             st.markdown(f"**Confidence Level:** {confidence}")
                             st.markdown(f"**Risk Level:** {risk}")
                         
@@ -639,7 +645,11 @@ def profile_insight_section():
                             if category_scores:
                                 st.markdown("**Category Scores:**")
                                 for category, score in category_scores.items():
-                                    st.markdown(f"- {category}: {score}%")
+                                    # Format each category score as a percentage
+                                    if isinstance(score, (int, float)):
+                                        st.markdown(f"- {category}: {score}%")
+                                    else:
+                                        st.markdown(f"- {category}: {score}")
                         
                         # Supporting Evidence
                         evidence_list = trust_eval.get('supporting_evidence', [])
@@ -647,8 +657,17 @@ def profile_insight_section():
                             st.markdown("### Supporting Evidence")
                             for evidence in evidence_list:
                                 with st.container():
-                                    st.markdown(f"**{evidence.get('source_type', 'Unknown Source')}** "
-                                              f"(Credibility: {evidence.get('credibility_score', 'N/A')}%)")
+                                    # Get source type and credibility with fallbacks
+                                    source_type = evidence.get('source_type', 'Unknown Source')
+                                    credibility = evidence.get('credibility_score', 'N/A')
+                                    
+                                    # Format credibility as percentage if it's a number
+                                    if isinstance(credibility, (int, float)):
+                                        credibility_display = f"{credibility}%"
+                                    else:
+                                        credibility_display = credibility
+                                        
+                                    st.markdown(f"**{source_type}** (Credibility: {credibility_display})")
                                     st.markdown(evidence.get('description', ''))
                                     source_url = evidence.get('source_url')
                                     if source_url:
@@ -665,18 +684,46 @@ def profile_insight_section():
                         verification_summary = trust_eval.get('verification_summary', {})
                         if verification_summary:
                             st.markdown("### Verification Summary")
-                            total_fields = verification_summary.get('total_fields_verified', 'N/A')
-                            st.markdown(f"- Total Fields Verified: {total_fields}")
                             
-                            methods = verification_summary.get('verification_methods_used', [])
+                            # Display total fields reviewed
+                            total_fields = verification_summary.get('total_fields_reviewed', 'N/A')
+                            st.markdown(f"**Total Fields Reviewed:** {total_fields}")
+                            
+                            # Display verified fields
+                            fully_verified = verification_summary.get('fully_verified', [])
+                            if fully_verified:
+                                st.markdown("**✅ Fully Verified Fields:**")
+                                st.markdown(", ".join(fully_verified))
+                            
+                            # Display partially verified fields
+                            partially_verified = verification_summary.get('partially_verified', [])
+                            if partially_verified:
+                                st.markdown("**🔄 Partially Verified Fields:**")
+                                st.markdown(", ".join(partially_verified))
+                            
+                            # Display unverified fields
+                            unverified = verification_summary.get('unverified', [])
+                            if unverified:
+                                st.markdown("**⚠️ Unverified Fields:**")
+                                st.markdown(", ".join(unverified))
+                            
+                            # Display verification methods
+                            methods = verification_summary.get('verification_methods', [])
                             if methods:
-                                st.markdown("**Verification Methods:**")
+                                st.markdown("**🔍 Verification Methods Used:**")
                                 for method in methods:
                                     st.markdown(f"- {method}")
-                                    
+                        
+                        # Recommendations
+                        recommendations = trust_eval.get('recommendations', [])
+                        if recommendations:
+                            st.markdown("### Recommendations")
+                            for recommendation in recommendations:
+                                st.markdown(f"- {recommendation}")
+                                
                     except Exception as e:
                         print(f"Error displaying trust evaluation: {str(e)}")
-                        st.warning("Some trust evaluation data could not be displayed")
+                        st.warning("Some trust evaluation data could not be displayed properly")
 
             # Disable the save button
             if st.button("💾 Save Research", key="save_button", disabled=True):
